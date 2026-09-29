@@ -115,7 +115,9 @@ copy predate the claim fixes; the app's wording is authoritative).
 - A test whose outcome depends on wall-clock time is not an invariant test. Every clock is a
   parameter; `plane_boundary_test.dart` forbids `DateTime.now()` under `lib/src/ai/`.
 - Source-scanning tests must strip comments first (`codeOf` in `test/invariants/source.dart`).
-- Never use `google_fonts`; fonts are bundled in `app/fonts/`.
+- Never use `google_fonts`; fonts (Geist, Geist Mono) are bundled in `app/fonts/`.
+- The UI follows shadcn/ui (zinc) but is implemented natively in `lib/src/ui/widgets/parts.dart`.
+  Do not add the `shadcn_ui` package: it pulls in `http` and `extended_image` (network-capable).
 - Semantic colours are CVD-checked (see `lib/src/ui/theme.dart`); re-measure before changing one.
 
 ### Project state (29 Sep 2026)

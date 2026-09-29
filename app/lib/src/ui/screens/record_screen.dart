@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../ai/insight.dart';
 import '../../ai/plane_a/reference_ranges.dart' show analyteName;
@@ -7,6 +8,7 @@ import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/insight_card.dart';
 import '../widgets/parts.dart';
+import 'records_screen.dart' show iconForKind, kindLabel;
 
 /// One record, reproduced as written.
 ///
@@ -46,53 +48,80 @@ class _RecordScreenState extends State<RecordScreen> {
     final unchecked = _run?.unresolved.where((u) => u.recordId == r.id).toList() ?? const <NotChecked>[];
 
     return Scaffold(
-      appBar: AppBar(backgroundColor: LT.ground, elevation: 0, foregroundColor: LT.ink),
+      appBar: AppBar(),
       body: ListView(children: [
-        Masthead(eyebrow: r.kind.name, title: r.title),
-        _meta('Date on the document', fullDate(r.date)),
-        if (r.doctor != null) _meta('Doctor', r.doctor!),
-        if (r.facility != null) _meta('Clinic or hospital', r.facility!),
-        if (r.dose != null) _meta('Dose · morning–afternoon–night', r.dose!.display),
-        _meta('Source', switch (r.source) {
-          RecordSource.typedByPatient => 'Typed in by you',
-          RecordSource.smartCapture => 'Captured from a photo, confirmed by you',
-          RecordSource.doctorIssued => 'Issued by the doctor',
-          RecordSource.restoredFromBackup => 'Restored from your backup',
-        }),
-        if (r.results.isNotEmpty) ...[
-          const Eyebrow('Values as reported'),
-          for (final res in r.results)
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-              decoration: const BoxDecoration(border: Border(top: BorderSide(color: LT.rule))),
-              child: Row(children: [
-                Expanded(child: Text(analyteName(res.analyte), style: LT.label)),
-                Text('${_fmt(res.value)} ${res.unit}', style: LT.data),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            IconTile(iconForKind(r.kind)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(r.title, style: LT.title),
+                const SizedBox(height: 8),
+                Wrap(spacing: 6, runSpacing: 6, children: [
+                  Badge2(kindLabel(r.kind)),
+                  Badge2(fullDate(r.date), tone: BadgeTone.outline),
+                ]),
               ]),
             ),
+          ]),
+        ),
+        ShadCard(
+          padding: EdgeInsets.zero,
+          child: Column(children: [
+            if (r.doctor != null) _meta(LucideIcons.stethoscope, 'Doctor', r.doctor!),
+            if (r.facility != null) _meta(LucideIcons.hospital, 'Clinic or hospital', r.facility!),
+            if (r.dose != null) _meta(LucideIcons.pill, 'Dose (morning–afternoon–night)', r.dose!.display),
+            _meta(LucideIcons.fileCheck, 'Source', switch (r.source) {
+              RecordSource.typedByPatient => 'Typed in by you',
+              RecordSource.smartCapture => 'Captured from a photo, confirmed by you',
+              RecordSource.doctorIssued => 'Issued by the doctor',
+              RecordSource.restoredFromBackup => 'Restored from your backup',
+            }, last: true),
+          ]),
+        ),
+        if (r.results.isNotEmpty) ...[
+          const Eyebrow('Values as reported'),
+          ShadCard(
+            padding: EdgeInsets.zero,
+            child: Column(children: [
+              for (final (i, res) in r.results.indexed)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  decoration: BoxDecoration(border: i == r.results.length - 1 ? null : const Border(bottom: BorderSide(color: LT.rule))),
+                  child: Row(children: [
+                    Expanded(child: Text(analyteName(res.analyte), style: LT.label.copyWith(fontSize: 14.5))),
+                    Text('${_fmt(res.value)} ${res.unit}', style: LT.data),
+                  ]),
+                ),
+            ]),
+          ),
           if (_run == null && s.insightsEnabled() == false)
-            const Note('Turn on Insights to have these values compared with published reference ranges.')
+            const Note('Turn on Insights to have these values compared with published reference ranges.', icon: LucideIcons.activity, margin: EdgeInsets.fromLTRB(16, 4, 16, 0))
           else ...[
+            if (cited.isNotEmpty || unchecked.isNotEmpty) const Eyebrow('From Insights'),
             for (final i in cited) InsightCard(insight: i),
             for (final u in unchecked)
               CautionPanel(
                 title: '${analyteName(u.analyte)} was not checked',
-                child: Text(u.explanation, style: LT.small.copyWith(color: LT.ink)),
+                child: Text(u.explanation, style: LT.small.copyWith(color: LT.cautionInk)),
               ),
           ],
         ],
-        const SizedBox(height: 24),
+        const SizedBox(height: 28),
       ]),
     );
   }
 
-  Widget _meta(String label, String value) => Container(
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: LT.rule))),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label.toUpperCase(), style: LT.eyebrow),
-          const SizedBox(height: 5),
-          Text(value, style: LT.label),
+  Widget _meta(IconData icon, String label, String value, {bool last = false}) => Container(
+        padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
+        decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: LT.rule))),
+        child: Row(children: [
+          Icon(icon, size: 16, color: LT.ink3),
+          const SizedBox(width: 12),
+          Expanded(child: Text(label, style: LT.small)),
+          Flexible(child: Text(value, style: LT.label.copyWith(fontSize: 14), textAlign: TextAlign.right)),
         ]),
       );
 

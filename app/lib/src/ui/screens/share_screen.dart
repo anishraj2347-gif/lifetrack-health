@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../consent/consent_token.dart';
 import '../../model/health_record.dart';
@@ -24,6 +25,14 @@ const dataClassNames = {
   DataClass.emergencyCard: 'Emergency ID',
 };
 
+IconData iconForActor(String actorId) {
+  if (actorId == Actors.planeA) return LucideIcons.activity;
+  if (actorId == Actors.cloud) return LucideIcons.cloud;
+  if (actorId.startsWith('doctor:')) return LucideIcons.stethoscope;
+  if (actorId.startsWith('unauthenticated:')) return LucideIcons.lockOpen;
+  return LucideIcons.userRound;
+}
+
 class ShareScreen extends StatelessWidget {
   const ShareScreen({super.key});
 
@@ -32,39 +41,50 @@ class ShareScreen extends StatelessWidget {
     final s = AppScope.of(context);
     final grants = s.activeGrants();
     return ListView(children: [
-      const Masthead(eyebrow: 'Share', title: 'Who can see your records'),
+      Masthead(
+        eyebrow: 'Share',
+        title: 'Who can see your records',
+        trailing: Badge2(grants.isEmpty ? 'No access' : '${grants.length} active', tone: grants.isEmpty ? BadgeTone.outline : BadgeTone.trace),
+      ),
+      const SizedBox(height: 12),
       if (grants.isEmpty)
-        const Padding(padding: EdgeInsets.fromLTRB(20, 16, 20, 0), child: Text('Nobody has access right now.', style: LT.lede)),
-      for (final g in grants)
-        Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: LT.rule))),
+        const ShadCard(
           child: Row(children: [
+            IconTile(LucideIcons.shieldCheck, color: LT.trace, background: Color(0xFFECFDF5)),
+            SizedBox(width: 14),
+            Expanded(child: Text('Nobody has access right now.', style: LT.label)),
+          ]),
+        ),
+      for (final g in grants)
+        ShadCard(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            IconTile(iconForActor(g.grantedToActorId)),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(describeActor(g.grantedToActorId), style: LT.label),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(g.scopes.map((c) => dataClassNames[c]).join(', '), style: LT.small),
-                const SizedBox(height: 4),
-                Text(
-                  '${g.type == GrantType.oneTime ? 'ONE USE · ' : ''}UNTIL ${dateTime(g.expiresAt).toUpperCase()}',
-                  style: LT.eyebrow.copyWith(letterSpacing: 1),
-                ),
+                const SizedBox(height: 8),
+                Wrap(spacing: 6, runSpacing: 6, children: [
+                  if (g.type == GrantType.oneTime) const Badge2('One use'),
+                  Badge2('Until ${dateTime(g.expiresAt)}', tone: BadgeTone.outline),
+                ]),
               ]),
             ),
-            OutlinedButton(
-              style: OutlinedButton.styleFrom(shape: const RoundedRectangleBorder(), side: const BorderSide(color: LT.signal, width: 1.5), foregroundColor: LT.signal),
-              onPressed: () async {
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 92,
+              child: SlabButton('Revoke', variant: ButtonVariant.outline, onPressed: () async {
                 await s.revoke(g);
                 if (context.mounted) AppScope.changed(context);
-              },
-              child: const Text('REVOKE', style: TextStyle(fontFamily: LT.mono, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.2)),
+              }),
             ),
           ]),
         ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-        child: SlabButton('Give a doctor access', onPressed: () async {
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+        child: SlabButton('Give a doctor access', icon: LucideIcons.userPlus, onPressed: () async {
           await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const GrantDoctorScreen()));
           if (context.mounted) AppScope.changed(context);
         }),
@@ -105,29 +125,35 @@ class _GrantDoctorScreenState extends State<GrantDoctorScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: LT.ground, elevation: 0, foregroundColor: LT.ink),
+        appBar: AppBar(),
         body: _issued != null ? _done(_issued!) : _form(),
       );
 
   Widget _form() => ListView(children: [
-        const Masthead(eyebrow: 'Share', title: 'Give a doctor access'),
-        const SizedBox(height: 16),
+        const Masthead(eyebrow: 'Share', title: 'Give a doctor access', description: 'Access ends on its own. You can revoke it sooner.'),
+        const SizedBox(height: 20),
         LabeledField(
           label: 'Doctor registration number',
           hint: 'Not yet checked against the national medical register — that check arrives with the doctor app.',
-          child: TextField(controller: _registry, textCapitalization: TextCapitalization.characters),
+          child: TextField(controller: _registry, textCapitalization: TextCapitalization.characters, decoration: const InputDecoration(hintText: 'e.g. NMC-12345')),
         ),
-        const Eyebrow('What they can see'),
-        for (final c in [DataClass.prescriptions, DataClass.reports, DataClass.scans, DataClass.personalNotes])
-          CheckboxListTile(
-            value: _scopes.contains(c),
-            title: Text(dataClassNames[c]!, style: LT.label),
-            onChanged: (v) => setState(() => v! ? _scopes.add(c) : _scopes.remove(c)),
-          ),
-        const Eyebrow('For how long'),
+        const Eyebrow('What they can see', padding: EdgeInsets.fromLTRB(20, 4, 20, 10)),
+        ShadCard(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(children: [
+            for (final c in [DataClass.prescriptions, DataClass.reports, DataClass.scans, DataClass.personalNotes])
+              CheckboxListTile(
+                dense: true,
+                value: _scopes.contains(c),
+                title: Text(dataClassNames[c]!, style: LT.label.copyWith(fontSize: 14.5)),
+                onChanged: (v) => setState(() => v! ? _scopes.add(c) : _scopes.remove(c)),
+              ),
+          ]),
+        ),
+        const Eyebrow('For how long', padding: EdgeInsets.fromLTRB(20, 8, 20, 10)),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-          child: Wrap(spacing: 7, runSpacing: 7, children: [
+          child: Wrap(spacing: 8, runSpacing: 8, children: [
             Chip2('One visit · 1 h', selected: _type == GrantType.oneTime, onTap: () => setState(() {
               _type = GrantType.oneTime;
               _window = const Duration(hours: 1);
@@ -144,16 +170,20 @@ class _GrantDoctorScreenState extends State<GrantDoctorScreen> {
         ),
         const Note('48 hours is the longest any access can last. To extend it, you approve again. You can revoke it at any moment.'),
         if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 10, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
-        Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 24), child: SlabButton('Approve', onPressed: _scopes.isEmpty ? null : _grant)),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 20, 16, 28), child: SlabButton('Approve access', icon: LucideIcons.check, onPressed: _scopes.isEmpty ? null : _grant)),
       ]);
 
   Widget _done(ConsentToken g) => ListView(children: [
         const Masthead(eyebrow: 'Share', title: 'Access approved'),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: IconTile(LucideIcons.circleCheck, color: LT.trace, background: Color(0xFFECFDF5)),
+        ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
           child: Text('${describeActor(g.grantedToActorId)} can see ${g.scopes.map((c) => dataClassNames[c]!.toLowerCase()).join(', ')} until ${dateTime(g.expiresAt)}.', style: LT.lede),
         ),
         const Note('The doctor app that receives this is not available yet, so this access cannot be used yet in this version. It is recorded, and you can revoke it from Share.'),
-        Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 24), child: SlabButton('Done', onPressed: () => Navigator.of(context).pop())),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 20, 16, 28), child: SlabButton('Done', onPressed: () => Navigator.of(context).pop())),
       ]);
 }

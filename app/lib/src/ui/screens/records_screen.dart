@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../model/health_record.dart';
 import '../app_scope.dart';
@@ -6,6 +7,20 @@ import '../theme.dart';
 import '../widgets/parts.dart';
 import 'add_record_screen.dart';
 import 'record_screen.dart';
+
+IconData iconForKind(RecordKind k) => switch (k) {
+      RecordKind.prescription => LucideIcons.pill,
+      RecordKind.report => LucideIcons.flaskConical,
+      RecordKind.scan => LucideIcons.scanLine,
+      RecordKind.note => LucideIcons.stickyNote,
+    };
+
+String kindLabel(RecordKind k) => switch (k) {
+      RecordKind.prescription => 'Prescription',
+      RecordKind.report => 'Report',
+      RecordKind.scan => 'Scan',
+      RecordKind.note => 'Note',
+    };
 
 class RecordsScreen extends StatefulWidget {
   const RecordsScreen({super.key});
@@ -34,40 +49,36 @@ class _RecordsScreenState extends State<RecordsScreen> {
     String? month;
     for (final r in shown) {
       final m = monthYear(r.date);
-      final first = m != month;
-      if (first) {
+      if (m != month) {
         month = m;
-        children.add(Eyebrow(m, padding: const EdgeInsets.fromLTRB(20, 16, 20, 8)));
+        children.add(Eyebrow(m, padding: const EdgeInsets.fromLTRB(20, 18, 20, 10)));
       }
-      children.add(_RecordRow(record: r, heavyRule: first));
+      children.add(_RecordCard(record: r));
     }
 
     return Column(children: [
       Masthead(
-        eyebrow: 'Records',
+        eyebrow: s.isDemo ? 'Records · sample data' : 'Records',
         title: s.currentPatient?.name ?? '',
-        trailing: Text('${all.length}\nRECORDS', textAlign: TextAlign.right, style: LT.eyebrow.copyWith(fontSize: 11, height: 1.5)),
+        trailing: Badge2('${all.length} records', tone: BadgeTone.outline),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
         child: TextField(
           decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.search, color: LT.ink3),
-            hintText: 'Search records',
-            border: InputBorder.none,
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: LT.rule)),
-            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: LT.ink)),
+            prefixIcon: Icon(LucideIcons.search, size: 18, color: LT.ink3),
+            hintText: 'Search records, doctors, hospitals',
           ),
           onChanged: (v) => setState(() => _query = v.trim()),
         ),
       ),
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
         child: Row(children: [
-          for (final (label, kind) in [('All', null), ('Rx', RecordKind.prescription), ('Reports', RecordKind.report), ('Scans', RecordKind.scan), ('Notes', RecordKind.note)])
+          for (final (label, kind) in [('All', null), ('Prescriptions', RecordKind.prescription), ('Reports', RecordKind.report), ('Scans', RecordKind.scan), ('Notes', RecordKind.note)])
             Padding(
-              padding: const EdgeInsets.only(right: 7),
+              padding: const EdgeInsets.only(right: 8),
               child: Chip2(label, selected: _filter == kind, onTap: () => setState(() => _filter = kind)),
             ),
         ]),
@@ -77,14 +88,20 @@ class _RecordsScreenState extends State<RecordsScreen> {
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.all(32),
-                  child: Text(all.isEmpty ? 'No records yet. Add your first prescription or report.' : 'Nothing matches.', style: LT.lede, textAlign: TextAlign.center),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    const IconTile(LucideIcons.fileText, color: LT.ink3),
+                    const SizedBox(height: 14),
+                    Text(all.isEmpty ? 'No records yet' : 'Nothing matches', style: LT.label),
+                    const SizedBox(height: 4),
+                    Text(all.isEmpty ? 'Add your first prescription or report.' : 'Try another search or filter.', style: LT.small, textAlign: TextAlign.center),
+                  ]),
                 ),
               )
-            : ListView(children: children),
+            : ListView(padding: const EdgeInsets.only(bottom: 8), children: children),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-        child: SlabButton('Add record', onPressed: () async {
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: SlabButton('Add record', icon: LucideIcons.plus, onPressed: () async {
           await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AddRecordScreen()));
           if (context.mounted) AppScope.changed(context);
         }),
@@ -93,47 +110,43 @@ class _RecordsScreenState extends State<RecordsScreen> {
   }
 }
 
-class _RecordRow extends StatelessWidget {
-  const _RecordRow({required this.record, required this.heavyRule});
+class _RecordCard extends StatelessWidget {
+  const _RecordCard({required this.record});
   final HealthRecord record;
-  final bool heavyRule;
 
   @override
   Widget build(BuildContext context) {
     final r = record;
     final meta = switch (r.kind) {
-      RecordKind.prescription => 'Prescription${r.dose == null ? '' : ' · ${r.dose!.display}'}',
-      RecordKind.report => r.results.isEmpty ? 'Report' : 'Report · ${r.results.length} values',
-      RecordKind.scan => 'Scan',
-      RecordKind.note => 'Personal note · this phone only',
+      RecordKind.prescription => r.dose == null ? null : 'Dose ${r.dose!.display}',
+      RecordKind.report => r.results.isEmpty ? null : '${r.results.length} value${r.results.length == 1 ? '' : 's'}',
+      RecordKind.note => 'This phone only',
+      RecordKind.scan => null,
     };
-    return InkWell(
+    return ShadCard(
+      padding: const EdgeInsets.all(14),
       onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RecordScreen(recordId: r.id))),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-        decoration: BoxDecoration(border: Border(top: BorderSide(color: heavyRule ? LT.ink : LT.rule, width: heavyRule ? 2 : 1))),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(
-            width: 38,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(r.date.day.toString().padLeft(2, '0'), style: const TextStyle(fontFamily: LT.mono, fontSize: 19, fontWeight: FontWeight.w600, height: 1)),
-              Text(shortMonth(r.date), style: const TextStyle(fontFamily: LT.mono, fontSize: 10, color: LT.ink3, letterSpacing: 1)),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        IconTile(iconForKind(r.kind)),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(child: Text(r.title, style: LT.label.copyWith(fontSize: 16, fontWeight: FontWeight.w600))),
+              Text(fullDate(r.date), style: LT.small.copyWith(fontSize: 12.5)),
             ]),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(r.title, style: LT.label.copyWith(fontSize: 17)),
-              if (r.doctor != null || r.facility != null) ...[
-                const SizedBox(height: 4),
-                Text([r.doctor, r.facility].whereType<String>().join(' · '), style: LT.small),
-              ],
-              const SizedBox(height: 5),
-              Text(meta.toUpperCase(), style: LT.eyebrow.copyWith(letterSpacing: 1.2)),
+            if (r.doctor != null || r.facility != null) ...[
+              const SizedBox(height: 3),
+              Text([r.doctor, r.facility].whereType<String>().join(' · '), style: LT.small),
+            ],
+            const SizedBox(height: 8),
+            Wrap(spacing: 6, children: [
+              Badge2(kindLabel(r.kind)),
+              if (meta != null) Badge2(meta, tone: BadgeTone.outline),
             ]),
-          ),
-        ]),
-      ),
+          ]),
+        ),
+      ]),
     );
   }
 }

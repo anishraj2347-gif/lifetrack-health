@@ -40,12 +40,12 @@ void main() {
     final pubspec = File('pubspec.yaml').readAsStringSync();
     final deps = RegExp(r'^dependencies:\n((?:  .*\n|\s*\n|  #.*\n)*)', multiLine: true).firstMatch(pubspec)!.group(1)!;
     final names = RegExp(r'^  ([a-z_]+):', multiLine: true).allMatches(deps).map((m) => m.group(1)).toSet();
-    expect(names, {'flutter', 'cupertino_icons', 'cryptography', 'path_provider', 'flutter_secure_storage'});
+    expect(names, {'flutter', 'cupertino_icons', 'cryptography', 'path_provider', 'flutter_secure_storage', 'lucide_icons_flutter'});
     expect(pubspec.contains('google_fonts'), isFalse, reason: 'runtime font download is network egress');
   });
 
   test('fonts are bundled', () {
-    for (final f in ['BricolageGrotesque', 'PublicSans', 'SplineSansMono']) {
+    for (final f in ['Geist', 'GeistMono']) {
       expect(File('fonts/$f.ttf').existsSync(), isTrue, reason: f);
     }
   });

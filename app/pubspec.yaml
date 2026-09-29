@@ -37,6 +37,7 @@ dependencies:
   cryptography: ^2.9.0
   path_provider: ^2.1.6
   flutter_secure_storage: ^11.2.0
+  lucide_icons_flutter: ^3.1.20
 
 dev_dependencies:
   flutter_test:
@@ -63,15 +64,12 @@ flutter:
   # Bundled, never fetched: runtime font download would be network egress
   # from an app whose release build has no INTERNET permission.
   fonts:
-    - family: Bricolage Grotesque
+    - family: Geist
       fonts:
-        - asset: fonts/BricolageGrotesque.ttf
-    - family: Public Sans
+        - asset: fonts/Geist.ttf
+    - family: Geist Mono
       fonts:
-        - asset: fonts/PublicSans.ttf
-    - family: Spline Sans Mono
-      fonts:
-        - asset: fonts/SplineSansMono.ttf
+        - asset: fonts/GeistMono.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../app/app_services.dart';
 import 'app_scope.dart';
@@ -66,10 +67,10 @@ class _HomeShellState extends State<HomeShell> {
   int _tab = 0;
 
   static const _tabs = [
-    ('Records', Icons.article_outlined),
-    ('Insights', Icons.bar_chart),
-    ('Share', Icons.qr_code_2),
-    ('Me', Icons.person_outline),
+    ('Records', LucideIcons.fileText),
+    ('Insights', LucideIcons.activity),
+    ('Share', LucideIcons.qrCode),
+    ('Me', LucideIcons.userRound),
   ];
 
   @override
@@ -84,29 +85,37 @@ class _HomeShellState extends State<HomeShell> {
           },
         ),
         bottomNavigationBar: Container(
-          decoration: const BoxDecoration(border: Border(top: BorderSide(color: LT.ink, width: 2)), color: LT.ground),
+          decoration: const BoxDecoration(border: Border(top: BorderSide(color: LT.rule)), color: LT.ground),
           child: SafeArea(
             top: false,
-            child: Row(children: [
-              for (var i = 0; i < _tabs.length; i++)
-                Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _tab = i),
-                    child: Container(
-                      height: 64,
-                      decoration: BoxDecoration(border: Border(top: BorderSide(color: i == _tab ? LT.ink : Colors.transparent, width: 3))),
-                      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(_tabs[i].$2, size: 20, color: i == _tab ? LT.ink : LT.inactive),
-                        const SizedBox(height: 5),
-                        Text(
-                          _tabs[i].$1.toUpperCase(),
-                          style: TextStyle(fontFamily: LT.mono, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.8, color: i == _tab ? LT.ink : LT.inactive),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(children: [
+                for (var i = 0; i < _tabs.length; i++)
+                  Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(LT.radius),
+                      onTap: () => setState(() => _tab = i),
+                      child: Container(
+                        height: 58,
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        decoration: BoxDecoration(
+                          color: i == _tab ? LT.band : Colors.transparent,
+                          borderRadius: BorderRadius.circular(LT.radius),
                         ),
-                      ]),
+                        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Icon(_tabs[i].$2, size: 20, color: i == _tab ? LT.ink : LT.inactive),
+                          const SizedBox(height: 4),
+                          Text(
+                            _tabs[i].$1,
+                            style: TextStyle(fontFamily: LT.body, fontSize: 11.5, fontWeight: FontWeight.w500, color: i == _tab ? LT.ink : LT.inactive),
+                          ),
+                        ]),
+                      ),
                     ),
                   ),
-                ),
-            ]),
+              ]),
+            ),
           ),
         ),
       );

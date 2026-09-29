@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../emergency/emergency_card.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
+import 'onboarding_screen.dart' show StepIndicator;
 
 /// Read view of the Emergency ID. The allergy block is the one place a
 /// signal flood is earned.
@@ -33,33 +35,44 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     final c = _card;
     final s = AppScope.of(context);
     return Scaffold(
-      appBar: AppBar(backgroundColor: LT.ground, elevation: 0, foregroundColor: LT.ink),
+      appBar: AppBar(),
       body: c == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(children: [
-              Masthead(eyebrow: 'Emergency ID', title: s.currentPatient?.name ?? ''),
-              if (c.isEmpty) const Note('This card is empty. Anyone treating you would see nothing here.'),
+              Masthead(eyebrow: 'Emergency ID', title: s.currentPatient?.name ?? '', trailing: const Icon(LucideIcons.heartPulse, color: LT.signal)),
+              const SizedBox(height: 14),
+              if (c.isEmpty) const Note('This card is empty. Anyone treating you would see nothing here.', margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
               if (c.allergies.isNotEmpty)
-                Container(
-                  margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  padding: const EdgeInsets.all(16),
+                ShadCard(
                   color: LT.signal,
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('ALLERGIES', style: TextStyle(fontFamily: LT.mono, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1.6, color: Colors.white70)),
-                    const SizedBox(height: 6),
-                    Text(c.allergies, style: const TextStyle(fontFamily: LT.body, fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+                  borderColor: LT.signal,
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Icon(LucideIcons.triangleAlert, color: Colors.white, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        const Text('Allergies', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xE6FFFFFF))),
+                        const SizedBox(height: 4),
+                        Text(c.allergies, style: const TextStyle(fontFamily: LT.body, fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+                      ]),
+                    ),
                   ]),
                 ),
-              _field('Blood type', c.bloodType),
-              _field('Ongoing conditions', c.conditions),
-              _field('Current medicines', c.medications),
-              _field('Emergency contact', [c.contactName, c.contactRelation, c.contactPhone].where((x) => x.isNotEmpty).join(' · ')),
+              ShadCard(
+                padding: EdgeInsets.zero,
+                child: Column(children: [
+                  _field(LucideIcons.droplet, 'Blood type', c.bloodType),
+                  _field(LucideIcons.activity, 'Ongoing conditions', c.conditions),
+                  _field(LucideIcons.pill, 'Current medicines', c.medications),
+                  _field(LucideIcons.phone, 'Emergency contact', [c.contactName, c.contactRelation, c.contactPhone].where((x) => x.isNotEmpty).join(' · '), last: true),
+                ]),
+              ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-                child: SlabButton('Edit card', outline: true, onPressed: () async {
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+                child: SlabButton('Edit card', icon: LucideIcons.pencil, variant: ButtonVariant.outline, onPressed: () async {
                   await Navigator.of(context).push(MaterialPageRoute<void>(
                     builder: (_) => Scaffold(
-                      appBar: AppBar(backgroundColor: LT.ground, elevation: 0, foregroundColor: LT.ink),
+                      appBar: AppBar(),
                       body: EmergencyEditor(
                         patientId: s.currentPatientId!,
                         initial: c,
@@ -74,13 +87,19 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     );
   }
 
-  Widget _field(String label, String value) => Container(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: LT.rule))),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label.toUpperCase(), style: LT.eyebrow),
-          const SizedBox(height: 6),
-          Text(value.isEmpty ? '—' : value, style: LT.label.copyWith(fontSize: 18)),
+  Widget _field(IconData icon, String label, String value, {bool last = false}) => Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: LT.rule))),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(icon, size: 17, color: LT.ink3),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label, style: LT.small),
+              const SizedBox(height: 2),
+              Text(value.isEmpty ? '—' : value, style: LT.label.copyWith(fontSize: 16)),
+            ]),
+          ),
         ]),
       );
 }
@@ -134,31 +153,34 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
 
   @override
   Widget build(BuildContext context) => ListView(children: [
-        if (widget.onboarding)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 18, 20, 0),
-            child: Text('STEP 3 OF 3', style: LT.eyebrow),
-          ),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(20, 12, 20, 18),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('If you cannot\nspeak for yourself', style: TextStyle(fontFamily: LT.display, fontSize: 36, fontWeight: FontWeight.w800, height: 1.02)),
-            SizedBox(height: 12),
-            Text('This one card is kept outside your encrypted records so it can be shown to whoever is treating you.', style: LT.lede),
+            if (widget.onboarding) ...[const StepIndicator(step: 2), const SizedBox(height: 24)],
+            const Text('If you cannot speak for yourself', style: LT.hero),
+            const SizedBox(height: 8),
+            const Text('This one card is kept outside your encrypted records so it can be shown to whoever is treating you.', style: LT.lede),
           ]),
         ),
-        Container(
-          margin: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+        ShadCard(
+          color: const Color(0xFFFFF7ED),
+          borderColor: const Color(0xFFFED7AA),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(border: Border.all(color: LT.signal, width: 2)),
-          child: const Text.rich(TextSpan(style: LT.small, children: [
-            TextSpan(text: 'A stranger can read this. ', style: TextStyle(fontWeight: FontWeight.w600, color: LT.ink)),
-            TextSpan(text: 'Put in what a paramedic needs and nothing more — no address, no ID numbers.'),
-          ])),
+          child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(LucideIcons.eye, size: 16, color: LT.signal),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text.rich(TextSpan(style: TextStyle(fontSize: 13, height: 1.5, color: LT.ink2), children: [
+                TextSpan(text: 'A stranger can read this. ', style: TextStyle(fontWeight: FontWeight.w600, color: LT.ink)),
+                TextSpan(text: 'Put in what a paramedic needs and nothing more — no address, no ID numbers.'),
+              ])),
+            ),
+          ]),
         ),
         LabeledField(
           label: 'Blood type',
-          child: Wrap(spacing: 7, runSpacing: 7, children: [
+          child: Wrap(spacing: 8, runSpacing: 8, children: [
             for (final b in EmergencyCard.bloodTypes)
               Chip2(b.isEmpty ? 'Unknown' : b, selected: _blood == b, onTap: () => setState(() => _blood = b)),
           ]),
@@ -171,11 +193,11 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
         _text('Contact phone', _phone, type: TextInputType.phone),
         for (final p in _problems) Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 6), child: Text(p, style: LT.small.copyWith(color: LT.signal))),
         const Padding(
-          padding: EdgeInsets.fromLTRB(20, 4, 20, 0),
-          child: Text('You can leave any of these blank. Only you can edit this card — LifeTrack\'s insights never write to it.', style: TextStyle(fontSize: 12.5, color: LT.ink3, height: 1.5)),
+          padding: EdgeInsets.fromLTRB(20, 0, 20, 0),
+          child: Text('You can leave any of these blank. Only you can edit this card — LifeTrack\'s insights never write to it.', style: LT.small),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
           child: SlabButton(widget.onboarding ? 'Finish setup' : 'Save card', onPressed: _save),
         ),
       ]);

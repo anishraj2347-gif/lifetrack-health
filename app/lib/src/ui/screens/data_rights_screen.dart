@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../app_scope.dart';
 import '../theme.dart';
@@ -24,22 +25,24 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: LT.ground, elevation: 0, foregroundColor: LT.ink),
+        appBar: AppBar(),
         body: ListView(children: [
           const Masthead(eyebrow: 'Your data', title: 'What is held, where'),
+          const SizedBox(height: 14),
           _section('On this phone', 'Your profile, records, notes, the permissions you have given and your access log — encrypted under a key in the phone\'s secure hardware. The Emergency ID card is kept separately and unencrypted so it can be shown in an emergency.'),
           _section('With LifeTrack', 'Nothing, in this version. The app has no internet permission. When the backup service launches it will hold an encrypted copy of doctor-issued documents; a weak passphrase could be guessed from what that service stores, which is why we will ask for six unrelated words.'),
           _section('Why we process it', 'To keep your medical records for you, to compare values with published ranges when you turn Insights on, and to let a doctor see what you choose to share, for as long as you choose.'),
           _section('Your rights', 'You can see everything held (it is all in this app), correct any record, withdraw any permission from Share at any time, and erase everything below. Withdrawing consent does not affect access that already happened; it appears in your access log.'),
           _section('Complaints', 'Data Fiduciary: $kDataFiduciary\nGrievance Officer: $kGrievanceContact\nIf you are not satisfied with our response you may complain to the Data Protection Board of India.'),
-          const Eyebrow('Erase everything'),
-          const Note('Deletes this profile\'s records, notes, permissions and Emergency ID from this phone. It cannot be undone, and with no backup there is no way to get them back.', margin: EdgeInsets.fromLTRB(20, 0, 20, 12)),
-          LabeledField(label: 'Type ERASE to confirm', child: TextField(controller: _confirm, onChanged: (_) => setState(() {}))),
+          const Eyebrow('Danger zone'),
+          const Note(icon: LucideIcons.trash2, 'Deletes this profile\'s records, notes, permissions and Emergency ID from this phone. It cannot be undone, and with no backup there is no way to get them back.', margin: EdgeInsets.fromLTRB(20, 0, 20, 12)),
+          LabeledField(label: 'Type ERASE to confirm', child: TextField(controller: _confirm, onChanged: (_) => setState(() {}), decoration: const InputDecoration(hintText: 'ERASE'))),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
             child: SlabButton(
               'Erase my profile',
-              color: LT.signal,
+              variant: ButtonVariant.destructive,
+              icon: LucideIcons.trash2,
               onPressed: _confirm.text.trim() == 'ERASE' && !_erasing
                   ? () async {
                       setState(() => _erasing = true);
@@ -55,13 +58,11 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
         ]),
       );
 
-  Widget _section(String title, String body) => Container(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: LT.rule))),
+  Widget _section(String title, String body) => ShadCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title.toUpperCase(), style: LT.eyebrow),
+          Text(title, style: LT.label.copyWith(fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
-          Text(body, style: LT.small.copyWith(fontSize: 14, color: LT.ink)),
+          Text(body, style: LT.small.copyWith(fontSize: 14, color: LT.ink2)),
         ]),
       );
 }

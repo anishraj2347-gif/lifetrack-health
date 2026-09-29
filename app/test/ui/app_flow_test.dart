@@ -23,21 +23,21 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(LifeTrackApp(boot: boot));
     await tester.pumpAndSettle();
-    expect(find.text('Who are these\nrecords for?'), findsOneWidget);
-    await tester.ensureVisible(find.text('EXPLORE WITH SAMPLE RECORDS'));
+    expect(find.text('Who are these records for?'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Explore with sample records'), 200, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('EXPLORE WITH SAMPLE RECORDS'));
+    await tester.tap(find.text('Explore with sample records'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byType(Checkbox));
+    await tester.scrollUntilVisible(find.byType(Checkbox), 200, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
     await tester.tap(find.byType(Checkbox));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('CONTINUE'));
+    await tester.scrollUntilVisible(find.text('Continue'), 200, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('CONTINUE'));
+    await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('FINISH SETUP'), 200, scrollable: find.byType(Scrollable).first);
-    await tester.tap(find.text('FINISH SETUP'));
+    await tester.scrollUntilVisible(find.text('Finish setup'), 200, scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('Finish setup'));
     await tester.pumpAndSettle();
   }
 
@@ -58,9 +58,11 @@ void main() {
 
   testWidgets('Insights asks first, then shows findings and what was not checked', (tester) async {
     await onboardWithSamples(tester);
-    await tester.tap(find.text('INSIGHTS'));
+    await tester.tap(find.text('Insights'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('TURN ON FOR 24 HOURS'));
+    await tester.scrollUntilVisible(find.text('Turn on for 24 hours'), 200, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Turn on for 24 hours'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.textContaining('LDL cholesterol was 132 mg/dL'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.textContaining('LDL cholesterol was 132 mg/dL'), findsOneWidget);
@@ -71,11 +73,13 @@ void main() {
 
   testWidgets('the access log records the Insights grant and its reads', (tester) async {
     await onboardWithSamples(tester);
-    await tester.tap(find.text('INSIGHTS'));
+    await tester.tap(find.text('Insights'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('TURN ON FOR 24 HOURS'));
+    await tester.scrollUntilVisible(find.text('Turn on for 24 hours'), 200, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('ME'));
+    await tester.tap(find.text('Turn on for 24 hours'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Me'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Access log'));
     await tester.pumpAndSettle();
