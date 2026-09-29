@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "code-review-graph": {
+      "command": "/Users/anishraj/.local/venvs/code-review-graph/bin/python3.12",
+      "args": [
+        "-m",
+        "code_review_graph",
+        "serve"
+      ],
+      "cwd": "/Users/anishraj/Ntcc Project",
+      "type": "stdio"
+    }
+  }
+}

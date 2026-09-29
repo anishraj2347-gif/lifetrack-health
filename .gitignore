@@ -1,0 +1,4 @@
+# Added by code-review-graph
+.code-review-graph/
+.claude/settings.local.json
+.DS_Store
