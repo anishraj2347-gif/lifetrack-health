@@ -46,8 +46,10 @@ class EmergencyCard {
           ('Relation', contactRelation),
         ])
           if (v.length > maxFieldLength) '$label is longer than $maxFieldLength characters.',
-        if (contactPhone.isNotEmpty && !RegExp(r'^\+?[0-9 ]{8,16}$').hasMatch(contactPhone))
-          'Contact phone should be digits only.',
+        if (contactPhone.isNotEmpty && !RegExp(r'^\+?[0-9 ]+$').hasMatch(contactPhone))
+          'Contact phone can contain only digits, spaces and a leading +.'
+        else if (contactPhone.isNotEmpty && !RegExp(r'^\+?[0-9 ]{8,16}$').hasMatch(contactPhone))
+          'Contact phone looks too short or too long — enter the full number, e.g. +91 98765 43210.',
       ];
 
   Map<String, Object?> toJson() => {

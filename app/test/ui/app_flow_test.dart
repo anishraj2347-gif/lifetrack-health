@@ -58,7 +58,7 @@ void main() {
 
   testWidgets('Insights asks first, then shows findings and what was not checked', (tester) async {
     await onboardWithSamples(tester);
-    await tester.tap(find.text('Insights'));
+    await tester.tap(find.bySemanticsLabel('Insights'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Turn on for 24 hours'), 200, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
@@ -73,13 +73,13 @@ void main() {
 
   testWidgets('the access log records the Insights grant and its reads', (tester) async {
     await onboardWithSamples(tester);
-    await tester.tap(find.text('Insights'));
+    await tester.tap(find.bySemanticsLabel('Insights'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Turn on for 24 hours'), 200, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Turn on for 24 hours'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Me'));
+    await tester.tap(find.bySemanticsLabel('Me'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Access log'));
     await tester.pumpAndSettle();

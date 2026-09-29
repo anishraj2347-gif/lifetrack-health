@@ -5,6 +5,7 @@ import '../../model/health_record.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
+import '../widgets/trend_card.dart';
 import 'add_record_screen.dart';
 import 'record_screen.dart';
 
@@ -56,14 +57,31 @@ class _RecordsScreenState extends State<RecordsScreen> {
       children.add(_RecordCard(record: r));
     }
 
+    final name = s.currentPatient?.name ?? '';
+    final initials = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).take(2).map((w) => w[0].toUpperCase()).join();
+    final trend = _query.isEmpty && _filter == null ? TrendCard.pick(all) : null;
     return Column(children: [
-      Masthead(
-        eyebrow: s.isDemo ? 'Records · sample data' : 'Records',
-        title: s.currentPatient?.name ?? '',
-        trailing: Badge2('${all.length} records', tone: BadgeTone.outline),
-      ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+        child: Row(children: [
+          Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(color: LT.accent, shape: BoxShape.circle),
+            child: Text(initials, style: const TextStyle(fontWeight: FontWeight.w600, color: LT.ink)),
+          ),
+          const SizedBox(width: 8),
+          RoundButton(LucideIcons.plus, onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Family profiles arrive in a later version.')));
+          }),
+          const Spacer(),
+          Badge2(s.isDemo ? 'Sample data' : '${all.length} records', tone: s.isDemo ? BadgeTone.caution : BadgeTone.neutral),
+        ]),
+      ),
+      Masthead(eyebrow: 'Records', title: name),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
         child: TextField(
           decoration: const InputDecoration(
             prefixIcon: Icon(LucideIcons.search, size: 18, color: LT.ink3),
@@ -97,10 +115,13 @@ class _RecordsScreenState extends State<RecordsScreen> {
                   ]),
                 ),
               )
-            : ListView(padding: const EdgeInsets.only(bottom: 8), children: children),
+            : ListView(padding: const EdgeInsets.only(top: 6, bottom: 8), children: [
+                if (trend != null) Padding(padding: const EdgeInsets.only(top: 8), child: trend),
+                ...children,
+              ]),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
         child: SlabButton('Add record', icon: LucideIcons.plus, onPressed: () async {
           await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AddRecordScreen()));
           if (context.mounted) AppScope.changed(context);
@@ -124,28 +145,27 @@ class _RecordCard extends StatelessWidget {
       RecordKind.scan => null,
     };
     return ShadCard(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
       onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RecordScreen(recordId: r.id))),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      child: Row(children: [
         IconTile(iconForKind(r.kind)),
         const SizedBox(width: 14),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Expanded(child: Text(r.title, style: LT.label.copyWith(fontSize: 16, fontWeight: FontWeight.w600))),
-              Text(fullDate(r.date), style: LT.small.copyWith(fontSize: 12.5)),
-            ]),
-            if (r.doctor != null || r.facility != null) ...[
-              const SizedBox(height: 3),
-              Text([r.doctor, r.facility].whereType<String>().join(' · '), style: LT.small),
+            Text([kindLabel(r.kind), ?r.doctor].join(' · '), style: LT.small.copyWith(fontSize: 11.5), maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 2),
+            Text(r.title, style: LT.label.copyWith(fontSize: 15.5, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+            if (meta != null || r.facility != null) ...[
+              const SizedBox(height: 2),
+              Text([?meta, ?r.facility].join(' · '), style: LT.small, maxLines: 1, overflow: TextOverflow.ellipsis),
             ],
-            const SizedBox(height: 8),
-            Wrap(spacing: 6, children: [
-              Badge2(kindLabel(r.kind)),
-              if (meta != null) Badge2(meta, tone: BadgeTone.outline),
-            ]),
           ]),
         ),
+        const SizedBox(width: 10),
+        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text(r.date.day.toString().padLeft(2, '0'), style: LT.data.copyWith(fontSize: 17)),
+          Text(shortMonth(r.date), style: LT.small.copyWith(fontSize: 11)),
+        ]),
       ]),
     );
   }

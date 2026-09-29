@@ -171,6 +171,8 @@ void main() {
       expect(() => s.emergency.save(p.id, const EmergencyCard(bloodType: 'Q')), throwsArgumentError);
       expect(() => s.emergency.save(p.id, EmergencyCard(allergies: 'x' * 500)), throwsArgumentError);
       expect(() => s.emergency.save(p.id, const EmergencyCard(contactPhone: 'call me')), throwsArgumentError);
+      expect(const EmergencyCard(contactPhone: '161').validate().single, contains('too short'));
+      expect(const EmergencyCard(contactPhone: '+91 98765 43210').validate(), isEmpty);
     });
   });
 }

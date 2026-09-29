@@ -13,8 +13,7 @@ class Masthead extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
-        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: LT.rule))),
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -65,29 +64,26 @@ class SlabButton extends StatelessWidget {
     final v = variant ?? (outline ? ButtonVariant.outline : (color == LT.signal ? ButtonVariant.destructive : ButtonVariant.primary));
     final enabled = onPressed != null;
     final (bg, fg, border) = switch (v) {
-      ButtonVariant.primary => (LT.primary, const Color(0xFFFAFAFA), null),
+      ButtonVariant.primary => (LT.primary, LT.onDark, null),
       ButtonVariant.destructive => (LT.signal, Colors.white, null),
-      ButtonVariant.outline => (LT.ground, LT.ink, LT.rule),
+      ButtonVariant.outline => (LT.raised, LT.ink, null),
       ButtonVariant.ghost => (Colors.transparent, LT.ink, null),
     };
     return Opacity(
       opacity: enabled ? 1 : 0.5,
       child: Material(
         color: bg,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(LT.radius),
-          side: border == null ? BorderSide.none : BorderSide(color: border),
-        ),
+        shape: StadiumBorder(side: border == null ? BorderSide.none : BorderSide(color: border)),
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(LT.radius),
+          customBorder: const StadiumBorder(),
           child: Container(
-            height: 46,
+            height: 52,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              if (icon != null) ...[Icon(icon, size: 17, color: fg), const SizedBox(width: 8)],
+              if (icon != null) ...[Icon(icon, size: 18, color: fg), const SizedBox(width: 8)],
               Flexible(
-                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.body, fontSize: 14.5, fontWeight: FontWeight.w500, color: fg)),
+                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.body, fontSize: 14.5, fontWeight: FontWeight.w600, color: fg)),
               ),
             ]),
           ),
@@ -108,17 +104,14 @@ class Chip2 extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = label.isEmpty ? label : label[0].toUpperCase() + label.substring(1);
     return Material(
-      color: selected ? LT.primary : LT.ground,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(999),
-        side: BorderSide(color: selected ? LT.primary : LT.rule),
-      ),
+      color: selected ? LT.primary : LT.raised,
+      shape: const StadiumBorder(),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
+        customBorder: const StadiumBorder(),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          child: Text(text, style: TextStyle(fontFamily: LT.body, fontSize: 13.5, fontWeight: FontWeight.w500, color: selected ? Colors.white : LT.ink)),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          child: Text(text, style: TextStyle(fontFamily: LT.body, fontSize: 13.5, fontWeight: FontWeight.w500, color: selected ? LT.onDark : LT.ink)),
         ),
       ),
     );
@@ -134,36 +127,36 @@ class Badge2 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (bg, fg, border) = switch (tone) {
-      BadgeTone.neutral => (LT.band, LT.ink, LT.band),
-      BadgeTone.outline => (LT.ground, LT.ink2, LT.rule),
+      BadgeTone.neutral => (LT.raised, LT.ink, LT.raised),
+      BadgeTone.outline => (Colors.transparent, LT.ink2, LT.rule),
       BadgeTone.signal => (const Color(0xFFFFF7ED), LT.signal, const Color(0xFFFED7AA)),
       BadgeTone.trace => (const Color(0xFFECFDF5), LT.trace, const Color(0xFFA7F3D0)),
       BadgeTone.caution => (LT.caution, LT.cautionInk, LT.cautionBorder),
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6), border: Border.all(color: border)),
-      child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: FontWeight.w600, color: fg)),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999), border: Border.all(color: border)),
+      child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.body, fontSize: 11.5, fontWeight: FontWeight.w500, color: fg)),
     );
   }
 }
 
 /// shadcn Card.
 class ShadCard extends StatelessWidget {
-  const ShadCard({super.key, required this.child, this.onTap, this.margin = const EdgeInsets.fromLTRB(16, 0, 16, 10), this.padding = const EdgeInsets.all(16), this.color = LT.ground, this.borderColor = LT.rule});
+  const ShadCard({super.key, required this.child, this.onTap, this.margin = const EdgeInsets.fromLTRB(16, 0, 16, 10), this.padding = const EdgeInsets.all(16), this.color = LT.surface, this.borderColor});
   final Widget child;
   final VoidCallback? onTap;
   final EdgeInsets margin;
   final EdgeInsets padding;
   final Color color;
-  final Color borderColor;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: margin,
         child: Material(
           color: color,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(LT.radiusLg), side: BorderSide(color: borderColor)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(LT.radiusLg), side: borderColor == null ? BorderSide.none : BorderSide(color: borderColor!)),
           clipBehavior: Clip.antiAlias,
           child: InkWell(onTap: onTap, child: Padding(padding: padding, child: child)),
         ),
@@ -180,7 +173,7 @@ class Note extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         margin: margin,
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: LT.band, borderRadius: BorderRadius.circular(LT.radiusLg)),
+        decoration: BoxDecoration(color: LT.raised, borderRadius: BorderRadius.circular(LT.radius)),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(icon, size: 16, color: LT.ink2),
           const SizedBox(width: 10),
@@ -232,7 +225,7 @@ class LabeledField extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(label, style: LT.label.copyWith(fontSize: 14)),
+            Text(label, style: LT.label.copyWith(fontSize: 13.5, color: LT.ink2)),
             const SizedBox(height: 8),
             child,
             if (hint != null) ...[const SizedBox(height: 6), Text(hint!, style: LT.small.copyWith(fontSize: 12.5))],
@@ -250,13 +243,13 @@ class FieldButton extends StatelessWidget {
   final bool placeholder;
   @override
   Widget build(BuildContext context) => Material(
-        color: LT.ground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(LT.radius), side: const BorderSide(color: LT.rule)),
+        color: LT.raised,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(LT.radius)),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(LT.radius),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(children: [
               Icon(icon, size: 16, color: LT.ink3),
               const SizedBox(width: 10),
@@ -269,16 +262,35 @@ class FieldButton extends StatelessWidget {
 
 /// Rounded square icon tile.
 class IconTile extends StatelessWidget {
-  const IconTile(this.icon, {super.key, this.color = LT.ink, this.background = LT.band});
+  const IconTile(this.icon, {super.key, this.color = LT.ink, this.background = LT.raised});
   final IconData icon;
   final Color color;
   final Color background;
   @override
   Widget build(BuildContext context) => Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(LT.radius)),
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(color: background, shape: BoxShape.circle),
         child: Icon(icon, size: 19, color: color),
+      );
+}
+
+/// Black circular icon button.
+class RoundButton extends StatelessWidget {
+  const RoundButton(this.icon, {super.key, required this.onTap, this.dark = true, this.size = 44});
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool dark;
+  final double size;
+  @override
+  Widget build(BuildContext context) => Material(
+        color: dark ? LT.primary : LT.raised,
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox(width: size, height: size, child: Icon(icon, size: 19, color: dark ? LT.onDark : LT.ink)),
+        ),
       );
 }
 

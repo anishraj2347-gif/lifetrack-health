@@ -115,8 +115,10 @@ copy predate the claim fixes; the app's wording is authoritative).
 - A test whose outcome depends on wall-clock time is not an invariant test. Every clock is a
   parameter; `plane_boundary_test.dart` forbids `DateTime.now()` under `lib/src/ai/`.
 - Source-scanning tests must strip comments first (`codeOf` in `test/invariants/source.dart`).
-- Never use `google_fonts`; fonts (Geist, Geist Mono) are bundled in `app/fonts/`.
-- The UI follows shadcn/ui (zinc) but is implemented natively in `lib/src/ui/widgets/parts.dart`.
+- Never use `google_fonts`; Poppins is bundled in `app/fonts/`.
+- Visual direction: warm-grey medical dashboard (black pills, soft 22 px cards, black hero cards,
+  lime accent) after a Dribbble reference the user supplied; components are native, in
+  `lib/src/ui/widgets/parts.dart`. Lime means "selected / now" only — never a health status.
   Do not add the `shadcn_ui` package: it pulls in `http` and `extended_image` (network-capable).
 - Semantic colours are CVD-checked (see `lib/src/ui/theme.dart`); re-measure before changing one.
 

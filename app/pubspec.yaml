@@ -64,12 +64,15 @@ flutter:
   # Bundled, never fetched: runtime font download would be network egress
   # from an app whose release build has no INTERNET permission.
   fonts:
-    - family: Geist
+    - family: Poppins
       fonts:
-        - asset: fonts/Geist.ttf
-    - family: Geist Mono
-      fonts:
-        - asset: fonts/GeistMono.ttf
+        - asset: fonts/Poppins-Regular.ttf
+        - asset: fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: fonts/Poppins-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

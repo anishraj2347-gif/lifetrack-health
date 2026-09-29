@@ -38,9 +38,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
             child: Row(children: [
-              Expanded(child: _Stat(value: '$flagged', label: 'To discuss', color: flagged > 0 ? LT.signal : LT.ink)),
+              Expanded(child: _Stat(value: '$flagged', label: 'To discuss with your doctor', dark: true)),
               const SizedBox(width: 10),
-              Expanded(child: _Stat(value: '${run.unresolved.length}', label: 'Not checked', color: run.unresolved.isEmpty ? LT.ink : LT.cautionInk)),
+              Expanded(child: _Stat(value: '${run.unresolved.length}', label: 'Could not be checked')),
             ]),
           ),
           const Note(Insight.disclaimer, margin: EdgeInsets.fromLTRB(16, 6, 16, 4)),
@@ -132,17 +132,21 @@ class _InsightsScreenState extends State<InsightsScreen> {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label, required this.color});
+  const _Stat({required this.value, required this.label, this.dark = false});
   final String value;
   final String label;
-  final Color color;
+  final bool dark;
   @override
   Widget build(BuildContext context) => ShadCard(
         margin: EdgeInsets.zero,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: LT.small),
-          const SizedBox(height: 4),
-          Text(value, style: LT.hero.copyWith(color: color)),
-        ]),
+        color: dark ? LT.primary : LT.surface,
+        child: SizedBox(
+          height: 96,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label, style: LT.small.copyWith(color: dark ? LT.onDarkMuted : LT.ink3), maxLines: 2),
+            const Spacer(),
+            Text(value, style: LT.hero.copyWith(fontSize: 34, color: dark ? LT.onDark : LT.ink)),
+          ]),
+        ),
       );
 }

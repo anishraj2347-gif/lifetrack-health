@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 
-/// shadcn/ui "zinc" design tokens, implemented natively (the Flutter port of
-/// shadcn pulls in network-capable packages — see CLAUDE.md #3).
+/// Warm-grey clinical dashboard: black pills, large soft cards, one lime
+/// accent. Poppins throughout, bundled.
+///
+/// **Lime means "selected / current" and nothing else** — never a health
+/// status. It is measured against the semantic colours so it cannot be
+/// mistaken for one (worst: vs caution fill ΔE 38.9 under deuteranopia).
 ///
 /// Three semantic colours, CVD-checked (ΔE76, Machado 2009 simulation):
 ///
@@ -13,48 +17,48 @@ import 'package:flutter/material.dart';
 ///   caution–signal ≥ 56.8 in every mode. White on signal 5.2:1 (AA).
 ///
 /// Pure red (#DC2626) was rejected: under protanopia it darkens onto the green
-/// (ΔE 11.6), making "on this phone" and "out of range" look alike. Re-run the
-/// measurement before changing any of the three.
+/// (ΔE 11.6). The amber border #FDE68A was rejected next to lime (ΔE 14.4).
+/// Re-run the measurement before changing any of these.
 abstract final class LT {
-  static const ground = Color(0xFFFFFFFF); // background
-  static const band = Color(0xFFF4F4F5); // muted
-  static const rule = Color(0xFFE4E4E7); // border
-  static const ink = Color(0xFF09090B); // foreground
-  static const ink2 = Color(0xFF52525B); // zinc-600
-  static const ink3 = Color(0xFF71717A); // muted-foreground
-  static const inactive = Color(0xFFA1A1AA); // zinc-400
-  static const primary = Color(0xFF18181B); // zinc-900
+  static const ground = Color(0xFFE3E3DC); // page
+  static const surface = Color(0xFFF4F4EF); // light card
+  static const raised = Color(0xFFFBFBF8); // pills, inputs, icon circles
+  static const band = surface; // muted panels
+  static const rule = Color(0xFFD4D3CC);
+  static const ink = Color(0xFF0E0E0E);
+  static const ink2 = Color(0xFF45443F);
+  static const ink3 = Color(0xFF7F7E78);
+  static const inactive = Color(0xFFA9A8A1);
+  static const primary = Color(0xFF0E0E0E);
+  static const onDark = Color(0xFFF4F4EF);
+  static const onDarkMuted = Color(0xFF9A9A94);
+
+  /// Selection / "now" only.
+  static const accent = Color(0xFFEEF36A);
 
   static const trace = Color(0xFF065F46);
   static const signal = Color(0xFFC2410C);
   static const caution = Color(0xFFFEF3C7);
-  static const cautionBorder = Color(0xFFFDE68A);
+  static const cautionBorder = Color(0xFFE3C878);
   static const cautionInk = Color(0xFF78350F);
 
-  static const radius = 8.0;
-  static const radiusLg = 12.0;
+  static const radius = 16.0;
+  static const radiusLg = 22.0;
 
-  static const display = 'Geist';
-  static const body = 'Geist';
-  static const mono = 'Geist Mono';
+  static const display = 'Poppins';
+  static const body = 'Poppins';
+  static const mono = 'Poppins';
 
-  /// Small muted label above a title or section.
-  static const eyebrow = TextStyle(fontFamily: body, fontSize: 13, fontWeight: FontWeight.w500, color: ink3);
-
+  static const eyebrow = TextStyle(fontFamily: body, fontSize: 12.5, fontWeight: FontWeight.w500, color: ink3);
   static const title = TextStyle(fontFamily: display, fontSize: 26, fontWeight: FontWeight.w600, height: 1.15, letterSpacing: -0.6, color: ink);
-
   static const hero = TextStyle(fontFamily: display, fontSize: 30, fontWeight: FontWeight.w600, height: 1.12, letterSpacing: -0.8, color: ink);
-
-  static const lede = TextStyle(fontFamily: body, fontSize: 15, height: 1.55, color: ink3);
+  static const lede = TextStyle(fontFamily: body, fontSize: 14.5, height: 1.55, color: ink3);
   static const label = TextStyle(fontFamily: body, fontSize: 15, fontWeight: FontWeight.w500, color: ink, letterSpacing: -0.1);
-  static const small = TextStyle(fontFamily: body, fontSize: 13, height: 1.5, color: ink3);
-  static const data = TextStyle(fontFamily: mono, fontSize: 14, fontWeight: FontWeight.w500, color: ink);
+  static const small = TextStyle(fontFamily: body, fontSize: 12.5, height: 1.5, color: ink3);
+  static const data = TextStyle(fontFamily: mono, fontSize: 14.5, fontWeight: FontWeight.w600, color: ink, fontFeatures: [FontFeature.tabularFigures()]);
 
   static ThemeData theme() {
-    const outline = OutlineInputBorder(
-      borderRadius: BorderRadius.all(Radius.circular(radius)),
-      borderSide: BorderSide(color: rule),
-    );
+    const none = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(radius)), borderSide: BorderSide(color: raised));
     return ThemeData(
       useMaterial3: true,
       scaffoldBackgroundColor: ground,
@@ -62,11 +66,11 @@ abstract final class LT {
       splashFactory: NoSplash.splashFactory,
       colorScheme: const ColorScheme.light(
         primary: primary,
-        onPrimary: Color(0xFFFAFAFA),
-        secondary: band,
-        onSecondary: primary,
+        onPrimary: onDark,
+        secondary: accent,
+        onSecondary: ink,
         error: signal,
-        surface: ground,
+        surface: surface,
         onSurface: ink,
         outline: rule,
       ),
@@ -81,23 +85,30 @@ abstract final class LT {
       inputDecorationTheme: const InputDecorationTheme(
         isDense: true,
         filled: true,
-        fillColor: ground,
+        fillColor: raised,
         hintStyle: TextStyle(color: inactive),
-        border: outline,
-        enabledBorder: outline,
+        border: none,
+        enabledBorder: none,
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(radius)),
-          borderSide: BorderSide(color: ink2, width: 1.5),
+          borderSide: BorderSide(color: ink, width: 1.5),
         ),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
       checkboxTheme: CheckboxThemeData(
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(4))),
-        side: const BorderSide(color: primary, width: 1.2),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(6))),
+        side: const BorderSide(color: primary, width: 1.3),
+        checkColor: const WidgetStatePropertyAll(accent),
         fillColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? primary : Colors.transparent),
       ),
-      datePickerTheme: const DatePickerThemeData(backgroundColor: ground, surfaceTintColor: Colors.transparent),
+      datePickerTheme: const DatePickerThemeData(backgroundColor: surface, surfaceTintColor: Colors.transparent),
       progressIndicatorTheme: const ProgressIndicatorThemeData(color: primary),
+      snackBarTheme: const SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: primary,
+        contentTextStyle: TextStyle(fontFamily: body, color: onDark),
+        shape: StadiumBorder(),
+      ),
     );
   }
 }

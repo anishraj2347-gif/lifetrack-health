@@ -45,7 +45,7 @@ void main() {
   });
 
   test('fonts are bundled', () {
-    for (final f in ['Geist', 'GeistMono']) {
+    for (final f in ['Poppins-Regular', 'Poppins-Medium', 'Poppins-SemiBold', 'Poppins-Bold']) {
       expect(File('fonts/$f.ttf').existsSync(), isTrue, reason: f);
     }
   });
