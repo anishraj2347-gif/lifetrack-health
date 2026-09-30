@@ -112,6 +112,7 @@ class AppServices {
       attachments: AttachmentStore(bytes, deviceKey),
     );
     consent.evictFinished(now());
+    await services._settleOwner();
     if (share != null && share.isComplete) {
       final tokens = _SealedTokens(sealed);
       services.sharing = ClinicalShareService(
@@ -283,9 +284,23 @@ class AppServices {
 
   // ---- family (profiles on this phone) -----------------------------------
 
-  /// The phone owner's own profile. Older installs predate family, so the
-  /// first profile is taken as the owner's.
-  String? get selfPatientId => (settings['selfPatientId'] as String?) ?? currentPatientId;
+  /// The phone owner's own profile, fixed once and stored.
+  String? get selfPatientId => settings['selfPatientId'] as String?;
+
+  /// Installs made before family existed never stored the owner. The owner
+  /// is the profile nobody else holds custody of — never "whoever is on
+  /// screen", which becomes a child the moment the parent switches to them.
+  Future<void> _settleOwner() async {
+    if (settings['selfPatientId'] != null) return;
+    final dependents = {for (final c in repository.custodies) if (c.kind != CustodyKind.self) c.patientId};
+    final owner = repository.patients.where((p) => !dependents.contains(p.id)).firstOrNull;
+    if (owner == null) return;
+    settings['selfPatientId'] = owner.id;
+    await _saveSettings();
+    if (repository.custodyOf(owner.id) == null) {
+      await repository.saveCustody(Custody(patientId: owner.id, kind: CustodyKind.self, custodianId: owner.id, relation: 'self'));
+    }
+  }
   Patient? get selfPatient => selfPatientId == null ? null : repository.patient(selfPatientId!);
 
   bool get viewingSelf => currentPatientId == selfPatientId;
@@ -314,6 +329,7 @@ class AppServices {
   /// are the parent; verification (DigiLocker) is not connected yet, and the
   /// app says so wherever the custody is shown.
   Future<Patient> addChild({required String name, required DateTime dob, required Sex sex, required String relation}) async {
+    await _settleOwner();
     final self = selfPatient ?? (throw const CustodyRefused('Set up your own profile first.'));
     final at = clock();
     final child = Patient(id: 'p-${_randomId()}', name: name, dateOfBirth: dob, sex: sex);
@@ -341,6 +357,7 @@ class AppServices {
     required String relation,
     required String typedName,
   }) async {
+    await _settleOwner();
     final self = selfPatient ?? (throw const CustodyRefused('Set up your own profile first.'));
     String norm(String x) => x.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
     if (norm(typedName) != norm(name)) throw const CustodyRefused('They must type their own name exactly as it is on the profile.');

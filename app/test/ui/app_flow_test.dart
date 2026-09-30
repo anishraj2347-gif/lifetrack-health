@@ -49,7 +49,7 @@ void main() {
 
   testWidgets('a record shows values without judging them until Insights is on', (tester) async {
     await onboardWithSamples(tester);
-    await tester.scrollUntilVisible(find.text('Lipid panel'), 200, scrollable: find.byType(Scrollable).at(1));
+    await tester.scrollUntilVisible(find.text('Lipid panel'), 200, scrollable: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Lipid panel'));
     await tester.pumpAndSettle();

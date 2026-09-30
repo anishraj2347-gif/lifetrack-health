@@ -131,4 +131,17 @@ void main() {
     expect(again.currentPatient!.name, 'Aarav');
     expect(again.custodyOf(child.id)!.kind, CustodyKind.childOfParent);
   });
+
+  test('an install from before family finds its owner once, and switching never changes it', () async {
+    final s = await withOwner();
+    final ownerId = s.selfPatientId!;
+    // Simulate an older install: no stored owner, no custody for the owner.
+    s.settings.remove('selfPatientId');
+    await s.flush();
+    final child = await s.addChild(name: 'Aarav Sharma', dob: DateTime(2019), sex: Sex.male, relation: 'son');
+    await s.switchTo(child.id);
+    expect(s.selfPatientId, ownerId, reason: 'the owner is not whoever is on screen');
+    expect(s.familyOnPhone().first.id, ownerId);
+    expect(s.actingGrantor(), Actors.patient(ownerId));
+  });
 }
