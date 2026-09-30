@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import '../l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../ai/plane_a/reference_ranges.dart' show analyteNames;
@@ -38,14 +37,14 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   Future<void> _save() async {
     final s = AppScope.of(context);
     if (_title.text.trim().isEmpty) {
-      setState(() => _error = t('Say what the document is.'));
+      setState(() => _error = 'Say what the document is.');
       return;
     }
     final results = <LabResult>[];
     for (final row in _results) {
       final v = double.tryParse(row.value.text.trim());
       if (row.analyte == null || v == null || row.unit.text.trim().isEmpty) {
-        setState(() => _error = t('Each value needs a test, a number and a unit — exactly as printed.'));
+        setState(() => _error = 'Each value needs a test, a number and a unit — exactly as printed.');
         return;
       }
       results.add(LabResult(analyte: row.analyte!, value: v, unit: row.unit.text.trim()));
@@ -71,7 +70,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(),
         body: ListView(children: [
-          Masthead(eyebrow: t('Add record'), title: t('Type it in')),
+          const Masthead(eyebrow: 'Add record', title: 'Type it in'),
           ShadCard(
             margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
             color: LT.primary,
@@ -79,21 +78,21 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => const ScanReportScreen()));
               if (saved == true && context.mounted) Navigator.of(context).pop();
             },
-            child: Row(children: [
+            child: const Row(children: [
               IconTile(LucideIcons.camera, color: LT.ink, background: LT.accent),
               SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(t('Photograph a paper report'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
+                  Text('Photograph a paper report', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
                   SizedBox(height: 4),
-                  Text(t('Best for lab reports and prescriptions on paper'), style: TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
+                  Text('Best for lab reports and prescriptions on paper', style: TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
                 ]),
               ),
               Icon(LucideIcons.chevronRight, color: LT.onDarkMuted),
             ]),
           ),
-          Eyebrow(t('Or type it in')),
-          Note(t('Copy values exactly as printed, including the unit. LifeTrack compares only what matches its ranges; anything else is shown as not checked.'), icon: LucideIcons.info),
+          const Eyebrow('Or type it in'),
+          const Note('Copy values exactly as printed, including the unit. LifeTrack compares only what matches its ranges; anything else is shown as not checked.', icon: LucideIcons.info),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
             child: Wrap(spacing: 8, runSpacing: 8, children: [
@@ -101,9 +100,9 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                 Chip2(kindLabel(k), selected: _kind == k, onTap: () => setState(() => _kind = k)),
             ]),
           ),
-          LabeledField(label: t('What is it'), child: TextField(controller: _title, decoration: InputDecoration(hintText: t('e.g. Metformin 500 mg')))),
+          LabeledField(label: 'What is it', child: TextField(controller: _title, decoration: const InputDecoration(hintText: 'e.g. Metformin 500 mg'))),
           LabeledField(
-            label: t('Date on the document'),
+            label: 'Date on the document',
             child: FieldButton(
               text: fullDate(_date),
               onTap: () async {
@@ -113,18 +112,18 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
             ),
           ),
           if (_kind != RecordKind.note) ...[
-            LabeledField(label: t('Doctor'), child: TextField(controller: _doctor)),
-            LabeledField(label: t('Clinic or hospital'), child: TextField(controller: _facility)),
+            LabeledField(label: 'Doctor', child: TextField(controller: _doctor)),
+            LabeledField(label: 'Clinic or hospital', child: TextField(controller: _facility)),
           ],
           if (_kind == RecordKind.prescription) ...[
             LabeledField(
-              label: t('Active ingredient'),
-              hint: t('e.g. metformin. Used to spot two prescriptions for the same medicine under different brand names.'),
+              label: 'Active ingredient',
+              hint: 'e.g. metformin. Used to spot two prescriptions for the same medicine under different brand names.',
               child: TextField(controller: _ingredient),
             ),
             LabeledField(
-              label: t('Dose'),
-              hint: t('Morning · afternoon · night. Tap a box to change it.'),
+              label: 'Dose',
+              hint: 'Morning · afternoon · night. Tap a box to change it.',
               child: Row(children: [
                 for (var i = 0; i < 3; i++) ...[
                   Expanded(
@@ -145,7 +144,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
             ),
           ],
           if (_kind == RecordKind.report) ...[
-            Eyebrow(t('Values')),
+            const Eyebrow('Values'),
             for (final row in _results)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
@@ -155,25 +154,25 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                     child: DropdownButtonFormField<String>(
                       initialValue: row.analyte,
                       isExpanded: true,
-                      hint: Text(t('Test')),
+                      hint: const Text('Test'),
                       items: [for (final e in analyteNames.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
                       onChanged: (v) => setState(() => row.analyte = v),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Expanded(flex: 3, child: TextField(controller: row.value, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(hintText: t('Value')))),
+                  Expanded(flex: 3, child: TextField(controller: row.value, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(hintText: 'Value'))),
                   const SizedBox(width: 8),
-                  Expanded(flex: 3, child: TextField(controller: row.unit, decoration: InputDecoration(hintText: t('Unit')))),
+                  Expanded(flex: 3, child: TextField(controller: row.unit, decoration: const InputDecoration(hintText: 'Unit'))),
                 ]),
               ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: SlabButton(t('Add a value'), variant: ButtonVariant.outline, icon: LucideIcons.plus, onPressed: () => setState(() => _results.add(_ResultRow()))),
+              child: SlabButton('Add a value', variant: ButtonVariant.outline, icon: LucideIcons.plus, onPressed: () => setState(() => _results.add(_ResultRow()))),
             ),
           ],
-          if (_kind == RecordKind.note) Note(t('Personal notes stay on this phone. They are never included in a backup unless you turn that on.'), icon: LucideIcons.smartphone),
+          if (_kind == RecordKind.note) const Note('Personal notes stay on this phone. They are never included in a backup unless you turn that on.', icon: LucideIcons.smartphone),
           if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
-          Padding(padding: const EdgeInsets.fromLTRB(16, 20, 16, 28), child: SlabButton(t('Save record'), icon: LucideIcons.check, onPressed: _save)),
+          Padding(padding: const EdgeInsets.fromLTRB(16, 20, 16, 28), child: SlabButton('Save record', icon: LucideIcons.check, onPressed: _save)),
         ]),
       );
 }

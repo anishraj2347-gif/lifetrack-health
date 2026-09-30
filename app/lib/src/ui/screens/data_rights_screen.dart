@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import '../l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -39,7 +38,7 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
       final export = await s.exportCurrent();
       file = File('${(await getTemporaryDirectory()).path}/${export.fileName}');
       await file.writeAsBytes(export.zip(), flush: true);
-      await SharePlus.instance.share(ShareParams(files: [XFile(file.path, mimeType: 'application/zip')], subject: t('My LifeTrack records')));
+      await SharePlus.instance.share(ShareParams(files: [XFile(file.path, mimeType: 'application/zip')], subject: 'My LifeTrack records'));
     } on CustodyRefused catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } on Object catch (e) {
@@ -60,30 +59,31 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(),
         body: ListView(children: [
-          Masthead(eyebrow: t('Your data'), title: t('What is held, where')),
+          const Masthead(eyebrow: 'Your data', title: 'What is held, where'),
           const SizedBox(height: 14),
-          _section(t('On this phone'), t('Your profile, records, notes, the permissions you have given and your access log — encrypted under a key in the phone\'s secure hardware. The Emergency ID card is kept separately and unencrypted so it can be shown in an emergency.')),
-          _section(t('With LifeTrack'), t('No records are stored with LifeTrack. When you share with a doctor or a linked family member, it is encrypted on this phone to their device, passes through LifeTrack\'s relay, and is deleted there once collected or within 48 hours. When the backup service launches it will hold an encrypted copy of doctor-issued documents; a weak passphrase could be guessed from what that service stores, which is why we will ask for six unrelated words.')),
-          _section(t('Why we process it'), t('To keep your medical records for you, to compare values with published ranges when you turn Insights on, and to let a doctor see what you choose to share, for as long as you choose.')),
-          _section(t('Your rights'), t('You can see everything held (it is all in this app), correct any record, withdraw any permission from Share at any time, and erase everything below. Withdrawing consent does not affect access that already happened; it appears in your access log.')),
-          _section(t('Complaints'), 'Data Fiduciary: $kDataFiduciary\nGrievance Officer: $kGrievanceContact\nIf you are not satisfied with our response you may complain to the Data Protection Board of India.'),
-          Eyebrow(t('Take a copy')),
-          Note(
-            t('One file with everything held for this profile: a page you can read or print, the same records for another app, the original report photos and your access log. The file is not encrypted — anyone you send it to can read it.'),
+          _section('On this phone', 'Your profile, records, notes, the permissions you have given and your access log — encrypted under a key in the phone\'s secure hardware. The Emergency ID card is kept separately and unencrypted so it can be shown in an emergency.'),
+          _section('With LifeTrack', 'No records are stored with LifeTrack. When you share with a doctor or a linked family member, it is encrypted on this phone to their device, passes through LifeTrack\'s relay, and is deleted there once collected or within 48 hours. When the backup service launches it will hold an encrypted copy of doctor-issued documents; a weak passphrase could be guessed from what that service stores, which is why we will ask for six unrelated words.'),
+          _section('Why we process it', 'To keep your medical records for you, to compare values with published ranges when you turn Insights on, and to let a doctor see what you choose to share, for as long as you choose.'),
+          _section('Your rights', 'You can see everything held (it is all in this app), correct any record, withdraw any permission from Share at any time, and erase everything below. Withdrawing consent does not affect access that already happened; it appears in your access log.'),
+          _section('Complaints', 'Data Fiduciary: $kDataFiduciary\nGrievance Officer: $kGrievanceContact\nIf you are not satisfied with our response you may complain to the Data Protection Board of India.'),
+          const Eyebrow('Take a copy'),
+          const Note(
+            'One file with everything held for this profile: a page you can read or print, the same records for another app, the original report photos and your access log. '
+            'The file is not encrypted — anyone you send it to can read it.',
             icon: LucideIcons.download,
             margin: EdgeInsets.fromLTRB(16, 0, 16, 12),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: SlabButton(t('Export my records'), variant: ButtonVariant.outline, icon: LucideIcons.fileDown, onPressed: _exporting ? null : _export),
+            child: SlabButton('Export my records', variant: ButtonVariant.outline, icon: LucideIcons.fileDown, onPressed: _exporting ? null : _export),
           ),
-          Eyebrow(t('Danger zone')),
-          Note(icon: LucideIcons.trash2, t('Deletes this profile\'s records, notes, permissions and Emergency ID from this phone. It cannot be undone, and with no backup there is no way to get them back.'), margin: EdgeInsets.fromLTRB(20, 0, 20, 12)),
-          LabeledField(label: t('Type ERASE to confirm'), child: TextField(controller: _confirm, onChanged: (_) => setState(() {}), decoration: const InputDecoration(hintText: 'ERASE'))),
+          const Eyebrow('Danger zone'),
+          const Note(icon: LucideIcons.trash2, 'Deletes this profile\'s records, notes, permissions and Emergency ID from this phone. It cannot be undone, and with no backup there is no way to get them back.', margin: EdgeInsets.fromLTRB(20, 0, 20, 12)),
+          LabeledField(label: 'Type ERASE to confirm', child: TextField(controller: _confirm, onChanged: (_) => setState(() {}), decoration: const InputDecoration(hintText: 'ERASE'))),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
             child: SlabButton(
-              t('Erase my profile'),
+              'Erase my profile',
               variant: ButtonVariant.destructive,
               icon: LucideIcons.trash2,
               onPressed: _confirm.text.trim() == 'ERASE' && !_erasing

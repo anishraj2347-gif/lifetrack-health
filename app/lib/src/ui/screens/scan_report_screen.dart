@@ -2,7 +2,6 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import '../l10n/l10n.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -67,7 +66,7 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
   Future<void> _save() async {
     final s = AppScope.of(context);
     if (_title.text.trim().isEmpty) {
-      setState(() => _error = t('Say what this is, e.g. Lipid panel.'));
+      setState(() => _error = 'Say what this is, e.g. Lipid panel.');
       return;
     }
     final results = <LabResult>[];
@@ -113,23 +112,23 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(), body: _details ? _form() : _capture());
 
   Widget _capture() => ListView(children: [
-        Masthead(
-          eyebrow: t('Add a paper report'),
-          title: t('Photograph every page'),
-          description: t('The photo is kept for your doctor. Location and camera details are removed; it stays encrypted on this phone.'),
+        const Masthead(
+          eyebrow: 'Add a paper report',
+          title: 'Photograph every page',
+          description: 'The photo is kept for your doctor. Location and camera details are removed; it stays encrypted on this phone.',
         ),
         const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(children: [
-            Expanded(child: SlabButton(t('Camera'), icon: LucideIcons.camera, onPressed: _camera)),
+            Expanded(child: SlabButton('Camera', icon: LucideIcons.camera, onPressed: _camera)),
             const SizedBox(width: 10),
-            Expanded(child: SlabButton(t('From photos'), icon: LucideIcons.images, variant: ButtonVariant.outline, onPressed: _gallery)),
+            Expanded(child: SlabButton('From photos', icon: LucideIcons.images, variant: ButtonVariant.outline, onPressed: _gallery)),
           ]),
         ),
         const SizedBox(height: 16),
         if (_pages.isEmpty)
-          Note(t('Tip: lay the report flat in good light, fill the frame, one photo per page. A WhatsApp photo of a report works too.'), icon: LucideIcons.lightbulb)
+          const Note('Tip: lay the report flat in good light, fill the frame, one photo per page. A WhatsApp photo of a report works too.', icon: LucideIcons.lightbulb)
         else
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -165,14 +164,14 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
           child: SlabButton(
-            _pages.isEmpty ? t('Add at least one page') : 'Next · ${_pages.length} page${_pages.length == 1 ? '' : 's'}',
+            _pages.isEmpty ? 'Add at least one page' : 'Next · ${_pages.length} page${_pages.length == 1 ? '' : 's'}',
             onPressed: _pages.isEmpty ? null : () => setState(() => _details = true),
           ),
         ),
       ]);
 
   Widget _form() => ListView(children: [
-        Masthead(eyebrow: t('Add a paper report'), title: t('What is it?'), description: t('Only what is printed on it. You can skip the values — the photo carries them.')),
+        const Masthead(eyebrow: 'Add a paper report', title: 'What is it?', description: 'Only what is printed on it. You can skip the values — the photo carries them.'),
         SizedBox(
           height: 110,
           child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.fromLTRB(16, 12, 16, 0), children: [
@@ -190,7 +189,7 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
               Chip2(kindLabel(k), selected: _kind == k, onTap: () => setState(() => _kind = k)),
           ]),
         ),
-        LabeledField(label: _kind == RecordKind.prescription ? t('Medicine or title') : t('Report name'), child: TextField(controller: _title)),
+        LabeledField(label: _kind == RecordKind.prescription ? 'Medicine or title' : 'Report name', child: TextField(controller: _title)),
         if (_kind == RecordKind.report)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
@@ -199,15 +198,15 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
             ]),
           ),
         LabeledField(
-          label: _kind == RecordKind.prescription ? t('Clinic or hospital') : t('Lab name, as printed'),
-          child: TextField(controller: _lab, decoration: InputDecoration(hintText: t('e.g. Thyrocare, Dr Lal PathLabs'))),
+          label: _kind == RecordKind.prescription ? 'Clinic or hospital' : 'Lab name, as printed',
+          child: TextField(controller: _lab, decoration: const InputDecoration(hintText: 'e.g. Thyrocare, Dr Lal PathLabs')),
         ),
-        if (_kind == RecordKind.prescription) LabeledField(label: t('Doctor'), child: TextField(controller: _doctor)),
+        if (_kind == RecordKind.prescription) LabeledField(label: 'Doctor', child: TextField(controller: _doctor)),
         LabeledField(
-          label: _kind == RecordKind.report ? t('Date the sample was taken') : t('Date on the document'),
-          hint: t('This is what tells a doctor how recent the result is.'),
+          label: _kind == RecordKind.report ? 'Date the sample was taken' : 'Date on the document',
+          hint: 'This is what tells a doctor how recent the result is.',
           child: FieldButton(
-            text: _sampled == null ? t('Pick the date printed on it') : fullDate(_sampled!),
+            text: _sampled == null ? 'Pick the date printed on it' : fullDate(_sampled!),
             placeholder: _sampled == null,
             onTap: () async {
               final d = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(1990), lastDate: DateTime.now());
@@ -216,26 +215,26 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
           ),
         ),
         if (_kind == RecordKind.report) ...[
-          Eyebrow(t('Key values (optional)')),
+          const Eyebrow('Key values (optional)'),
           for (final v in _values)
             ShadCard(
               child: Column(children: [
                 DropdownButtonFormField<String>(
                   initialValue: v.analyte,
                   isExpanded: true,
-                  hint: Text(t('Which test')),
+                  hint: const Text('Which test'),
                   items: [for (final e in analyteNames.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
                   onChanged: (x) => setState(() => v.analyte = x),
                 ),
                 const SizedBox(height: 8),
                 Row(children: [
-                  Expanded(child: TextField(controller: v.value, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(hintText: t('Result')))),
+                  Expanded(child: TextField(controller: v.value, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(hintText: 'Result'))),
                   const SizedBox(width: 8),
-                  Expanded(child: TextField(controller: v.unit, decoration: InputDecoration(hintText: t('Unit')))),
+                  Expanded(child: TextField(controller: v.unit, decoration: const InputDecoration(hintText: 'Unit'))),
                 ]),
                 const SizedBox(height: 8),
                 Row(children: [
-                  Expanded(child: TextField(controller: v.low, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(hintText: t('Lab range from')))),
+                  Expanded(child: TextField(controller: v.low, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(hintText: 'Lab range from'))),
                   const SizedBox(width: 8),
                   Expanded(child: TextField(controller: v.high, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(hintText: 'to'))),
                 ]),
@@ -243,13 +242,13 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
             ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-            child: SlabButton(t('Add a value'), variant: ButtonVariant.outline, icon: LucideIcons.plus, onPressed: () => setState(() => _values.add(_Value()))),
+            child: SlabButton('Add a value', variant: ButtonVariant.outline, icon: LucideIcons.plus, onPressed: () => setState(() => _values.add(_Value()))),
           ),
         ],
         if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
-          child: SlabButton(_saving ? t('Saving…') : t('Save report'), icon: LucideIcons.check, onPressed: _saving ? null : _save),
+          child: SlabButton(_saving ? 'Saving…' : 'Save report', icon: LucideIcons.check, onPressed: _saving ? null : _save),
         ),
       ]);
 }

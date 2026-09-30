@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../l10n/l10n.dart';
 
 import '../../ai/plane_a/reference_ranges.dart' show analyteName;
 import '../theme.dart';
@@ -16,17 +15,17 @@ class SummaryView extends StatelessWidget {
   final void Function(String recordId)? onOpenOriginal;
 
   static String age(int days) => days < 14
-      ? t('{0} days ago', [days])
+      ? '$days days ago'
       : days < 60
-          ? t('{0} weeks ago', [(days / 7).round()])
+          ? '${(days / 7).round()} weeks ago'
           : days < 730
-              ? t('{0} months ago', [(days / 30.4).round()])
-              : t('{0} years ago', [(days / 365).round()]);
+              ? '${(days / 30.4).round()} months ago'
+              : '${(days / 365).round()} years ago';
 
   static (String, BadgeTone) sourceBadge(String s) => switch (s) {
-        'signed' => (t('Lab / doctor signed'), BadgeTone.trace),
-        'photoOfReport' => (t('Photo of report'), BadgeTone.neutral),
-        _ => (t('Patient-typed'), BadgeTone.outline),
+        'signed' => ('Lab / doctor signed', BadgeTone.trace),
+        'photoOfReport' => ('Photo of report', BadgeTone.neutral),
+        _ => ('Patient-typed', BadgeTone.outline),
       };
 
   static String fmt(Object? v) {
@@ -39,8 +38,8 @@ class SummaryView extends StatelessWidget {
   static String range(Map r) {
     final lo = r['low'], hi = r['high'];
     if (lo != null && hi != null) return '${fmt(lo)}–${fmt(hi)}';
-    if (hi != null) return t('{0} or below', [fmt(hi)]);
-    return t('{0} or above', [fmt(lo)]);
+    if (hi != null) return '${fmt(hi)} or below';
+    return '${fmt(lo)} or above';
   }
 
   @override
@@ -59,38 +58,38 @@ class SummaryView extends StatelessWidget {
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(color: LT.caution, borderRadius: BorderRadius.circular(LT.radius), border: Border.all(color: LT.cautionBorder)),
-          child: Text(t('Patient shared selected items. Not shared: {0}.', [withheld.map((w) => t('$w')).join(', ')]), style: LT.small.copyWith(color: LT.cautionInk)),
+          child: Text('Patient shared selected items. Not shared: ${withheld.join(', ')}.', style: LT.small.copyWith(color: LT.cautionInk)),
         ),
       for (final a in allergies)
         Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
           decoration: BoxDecoration(color: LT.signal, borderRadius: BorderRadius.circular(LT.radius)),
-          child: Text(t('Allergy: {0}', ['${(a as Map)['substance']}${a['reaction'] == null ? '' : ' — ${a['reaction']}'}']),
+          child: Text('Allergy: ${(a as Map)['substance']}${a['reaction'] == null ? '' : ' — ${a['reaction']}'}',
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
         ),
-      _block(t('Active medicines'), [
+      _block('Active medicines', [
         for (final m in (meds['active'] as List?) ?? const [])
           _line('${(m as Map)['title']}${m['dose'] == null ? '' : ' · ${m['dose']}'}',
-              m['patientConfirmedAt'] != null ? t('Patient confirmed still taking') : t('Not confirmed by patient')),
+              m['patientConfirmedAt'] != null ? 'Patient confirmed still taking' : 'Not confirmed by patient'),
         for (final m in (meds['endedRecently'] as List?) ?? const [])
-          _line('${(m as Map)['title']}', t('Course ended {0}', [(m['endsOn'] as String?)?.substring(0, 10) ?? '']), quiet: true),
+          _line('${(m as Map)['title']}', 'Course ended ${(m['endsOn'] as String?)?.substring(0, 10) ?? ''}', quiet: true),
       ]),
-      _block(t('Conditions'), [
-        for (final c in conditions) _line('${(c as Map)['name']}', c['since'] == null ? '' : t('since {0}', [c['since']])),
+      _block('Conditions', [
+        for (final c in conditions) _line('${(c as Map)['name']}', c['since'] == null ? '' : 'since ${c['since']}'),
       ]),
-      _block(t('Latest tests'), [
-        for (final test in tests)
+      _block('Latest tests', [
+        for (final t in tests)
           () {
-            final m = test as Map;
+            final m = t as Map;
             final (label, tone) = sourceBadge(m['source'] as String);
             final prev = m['previous'] as Map?;
             final range = m['printedRange'] as Map?;
             final sub = [
               age(m['ageDays'] as int),
               if (m['lab'] != null) m['lab'],
-              if (range != null) t('lab range {0}', [SummaryView.range(range)]),
-              if (prev != null) t('was {0} ({1})', [fmt(prev['value']), (prev['sampledOn'] as String).substring(0, 7)]),
+              if (range != null) 'lab range ${SummaryView.range(range)}',
+              if (prev != null) 'was ${fmt(prev['value'])} (${(prev['sampledOn'] as String).substring(0, 7)})',
             ].join(' · ');
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -105,7 +104,7 @@ class SummaryView extends StatelessWidget {
                         onTap: () => onOpenOriginal!(m['recordId'] as String),
                         child: Padding(
                           padding: const EdgeInsets.only(top: 4),
-                          child: Text(t('View original report'), style: LT.small.copyWith(color: LT.ink, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
+                          child: Text('View original report', style: LT.small.copyWith(color: LT.ink, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
                         ),
                       ),
                   ]),
@@ -116,9 +115,9 @@ class SummaryView extends StatelessWidget {
           }(),
       ]),
       if (family != null)
-        _block(t('Family illnesses · patient-reported'), [
+        _block('Family illnesses · patient-reported', [
           for (final f in family)
-            _line('${t('${(f as Map)['relation']}')}: ${f['condition']}', f['onset'] == null ? '' : t('at {0}', [f['onset']])),
+            _line('${(f as Map)['relation']}: ${f['condition']}', f['onset'] == null ? '' : 'at ${f['onset']}'),
         ]),
     ]);
   }

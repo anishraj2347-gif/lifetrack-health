@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../ai/plane_a/reference_ranges.dart' show analyteName;
@@ -60,7 +59,7 @@ class TrendCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t('Your results over time'), style: TextStyle(fontSize: 11.5, color: LT.onDarkMuted)),
+              const Text('Your results over time', style: TextStyle(fontSize: 11.5, color: LT.onDarkMuted)),
               Text(analyteName(analyte), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
             ]),
           ),

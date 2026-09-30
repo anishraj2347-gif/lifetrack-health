@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../model/custody.dart';
@@ -55,17 +54,17 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
       );
 
   Widget _choose() => ListView(children: [
-        Masthead(eyebrow: t('Family'), title: t('Who are you adding?'), description: t('Their records will be kept on this phone, encrypted like yours.')),
+        const Masthead(eyebrow: 'Family', title: 'Who are you adding?', description: 'Their records will be kept on this phone, encrypted like yours.'),
         const SizedBox(height: 12),
-        _option(LucideIcons.baby, t('A child under 18'), t('You are their parent. You add their records and can show them to a doctor.'), () => setState(() => _who = _Who.child)),
-        _option(LucideIcons.handHeart, t('An adult who wants me to manage'), t('For example a parent without a smartphone. They agree in person, and can stop it at any time.'),
+        _option(LucideIcons.baby, 'A child under 18', 'You are their parent. You add their records and can show them to a doctor.', () => setState(() => _who = _Who.child)),
+        _option(LucideIcons.handHeart, 'An adult who wants me to manage', 'For example a parent without a smartphone. They agree in person, and can stop it at any time.',
             () => setState(() => _who = _Who.delegating)),
         if (AppScope.of(context).links != null)
-          _option(LucideIcons.link, t('An adult with their own phone'), t('They keep their own records and you are linked by invite. Linking never gives you their records.'), () async {
+          _option(LucideIcons.link, 'An adult with their own phone', 'They keep their own records and you are linked by invite. Linking never gives you their records.', () async {
             await Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => const FamilyInviteScreen()));
           })
         else
-          Note(t('Linking an adult with their own phone needs the relay, which is not set up in this build.'), icon: LucideIcons.cloudOff),
+          const Note('Linking an adult with their own phone needs the relay, which is not set up in this build.', icon: LucideIcons.cloudOff),
       ]);
 
   Widget _option(IconData icon, String title, String body, VoidCallback onTap) => ShadCard(
@@ -88,13 +87,13 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
     final child = _who == _Who.child;
     final ready = _name.text.trim().isNotEmpty && _dob != null && _relation.text.trim().isNotEmpty && (!child || _parent);
     return ListView(children: [
-      Masthead(eyebrow: child ? t('Add a child') : t('Add an adult who wants you to manage'), title: child ? t('Your child') : t('Who asked you?')),
+      Masthead(eyebrow: child ? 'Add a child' : 'Add an adult who wants you to manage', title: child ? 'Your child' : 'Who asked you?'),
       const SizedBox(height: 16),
-      LabeledField(label: t('Full name'), child: TextField(controller: _name, textCapitalization: TextCapitalization.words, onChanged: (_) => setState(() {}))),
+      LabeledField(label: 'Full name', child: TextField(controller: _name, textCapitalization: TextCapitalization.words, onChanged: (_) => setState(() {}))),
       LabeledField(
-        label: t('Date of birth'),
+        label: 'Date of birth',
         child: FieldButton(
-          text: _dob == null ? t('Pick a date') : fullDate(_dob!),
+          text: _dob == null ? 'Pick a date' : fullDate(_dob!),
           placeholder: _dob == null,
           onTap: () async {
             final d = await showDatePicker(context: context, initialDate: child ? DateTime(2018) : DateTime(1955), firstDate: DateTime(1900), lastDate: DateTime.now());
@@ -103,13 +102,13 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
         ),
       ),
       LabeledField(
-        label: t('Sex'),
+        label: 'Sex',
         child: Wrap(spacing: 8, runSpacing: 8, children: [
-          for (final x in Sex.values) Chip2(x == Sex.unspecified ? t('Prefer not to say') : x.name, selected: _sex == x, onTap: () => setState(() => _sex = x)),
+          for (final x in Sex.values) Chip2(x == Sex.unspecified ? 'Prefer not to say' : x.name, selected: _sex == x, onTap: () => setState(() => _sex = x)),
         ]),
       ),
       LabeledField(
-        label: child ? t('They are your…') : t('They are your…'),
+        label: child ? 'They are your…' : 'They are your…',
         child: Wrap(spacing: 8, runSpacing: 8, children: [
           for (final r in child ? const ['son', 'daughter'] : const ['mother', 'father', 'grandmother', 'grandfather', 'spouse'])
             Chip2(r, selected: _relation.text == r, onTap: () => setState(() => _relation.text = r)),
@@ -121,16 +120,16 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
           padding: const EdgeInsets.fromLTRB(8, 4, 12, 4),
           child: Row(children: [
             Checkbox(value: _parent, onChanged: (v) => setState(() => _parent = v ?? false)),
-            Expanded(child: Text(t('I am this child\'s parent.'), style: TextStyle(fontSize: 14))),
+            const Expanded(child: Text('I am this child\'s parent.', style: TextStyle(fontSize: 14))),
           ]),
         ),
       if (child)
-        Note(t('Only a parent can add a child. Proof of parenthood (DigiLocker) is not connected yet, so this is recorded as your declaration. At 18 your child decides for themselves.'),
+        const Note('Only a parent can add a child. Proof of parenthood (DigiLocker) is not connected yet, so this is recorded as your declaration. At 18 your child decides for themselves.',
             icon: LucideIcons.info),
       if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
-        child: SlabButton(child ? t('Add child') : t('Next: their consent'), onPressed: !ready ? null : (child ? _save : () => setState(() => _consentStep = true))),
+        child: SlabButton(child ? 'Add child' : 'Next: their consent', onPressed: !ready ? null : (child ? _save : () => setState(() => _consentStep = true))),
       ),
     ]);
   }
@@ -140,26 +139,26 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
     final s = AppScope.of(context);
     final statement = Custody.delegationStatement(adultName: _name.text.trim(), custodianName: s.selfPatient!.name);
     return ListView(children: [
-      Masthead(eyebrow: 'Hand the phone to ${_name.text.trim()}', title: t('Please read this yourself')),
+      Masthead(eyebrow: 'Hand the phone to ${_name.text.trim()}', title: 'Please read this yourself'),
       ShadCard(
         margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
         color: LT.raised,
         child: Text(statement, style: const TextStyle(fontSize: 20, height: 1.5, fontWeight: FontWeight.w500, color: LT.ink)),
       ),
       LabeledField(
-        label: t('If you agree, type your name'),
+        label: 'If you agree, type your name',
         hint: 'Exactly as: ${_name.text.trim()}',
         child: TextField(controller: _typed, textCapitalization: TextCapitalization.words, style: const TextStyle(fontSize: 18), onChanged: (_) => setState(() {})),
       ),
-      Note(t('This is recorded as consent given in person on this phone. A one-time code to your own number is not connected yet.'), icon: LucideIcons.info),
+      const Note('This is recorded as consent given in person on this phone. A one-time code to your own number is not connected yet.', icon: LucideIcons.info),
       if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
-        child: SlabButton(t('I agree'), icon: LucideIcons.check, onPressed: _typed.text.trim().isEmpty ? null : _save),
+        child: SlabButton('I agree', icon: LucideIcons.check, onPressed: _typed.text.trim().isEmpty ? null : _save),
       ),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
-        child: SlabButton(t('I do not agree'), variant: ButtonVariant.outline, onPressed: () => Navigator.of(context).pop()),
+        child: SlabButton('I do not agree', variant: ButtonVariant.outline, onPressed: () => Navigator.of(context).pop()),
       ),
     ]);
   }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../audit/audit_log.dart';
@@ -39,7 +38,7 @@ class MeScreen extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(p.name, style: LT.title.copyWith(fontSize: 22)),
               const SizedBox(height: 8),
-              if (s.isDemo) Badge2(t('Sample records'), tone: BadgeTone.caution) else Badge2(t('On this phone'), tone: BadgeTone.trace),
+              if (s.isDemo) const Badge2('Sample records', tone: BadgeTone.caution) else const Badge2('On this phone', tone: BadgeTone.trace),
             ]),
           ),
         ]),
@@ -47,10 +46,10 @@ class MeScreen extends StatelessWidget {
       ShadCard(
         padding: EdgeInsets.zero,
         child: Column(children: [
-          _link(context, LucideIcons.heartPulse, t('Emergency ID'), t('What a paramedic sees'), const EmergencyScreen()),
-          _link(context, LucideIcons.idCard, t('ABHA health ID'), p.abha == null ? t('Optional · not added') : '${p.abha!.display} · not verified', const AbhaScreen()),
-          _link(context, LucideIcons.history, t('Access log'), '${s.auditEntries().length} entries on this phone', const AuditScreen()),
-          _link(context, LucideIcons.scale, t('Your data and your rights'), t('What is held where, and how to erase it'), const DataRightsScreen(), last: true),
+          _link(context, LucideIcons.heartPulse, 'Emergency ID', 'What a paramedic sees', const EmergencyScreen()),
+          _link(context, LucideIcons.idCard, 'ABHA health ID', p.abha == null ? 'Optional · not added' : '${p.abha!.display} · not verified', const AbhaScreen()),
+          _link(context, LucideIcons.history, 'Access log', '${s.auditEntries().length} entries on this phone', const AuditScreen()),
+          _link(context, LucideIcons.scale, 'Your data and your rights', 'What is held where, and how to erase it', const DataRightsScreen(), last: true),
         ]),
       ),
       if (AppLockGate.of(context) case final lock? when lock.available)
@@ -59,11 +58,11 @@ class MeScreen extends StatelessWidget {
           child: Row(children: [
             const IconTile(LucideIcons.lock),
             const SizedBox(width: 14),
-            Expanded(
+            const Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(t('App lock'), style: LT.label),
+                Text('App lock', style: LT.label),
                 SizedBox(height: 4),
-                Text(t('Fingerprint, face or phone PIN when LifeTrack opens'), style: LT.small),
+                Text('Fingerprint, face or phone PIN when LifeTrack opens', style: LT.small),
               ]),
             ),
             Switch(
@@ -74,7 +73,7 @@ class MeScreen extends StatelessWidget {
             ),
           ]),
         ),
-      Eyebrow(t('Family on this phone')),
+      const Eyebrow('Family on this phone'),
       for (final f in s.familyOnPhone().where((f) => f.id != s.selfPatientId))
         () {
           final c = s.custodyOf(f.id)!;
@@ -91,7 +90,7 @@ class MeScreen extends StatelessWidget {
                   if (c.kind == CustodyKind.delegatedByAdult)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: SlabButton(t('End management'), variant: ButtonVariant.outline, onPressed: () async {
+                      child: SlabButton('End management', variant: ButtonVariant.outline, onPressed: () async {
                         await s.endDelegation(f.id);
                         if (context.mounted) AppScope.changed(context);
                       }),
@@ -103,15 +102,15 @@ class MeScreen extends StatelessWidget {
         }(),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-        child: SlabButton(t('Add a family member'), variant: ButtonVariant.outline, icon: LucideIcons.userPlus, onPressed: () async {
+        child: SlabButton('Add a family member', variant: ButtonVariant.outline, icon: LucideIcons.userPlus, onPressed: () async {
           await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AddFamilyScreen()));
           if (context.mounted) AppScope.changed(context);
         }),
       ),
       const LinkedAdultsSection(),
-      Eyebrow(t('Where your records are')),
-      Note(
-        t('On this phone only, encrypted under a key in its secure hardware. The encrypted backup service is not live in this version, so there is no copy anywhere else — if this phone is lost or reset, these records are gone.'),
+      const Eyebrow('Where your records are'),
+      const Note(
+        'On this phone only, encrypted under a key in its secure hardware. The encrypted backup service is not live in this version, so there is no copy anywhere else — if this phone is lost or reset, these records are gone.',
         icon: LucideIcons.cloudOff,
         margin: EdgeInsets.fromLTRB(16, 0, 16, 28),
       ),
@@ -158,17 +157,17 @@ class _AuditScreenState extends State<AuditScreen> {
   static String _verb(AuditAction a) => switch (a) {
         AuditAction.view => 'read',
         AuditAction.edit => 'changed',
-        AuditAction.denied => t('was refused'),
-        AuditAction.grantIssued => t('gave access'),
-        AuditAction.grantRevoked => t('revoked access'),
-        AuditAction.cloudEgress => t('sent a de-identified summary off this phone'),
-        AuditAction.clinicalShare => t('shared records, encrypted to one doctor'),
-        AuditAction.prescriptionReceived => t('added a signed prescription'),
-        AuditAction.emergencyRead => t('opened the Emergency ID'),
-        AuditAction.vaultBackup => t('backed up'),
-        AuditAction.vaultRestore => t('restored from backup'),
-        AuditAction.erasure => t('erased the profile'),
-        AuditAction.export => t('exported an unencrypted copy of the records'),
+        AuditAction.denied => 'was refused',
+        AuditAction.grantIssued => 'gave access',
+        AuditAction.grantRevoked => 'revoked access',
+        AuditAction.cloudEgress => 'sent a de-identified summary off this phone',
+        AuditAction.clinicalShare => 'shared records, encrypted to one doctor',
+        AuditAction.prescriptionReceived => 'added a signed prescription',
+        AuditAction.emergencyRead => 'opened the Emergency ID',
+        AuditAction.vaultBackup => 'backed up',
+        AuditAction.vaultRestore => 'restored from backup',
+        AuditAction.erasure => 'erased the profile',
+        AuditAction.export => 'exported an unencrypted copy of the records',
       };
 
   static const _views = [
@@ -203,7 +202,7 @@ class _AuditScreenState extends State<AuditScreen> {
   static String _day(DateTime d, DateTime now) {
     final a = DateTime(d.year, d.month, d.day), b = DateTime(now.year, now.month, now.day);
     final diff = b.difference(a).inDays;
-    return diff == 0 ? t('Today') : diff == 1 ? t('Yesterday') : fullDate(d);
+    return diff == 0 ? 'Today' : diff == 1 ? 'Yesterday' : fullDate(d);
   }
 
   @override
@@ -257,8 +256,8 @@ class _AuditScreenState extends State<AuditScreen> {
     return Scaffold(
       appBar: AppBar(),
       body: ListView(children: [
-        Masthead(eyebrow: t('Access log'), title: t('Who opened what')),
-        Note(t('Every read, change and permission is recorded here, on this phone. LifeTrack has no way to edit or remove an entry; erasing your profile is the only thing that clears it.'), icon: LucideIcons.history),
+        const Masthead(eyebrow: 'Access log', title: 'Who opened what'),
+        const Note('Every read, change and permission is recorded here, on this phone. LifeTrack has no way to edit or remove an entry; erasing your profile is the only thing that clears it.', icon: LucideIcons.history),
         SizedBox(
           height: 64,
           child: ListView(
@@ -274,7 +273,7 @@ class _AuditScreenState extends State<AuditScreen> {
           ),
         ),
         Padding(padding: const EdgeInsets.fromLTRB(20, 4, 20, 0), child: Text(about, style: LT.small)),
-        if (entries.isEmpty) Padding(padding: EdgeInsets.all(20), child: Text(t('Nothing here yet.'), style: LT.lede)),
+        if (entries.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Text('Nothing here yet.', style: LT.lede)),
         ...rows,
         const SizedBox(height: 28),
       ]),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../model/custody.dart';
@@ -67,7 +66,7 @@ class FamilyBar extends StatelessWidget {
                           SizedBox(
                             width: 56,
                             child: Text(
-                              p.id == s.selfPatientId ? t('You') : p.name.split(' ').first,
+                              p.id == s.selfPatientId ? 'You' : p.name.split(' ').first,
                               textAlign: TextAlign.center,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -80,7 +79,7 @@ class FamilyBar extends StatelessWidget {
                   ),
                 ),
               Semantics(
-                label: t('Add a family member'),
+                label: 'Add a family member',
                 button: true,
                 excludeSemantics: true,
                 child: Align(
