@@ -1,5 +1,6 @@
 package health.lifetrack.lifetrack
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+// FragmentActivity: the system fingerprint/PIN prompt (local_auth) needs it.
+class MainActivity : FlutterFragmentActivity()

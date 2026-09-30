@@ -10,7 +10,11 @@ import 'onboarding_screen.dart' show StepIndicator;
 /// Read view of the Emergency ID. The allergy block is the one place a
 /// signal flood is earned.
 class EmergencyScreen extends StatefulWidget {
-  const EmergencyScreen({super.key});
+  const EmergencyScreen({super.key, this.fromLockScreen = false});
+
+  /// Opened from the app lock by whoever holds the phone: the owner's card,
+  /// read-only, and the read is audited as unauthenticated (#7).
+  final bool fromLockScreen;
   @override
   State<EmergencyScreen> createState() => _EmergencyScreenState();
 }
@@ -26,7 +30,9 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
 
   Future<void> _load() async {
     final s = AppScope.of(context);
-    final card = await s.emergency.load(s.currentPatientId!);
+    final card = widget.fromLockScreen
+        ? await s.emergency.readFromLockScreen(s.selfPatientId!, s.clock())
+        : await s.emergency.load(s.currentPatientId!);
     if (mounted) setState(() => _card = card);
   }
 
@@ -39,7 +45,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
       body: c == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(children: [
-              Masthead(eyebrow: 'Emergency ID', title: s.currentPatient?.name ?? '', trailing: const Icon(LucideIcons.heartPulse, color: LT.signal)),
+              Masthead(eyebrow: 'Emergency ID', title: (widget.fromLockScreen ? s.selfPatient : s.currentPatient)?.name ?? '', trailing: const Icon(LucideIcons.heartPulse, color: LT.signal)),
               const SizedBox(height: 14),
               if (c.isEmpty) const Note('This card is empty. Anyone treating you would see nothing here.', margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
               if (c.allergies.isNotEmpty)
@@ -67,6 +73,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                   _field(LucideIcons.phone, 'Emergency contact', [c.contactName, c.contactRelation, c.contactPhone].where((x) => x.isNotEmpty).join(' · '), last: true),
                 ]),
               ),
+              if (!widget.fromLockScreen)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
                 child: SlabButton('Edit card', icon: LucideIcons.pencil, variant: ButtonVariant.outline, onPressed: () async {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../audit/audit_log.dart';
+import '../app_lock.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../../model/custody.dart';
@@ -48,6 +49,27 @@ class MeScreen extends StatelessWidget {
           _link(context, LucideIcons.scale, 'Your data and your rights', 'What is held where, and how to erase it', const DataRightsScreen(), last: true),
         ]),
       ),
+      if (AppLockGate.of(context) case final lock? when lock.available)
+        ShadCard(
+          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+          child: Row(children: [
+            const IconTile(LucideIcons.lock),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('App lock', style: LT.label),
+                SizedBox(height: 4),
+                Text('Fingerprint, face or phone PIN when LifeTrack opens', style: LT.small),
+              ]),
+            ),
+            Switch(
+              value: s.appLockEnabled,
+              onChanged: (v) async {
+                if (await lock.setEnabled(v) && context.mounted) AppScope.changed(context);
+              },
+            ),
+          ]),
+        ),
       const Eyebrow('Family on this phone'),
       for (final f in s.familyOnPhone().where((f) => f.id != s.selfPatientId))
         () {

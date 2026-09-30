@@ -146,6 +146,20 @@ class AppServices {
 
   Future<void> _saveSettings() => sealed.write(_settingsBlob, settings);
 
+  bool get appLockEnabled => (settings['appLock'] as bool?) ?? true;
+
+  Future<void> setAppLock(bool on) async {
+    settings['appLock'] = on;
+    await _saveSettings();
+    await audit.append(AuditEntry(
+      at: clock(),
+      actorId: 'patient:${selfPatientId ?? currentPatientId}',
+      patientId: selfPatientId ?? currentPatientId ?? '',
+      action: AuditAction.edit,
+      detail: on ? 'App lock turned on' : 'App lock turned off',
+    ));
+  }
+
   final Map<String, ReplyIdentity> _replies = {};
 
   /// One reply mailbox and key per patient, created on first share and kept

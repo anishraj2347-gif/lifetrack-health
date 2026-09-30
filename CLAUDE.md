@@ -97,6 +97,10 @@ copy predate the claim fixes; the app's wording is authoritative).
 6. Personal notes and vitals are local-only by default; backup includes them only on opt-in.
 7. The Emergency ID lives outside the vault, is edited only by the patient, holds fixed bounded
    fields, and every unauthenticated read is audited.
+   - 7a. The app opens behind the phone's own lock (`AppLockGate`, local_auth: fingerprint, face
+     or device PIN; release permissions add USE_BIOMETRIC/USE_FINGERPRINT only). The lock
+     screen offers the owner's Emergency ID read-only, logged as `unauthenticated:lock_screen`.
+     Relock after 1 min away pops pushed routes first. Turning it off needs an unlock.
 8. All patient-facing clinical output — **including the view layer** — goes through the
    `Insight` contract. Screens render Insights; they never compare values with ranges.
 9. Tier 1 states position or movement and routes to a person. No diagnosis, no forecast

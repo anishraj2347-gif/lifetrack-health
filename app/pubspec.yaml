@@ -46,6 +46,7 @@ dependencies:
   image: ^4.10.1
   # Draws the family-invite QR on screen. Pure Dart, no network.
   qr_flutter: ^4.1.0
+  local_auth: ^3.0.2
 
 dev_dependencies:
   lifetrack_server:

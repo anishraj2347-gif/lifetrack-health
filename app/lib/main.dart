@@ -4,6 +4,7 @@ import 'src/app/app_services.dart';
 import 'src/app/storage_wiring.dart';
 import 'src/crypto/device_key_store.dart';
 import 'src/crypto/key_derivation.dart';
+import 'src/security/unlocker.dart';
 import 'src/ui/lifetrack_app.dart';
 import 'src/vault/backup_vault.dart';
 
@@ -24,5 +25,6 @@ void main() {
         registryKey: String.fromEnvironment('LT_REGISTRY_KEY'),
       ),
     ),
+    unlocker: DeviceUnlocker(),
   ));
 }
