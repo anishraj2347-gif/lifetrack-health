@@ -7,7 +7,6 @@ import 'package:http/testing.dart';
 import 'package:lifetrack/src/app/app_services.dart';
 import 'package:lifetrack/src/crypto/key_derivation.dart';
 import 'package:lifetrack/src/identity/identity_verifier.dart';
-import 'package:lifetrack/src/model/custody.dart';
 import 'package:lifetrack/src/model/patient.dart';
 import 'package:lifetrack/src/share/http_relay_client.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
