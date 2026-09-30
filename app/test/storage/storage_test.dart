@@ -31,6 +31,24 @@ void main() {
       expect(await store.names(), isEmpty);
     });
 
+    test('many saves at the same moment never corrupt the index (bug seen in the phase 2 demo)', () async {
+      await Future.wait([for (var i = 0; i < 40; i++) store.write('blob-$i', Uint8List.fromList([i]))]);
+      final names = await store.names();
+      expect(names.toSet(), {for (var i = 0; i < 40; i++) 'blob-$i'});
+      for (var i = 0; i < 40; i++) {
+        expect(await store.read('blob-$i'), [i]);
+      }
+    });
+
+    test('a damaged index is repaired instead of blocking every save', () async {
+      await store.write('a', Uint8List.fromList([1]));
+      File('${dir.path}/index.json').writeAsStringSync('["a"]g]');
+      await store.write('b', Uint8List.fromList([2]));
+      expect(await store.read('a'), [1]);
+      expect(await store.read('b'), [2]);
+      expect(await store.names(), contains('b'));
+    });
+
     test('leaves no temp files behind and never uses the blob name on disk', () async {
       await store.write('../../escape', Uint8List.fromList([9]));
       final files = dir.listSync().map((f) => f.path.split('/').last).toList();

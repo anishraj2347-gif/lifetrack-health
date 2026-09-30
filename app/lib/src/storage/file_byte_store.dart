@@ -16,6 +16,18 @@ class FileByteStore implements ByteStore {
 
   final Directory root;
 
+  /// Every write and delete runs one at a time. Unserialised, two saves at
+  /// the same moment (a share writes grants, audit and tokens together)
+  /// interleaved their index updates and corrupted it — seen on a phone in
+  /// the phase 2 demo.
+  Future<void> _queue = Future.value();
+
+  Future<T> _serial<T>(Future<T> Function() op) {
+    final result = _queue.then((_) => op());
+    _queue = result.then((_) {}, onError: (_) {});
+    return result;
+  }
+
   Future<File> _fileFor(String name) async {
     final digest = await Sha256().hash(utf8.encode('lifetrack-blob:$name'));
     final hex = digest.bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
@@ -30,7 +42,9 @@ class FileByteStore implements ByteStore {
   }
 
   @override
-  Future<void> write(String name, Uint8List bytes) async {
+  Future<void> write(String name, Uint8List bytes) => _serial(() => _write(name, bytes));
+
+  Future<void> _write(String name, Uint8List bytes) async {
     await root.create(recursive: true);
     final target = await _fileFor(name);
     final temp = File('${target.path}.tmp');
@@ -46,7 +60,9 @@ class FileByteStore implements ByteStore {
   }
 
   @override
-  Future<void> delete(String name) async {
+  Future<void> delete(String name) => _serial(() => _delete(name));
+
+  Future<void> _delete(String name) async {
     final f = await _fileFor(name);
     if (await f.exists()) await f.delete();
     await _index(name, add: false);
@@ -56,7 +72,14 @@ class FileByteStore implements ByteStore {
   Future<List<String>> names() async {
     final idx = File('${root.path}/index.json');
     if (!await idx.exists()) return [];
-    return (jsonDecode(await idx.readAsString()) as List).cast<String>();
+    final text = await idx.readAsString();
+    try {
+      return (jsonDecode(text) as List).cast<String>();
+    } on FormatException {
+      // A damaged index must never block saving records. Recover every name
+      // still readable in it; the next save rewrites it whole.
+      return [for (final m in RegExp(r'"((?:[^"\\]|\\.)*)"').allMatches(text)) m.group(1)!];
+    }
   }
 
   Future<void> _index(String name, {required bool add}) async {
