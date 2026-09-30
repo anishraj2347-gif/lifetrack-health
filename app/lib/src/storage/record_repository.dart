@@ -1,4 +1,5 @@
 import '../model/clinical_profile.dart';
+import '../model/custody.dart';
 import '../model/health_record.dart';
 import '../model/patient.dart';
 import 'sealed_store.dart';
@@ -8,21 +9,24 @@ import 'sealed_store.dart';
 /// The whole set is rewritten on every change; [ByteStore.write]'s atomicity
 /// contract is what makes that safe.
 class RecordRepository {
-  RecordRepository._(this._store, this._records, this._patients, this._profiles);
+  RecordRepository._(this._store, this._records, this._patients, this._profiles, this._custody);
 
   static const recordsBlob = 'records';
   static const patientsBlob = 'patients';
   static const profilesBlob = 'clinical_profiles';
+  static const custodyBlob = 'custody';
 
   final SealedStore _store;
   final List<HealthRecord> _records;
   final Map<String, Patient> _patients;
   final Map<String, ClinicalProfile> _profiles;
+  final Map<String, Custody> _custody;
 
   static Future<RecordRepository> open(SealedStore store) async {
     final r = await store.read(recordsBlob) as List?;
     final p = await store.read(patientsBlob) as List?;
     final c = (await store.read(profilesBlob) as Map?)?.cast<String, Object?>() ?? const {};
+    final k = (await store.read(custodyBlob) as List?) ?? const [];
     return RecordRepository._(
       store,
       [for (final e in r ?? const []) HealthRecord.fromJson((e as Map).cast<String, Object?>())],
@@ -31,6 +35,7 @@ class RecordRepository {
           (e as Map)['id']! as String: Patient.fromJson(e.cast<String, Object?>()),
       },
       {for (final MapEntry(:key, :value) in c.entries) key: ClinicalProfile.fromJson((value! as Map).cast())},
+      {for (final e in k) (e as Map)['patientId']! as String: Custody.fromJson(e.cast())},
     );
   }
 
@@ -52,6 +57,14 @@ class RecordRepository {
   Future<void> saveProfile(String patientId, ClinicalProfile profile) async {
     _profiles[patientId] = profile;
     await _store.write(profilesBlob, {for (final MapEntry(:key, :value) in _profiles.entries) key: value.toJson()});
+  }
+
+  Custody? custodyOf(String patientId) => _custody[patientId];
+  List<Custody> get custodies => List.unmodifiable(_custody.values);
+
+  Future<void> saveCustody(Custody c) async {
+    _custody[c.patientId] = c;
+    await _store.write(custodyBlob, [for (final x in _custody.values) x.toJson()]);
   }
 
   Future<void> savePatient(Patient p) async {
@@ -76,6 +89,8 @@ class RecordRepository {
     _records.removeWhere((r) => r.patientId == patientId);
     _patients.remove(patientId);
     _profiles.remove(patientId);
+    _custody.remove(patientId);
+    await _store.write(custodyBlob, [for (final x in _custody.values) x.toJson()]);
     await _flush();
     await _store.write(profilesBlob, {for (final MapEntry(:key, :value) in _profiles.entries) key: value.toJson()});
     await _store.write(patientsBlob, [for (final x in _patients.values) x.toJson()]);

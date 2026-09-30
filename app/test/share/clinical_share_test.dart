@@ -424,4 +424,19 @@ void main() {
       expect(b['originalsOmitted'], 2);
     });
   });
+
+  test("a parent's share for a child records the parent as grantor and tells the doctor", () async {
+    final d = await doctor();
+    final r = await service.share(
+      patientId: 'p1',
+      doctor: await service.scan(d.qr, now),
+      levels: {AccessLevel.summary},
+      at: now,
+      grantorId: 'patient:parent-1',
+      sharedBy: 'Ramesh Sharma (parent)',
+    );
+    expect(r.grant.grantorId, 'patient:parent-1');
+    expect(audit.entriesFor('p1').where((e) => e.action == AuditAction.clinicalShare).single.actorId, 'patient:parent-1');
+    expect((await pickUpAndOpen(d))['sharedBy'], 'Ramesh Sharma (parent)');
+  });
 }

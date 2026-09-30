@@ -5,6 +5,7 @@ import '../../model/health_record.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
+import '../widgets/family_bar.dart';
 import '../widgets/trend_card.dart';
 import 'add_record_screen.dart';
 import 'record_screen.dart';
@@ -58,27 +59,9 @@ class _RecordsScreenState extends State<RecordsScreen> {
     }
 
     final name = s.currentPatient?.name ?? '';
-    final initials = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).take(2).map((w) => w[0].toUpperCase()).join();
     final trend = _query.isEmpty && _filter == null ? TrendCard.pick(all) : null;
     return Column(children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-        child: Row(children: [
-          Container(
-            width: 44,
-            height: 44,
-            alignment: Alignment.center,
-            decoration: const BoxDecoration(color: LT.accent, shape: BoxShape.circle),
-            child: Text(initials, style: const TextStyle(fontWeight: FontWeight.w600, color: LT.ink)),
-          ),
-          const SizedBox(width: 8),
-          RoundButton(LucideIcons.plus, onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Family profiles arrive in a later version.')));
-          }),
-          const Spacer(),
-          Badge2(s.isDemo ? 'Sample data' : '${all.length} records', tone: s.isDemo ? BadgeTone.caution : BadgeTone.neutral),
-        ]),
-      ),
+      const FamilyBar(),
       Masthead(eyebrow: 'Records', title: name),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),

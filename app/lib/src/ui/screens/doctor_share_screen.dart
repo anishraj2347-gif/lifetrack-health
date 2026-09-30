@@ -49,7 +49,10 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
     final at = s.clock();
     try {
       await s.confirmMedicines(_stillTaking, at);
+      final grantor = s.actingGrantor();
       final r = await s.sharing!.share(
+        grantorId: grantor,
+        sharedBy: s.sharedByNote(),
         patientId: s.currentPatientId!,
         doctor: _doctor!,
         levels: _levels,

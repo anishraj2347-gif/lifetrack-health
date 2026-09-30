@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../model/custody.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
@@ -47,7 +48,13 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
                   ? () async {
                       setState(() => _erasing = true);
                       final s = AppScope.of(context);
-                      await s.eraseProfile(account: s.currentPatientId!);
+                      try {
+                        await s.eraseProfile(account: s.currentPatientId!);
+                      } on CustodyRefused catch (e) {
+                        setState(() => _erasing = false);
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+                        return;
+                      }
                       if (!context.mounted) return;
                       Navigator.of(context).popUntil((r) => r.isFirst);
                       AppScope.changed(context);

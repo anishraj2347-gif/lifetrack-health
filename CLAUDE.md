@@ -115,8 +115,11 @@ copy predate the claim fixes; the app's wording is authoritative).
 13. Every read, change, grant, revocation, egress, restore and erasure is audited; the egress
     entry is written before the send.
     - 13a. The audit log is append-only **and durable** (sealed on disk).
-14. Proxy consent only for legal dependents; `grantorId` records who granted. (Enforcement is
-    P3 — no dependent profiles exist yet.)
+14. Proxy consent only for dependents, and `grantorId` records who granted: a parent for a child
+    under 18 (sharing stops at 18), or a custodian for an adult who delegated in person and can
+    end it. `AppServices.actingGrantor()` is the only place that decides; every share and the
+    Insights grant go through it. Parent verification (DigiLocker) and OTP confirmation are not
+    connected, and the UI says "declared" / "agreed in person", never "verified".
 15. No doctor capability (e.g. prescribing) before registry verification. On the patient's
     phone this means: no grant to a doctor, and no inbound prescription accepted, unless the
     doctor's device certificate verifies against the pinned registry key.

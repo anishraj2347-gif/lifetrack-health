@@ -4,8 +4,11 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../audit/audit_log.dart';
 import '../app_scope.dart';
 import '../theme.dart';
+import '../../model/custody.dart';
+import '../widgets/family_bar.dart';
 import '../widgets/parts.dart';
 import 'data_rights_screen.dart';
+import 'add_family_screen.dart';
 import 'emergency_screen.dart';
 import 'share_screen.dart' show describeActor, dataClassNames, iconForActor;
 
@@ -43,6 +46,39 @@ class MeScreen extends StatelessWidget {
           _link(context, LucideIcons.history, 'Access log', '${s.auditEntries().length} entries on this phone', const AuditScreen()),
           _link(context, LucideIcons.scale, 'Your data and your rights', 'What is held where, and how to erase it', const DataRightsScreen(), last: true),
         ]),
+      ),
+      const Eyebrow('Family on this phone'),
+      for (final f in s.familyOnPhone().where((f) => f.id != s.selfPatientId))
+        () {
+          final c = s.custodyOf(f.id)!;
+          return ShadCard(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              CircleAvatar(backgroundColor: LT.raised, child: Text(FamilyBar.initials(f.name), style: const TextStyle(color: LT.ink, fontWeight: FontWeight.w600))),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(f.name, style: LT.label.copyWith(fontWeight: FontWeight.w600)),
+                  Text(FamilyBar.authorityLine(c), style: LT.small),
+                  if (c.consentedAt != null) Text('Since ${fullDate(c.consentedAt!)}', style: LT.small.copyWith(fontSize: 12)),
+                  if (c.kind == CustodyKind.delegatedByAdult)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: SlabButton('End management', variant: ButtonVariant.outline, onPressed: () async {
+                        await s.endDelegation(f.id);
+                        if (context.mounted) AppScope.changed(context);
+                      }),
+                    ),
+                ]),
+              ),
+            ]),
+          );
+        }(),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+        child: SlabButton('Add a family member', variant: ButtonVariant.outline, icon: LucideIcons.userPlus, onPressed: () async {
+          await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AddFamilyScreen()));
+          if (context.mounted) AppScope.changed(context);
+        }),
       ),
       const Eyebrow('Where your records are'),
       const Note(

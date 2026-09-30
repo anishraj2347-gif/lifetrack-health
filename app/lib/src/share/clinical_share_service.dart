@@ -83,6 +83,8 @@ class ClinicalShareService {
     RecordFilter? filter,
     Set<AccessLevel>? requested,
     Duration window = Grants.visitWindow,
+    String? grantorId,
+    String? sharedBy,
   }) async {
     if (levels.isEmpty) throw ArgumentError('Pick at least one level.');
     if (!at.isBefore(doctor.expiresAt)) throw const CertificateRejected(CertificateProblem.expired);
@@ -107,11 +109,12 @@ class ClinicalShareService {
       levels: levels,
       filter: filter,
       granteeKeyId: keyId,
+      grantorId: grantorId,
     );
     consent.issue(grant, at: at);
     await audit.append(AuditEntry(
       at: at,
-      actorId: Actors.patient(patientId),
+      actorId: grant.grantorId,
       patientId: patientId,
       action: AuditAction.grantIssued,
       tokenId: grant.id,
@@ -148,7 +151,9 @@ class ClinicalShareService {
       reports: [for (final r in released.values) if (r.kind == RecordKind.report) r],
       scans: [for (final r in released.values) if (r.kind == RecordKind.scan) r],
       profileUpdatedAt: repository.profileOf(patientId).updatedAt,
-    )..['replyTo'] = (await replyIdentity(patientId)).replyTo;
+    )
+      ..['replyTo'] = (await replyIdentity(patientId)).replyTo
+      ..['sharedBy'] = sharedBy;
     await _attachOriginals(bundle, released);
 
     final envelope = await ShareEnvelope.seal(
@@ -161,7 +166,7 @@ class ClinicalShareService {
     // Audited before it leaves: a failed send is still recorded (#1c, #13).
     await audit.append(AuditEntry(
       at: at,
-      actorId: Actors.patient(patientId),
+      actorId: grant.grantorId,
       patientId: patientId,
       action: AuditAction.clinicalShare,
       tokenId: grant.id,

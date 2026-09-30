@@ -330,6 +330,11 @@ class _PatientScreenState extends State<PatientScreen> {
                           : '—'} · ${p['age']}',
                       style: const TextStyle(color: DT.onDark, fontSize: 20, fontWeight: FontWeight.w600),
                     ),
+                    if (sh.bundle['sharedBy'] != null)
+                      Text(
+                        'Shared on their behalf by ${sh.bundle['sharedBy']}',
+                        style: const TextStyle(color: DT.accent, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
                     Text(
                       'Read-only · shared ${sh.receivedAt.toString().substring(11, 16)} · ${((sh.bundle['levels'] as List?) ?? const []).join(' · ')}',
                       style: const TextStyle(color: DT.onDarkMuted, fontSize: 12.5),

@@ -17,6 +17,7 @@ import '../consent/record_access.dart';
 import '../crypto/key_derivation.dart';
 import '../emergency/emergency_card.dart';
 import '../model/clinical_profile.dart';
+import '../model/custody.dart';
 import '../model/health_record.dart';
 import '../model/patient.dart';
 import '../capture/report_image.dart';
@@ -269,14 +270,151 @@ class AppServices {
       await _saveDemoOriginals(id);
     }
     settings['currentPatientId'] = id;
+    settings['selfPatientId'] = id;
     settings['demo'] = demo;
     await _saveSettings();
+    await repository.saveCustody(Custody(patientId: id, kind: CustodyKind.self, custodianId: id, relation: 'self'));
     return patient;
   }
 
   Future<void> updatePatient(Patient p) => repository.savePatient(p);
 
   bool get isDemo => settings['demo'] == true;
+
+  // ---- family (profiles on this phone) -----------------------------------
+
+  /// The phone owner's own profile. Older installs predate family, so the
+  /// first profile is taken as the owner's.
+  String? get selfPatientId => (settings['selfPatientId'] as String?) ?? currentPatientId;
+  Patient? get selfPatient => selfPatientId == null ? null : repository.patient(selfPatientId!);
+
+  bool get viewingSelf => currentPatientId == selfPatientId;
+
+  /// Every profile kept on this phone, the owner's first.
+  List<Patient> familyOnPhone() {
+    final self = selfPatient;
+    return [
+      ?self,
+      for (final c in repository.custodies)
+        if (c.patientId != selfPatientId && c.isActive) ?repository.patient(c.patientId),
+    ];
+  }
+
+  Custody? custodyOf(String patientId) =>
+      repository.custodyOf(patientId) ??
+      (patientId == selfPatientId ? Custody(patientId: patientId, kind: CustodyKind.self, custodianId: patientId, relation: 'self') : null);
+
+  Future<void> switchTo(String patientId) async {
+    if (!familyOnPhone().any((p) => p.id == patientId)) throw const CustodyRefused('That profile is not on this phone.');
+    settings['currentPatientId'] = patientId;
+    await _saveSettings();
+  }
+
+  /// A child's profile, kept on this phone. The phone owner declares they
+  /// are the parent; verification (DigiLocker) is not connected yet, and the
+  /// app says so wherever the custody is shown.
+  Future<Patient> addChild({required String name, required DateTime dob, required Sex sex, required String relation}) async {
+    final self = selfPatient ?? (throw const CustodyRefused('Set up your own profile first.'));
+    final at = clock();
+    final child = Patient(id: 'p-${_randomId()}', name: name, dateOfBirth: dob, sex: sex);
+    if (child.ageAt(at) >= 18) throw const CustodyRefused('An adult keeps their own profile. Use "An adult who wants me to manage" if they ask you to.');
+    await repository.savePatient(child);
+    await repository.saveCustody(Custody(
+      patientId: child.id,
+      kind: CustodyKind.childOfParent,
+      custodianId: self.id,
+      relation: relation,
+      method: ConsentMethod.parentDeclaration,
+      consentedAt: at,
+      statement: '${self.name} declared they are ${child.name}\'s parent.',
+    ));
+    await audit.append(AuditEntry(at: at, actorId: Actors.patient(self.id), patientId: child.id, action: AuditAction.edit, detail: 'Profile created by ${self.name} (parent)'));
+    return child;
+  }
+
+  /// An adult who asked the phone owner to keep and share their records.
+  /// They confirm in person by typing their own name under the statement.
+  Future<Patient> addDelegatingAdult({
+    required String name,
+    required DateTime dob,
+    required Sex sex,
+    required String relation,
+    required String typedName,
+  }) async {
+    final self = selfPatient ?? (throw const CustodyRefused('Set up your own profile first.'));
+    String norm(String x) => x.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    if (norm(typedName) != norm(name)) throw const CustodyRefused('They must type their own name exactly as it is on the profile.');
+    final at = clock();
+    final adult = Patient(id: 'p-${_randomId()}', name: name, dateOfBirth: dob, sex: sex);
+    if (adult.ageAt(at) < 18) throw const CustodyRefused('Under 18: add them as a child instead.');
+    await repository.savePatient(adult);
+    await repository.saveCustody(Custody(
+      patientId: adult.id,
+      kind: CustodyKind.delegatedByAdult,
+      custodianId: self.id,
+      relation: relation,
+      method: ConsentMethod.inPersonOnCustodianPhone,
+      consentedAt: at,
+      statement: Custody.delegationStatement(adultName: name, custodianName: self.name),
+      signedName: typedName.trim(),
+    ));
+    await audit.append(AuditEntry(at: at, actorId: Actors.patient(adult.id), patientId: adult.id, action: AuditAction.grantIssued, detail: 'Asked ${self.name} to manage their records (confirmed in person)'));
+    return adult;
+  }
+
+  /// Ends a delegation: nothing more is shared on their behalf, and any
+  /// live access given for them is revoked at once.
+  Future<void> endDelegation(String patientId) async {
+    final c = repository.custodyOf(patientId);
+    if (c == null || c.kind != CustodyKind.delegatedByAdult || !c.isActive) return;
+    final at = clock();
+    for (final g in consent.activeGrantsFor(patientId, at)) {
+      if (sharing != null && g.granteeKeyId != null) {
+        await sharing!.endAccess(g, at);
+      } else {
+        consent.revoke(g.id);
+      }
+    }
+    await repository.saveCustody(c.ended(at));
+    await audit.append(AuditEntry(at: at, actorId: Actors.patient(c.custodianId), patientId: patientId, action: AuditAction.grantRevoked, detail: 'Management ended; nothing more is shared on their behalf'));
+    if (currentPatientId == patientId) await switchTo(selfPatientId!);
+  }
+
+  /// What the doctor is told about who shared, when it is not the patient
+  /// themself: "Anjali Sharma, parent".
+  String? sharedByNote() {
+    final id = currentPatientId;
+    if (id == null || id == selfPatientId) return null;
+    final c = custodyOf(id);
+    final self = selfPatient;
+    if (c == null || self == null) return null;
+    return switch (c.kind) {
+      CustodyKind.childOfParent => '${self.name}, parent',
+      CustodyKind.delegatedByAdult => '${self.name}, at the patient\'s request',
+      CustodyKind.self => null,
+    };
+  }
+
+  /// Who is granting when the current profile shares — and whether they
+  /// may. The owner grants for themself; a parent for a child under 18; a
+  /// custodian for an adult whose delegation is active.
+  String actingGrantor() {
+    final id = currentPatientId!;
+    final c = custodyOf(id) ?? (throw const CustodyRefused('This profile has no custody record.'));
+    final at = clock();
+    switch (c.kind) {
+      case CustodyKind.self:
+        return Actors.patient(id);
+      case CustodyKind.childOfParent:
+        if (repository.patient(id)!.ageAt(at) >= 18) {
+          throw const CustodyRefused('They are 18 now. Only they can share their records.');
+        }
+        return Actors.patient(c.custodianId);
+      case CustodyKind.delegatedByAdult:
+        if (!c.isActive) throw const CustodyRefused('They ended your management of their records.');
+        return Actors.patient(c.custodianId);
+    }
+  }
 
   // ---- records -----------------------------------------------------------
 
@@ -309,6 +447,7 @@ class AppServices {
     final id = currentPatientId!;
     final at = clock();
     final grant = Grants.onDeviceInsights(patientId: id, at: at);
+    actingGrantor(); // refuses when this profile may not be acted for
     consent.issue(grant, at: at);
     await audit.append(AuditEntry(
       at: at,
@@ -351,6 +490,11 @@ class AppServices {
   /// erasure itself stays as the only entry in the log.
   Future<void> eraseProfile({required String account}) async {
     final id = currentPatientId!;
+    if (id == selfPatientId && familyOnPhone().length > 1) {
+      // Erasing the owner would strand a child's or parent's records on a
+      // phone nobody can open for them. They go first, deliberately.
+      throw const CustodyRefused('Remove the other family profiles on this phone first.');
+    }
     final at = clock();
     for (final r in repository.recordsOf(id)) {
       if (r.attachmentId != null) await attachments.delete(r.attachmentId!);
@@ -363,7 +507,14 @@ class AppServices {
       id,
       AuditEntry(at: at, actorId: 'patient:$id', patientId: id, action: AuditAction.erasure, detail: 'records, grants, Emergency ID and backup deleted'),
     );
+    if (id != selfPatientId && selfPatientId != null) {
+      settings['currentPatientId'] = selfPatientId;
+      await _saveSettings();
+      await flush();
+      return;
+    }
     settings.remove('currentPatientId');
+    settings.remove('selfPatientId');
     settings.remove('demo');
     await _saveSettings();
     await flush();
