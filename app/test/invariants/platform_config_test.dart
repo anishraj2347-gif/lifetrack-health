@@ -16,6 +16,14 @@ void main() {
     expect(RegExp('android.permission.INTERNET').allMatches(manifest), hasLength(1));
   });
 
+  test('plain HTTP is allowed only to the loopback relay', () {
+    expect(manifest, contains('android:networkSecurityConfig="@xml/network_security_config"'));
+    final nsc = File('android/app/src/main/res/xml/network_security_config.xml').readAsStringSync();
+    expect(nsc, contains('<base-config cleartextTrafficPermitted="false" />'));
+    final domains = RegExp(r'<domain[^>]*>([^<]+)</domain>').allMatches(nsc).map((m) => m.group(1)).toSet();
+    expect(domains, {'127.0.0.1', 'localhost'});
+  });
+
   test('permissions plugins add but scanning does not need are stripped', () {
     for (final p in ['RECORD_AUDIO', 'READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE', 'ACCESS_NETWORK_STATE']) {
       expect(manifest, contains('android.permission.$p" tools:node="remove"'), reason: p);

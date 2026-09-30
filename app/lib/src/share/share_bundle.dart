@@ -47,6 +47,9 @@ abstract final class ShareBundle {
       'levels': [for (final l in levels) l.name],
       'filter': f.isEmpty ? null : f.toJson(),
       'withheld': [for (final c in requested.difference(granted)) c.name],
+      // The phone's random profile id, so a prescription can be addressed
+      // back to this profile. Not a name, phone number or ABHA id.
+      'patientRef': patient.id,
       'patient': {
         'name': patient.name,
         'age': patient.ageAt(at),

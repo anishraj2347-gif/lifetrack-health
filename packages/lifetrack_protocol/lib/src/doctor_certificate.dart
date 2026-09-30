@@ -113,6 +113,8 @@ class RegistryTrust {
 
   final List<SimplePublicKey> keys;
 
+  static const clockSkew = Duration(minutes: 5);
+
   Future<DoctorCertificate> verify(String qr, DateTime at) async {
     final cert = DoctorCertificate.decode(qr);
     if (keys.isEmpty) throw const CertificateRejected(CertificateProblem.untrustedRegistry);
@@ -124,7 +126,9 @@ class RegistryTrust {
       }
     }
     if (!ok) throw const CertificateRejected(CertificateProblem.badSignature);
-    if (at.isBefore(cert.issuedAt)) throw const CertificateRejected(CertificateProblem.notYetValid);
+    // Phones and the registry disagree about the time by minutes; a
+    // certificate issued moments ago must not look "not yet valid".
+    if (at.add(clockSkew).isBefore(cert.issuedAt)) throw const CertificateRejected(CertificateProblem.notYetValid);
     if (!at.isBefore(cert.expiresAt)) throw const CertificateRejected(CertificateProblem.expired);
     return cert;
   }
