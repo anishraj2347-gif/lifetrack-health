@@ -81,6 +81,10 @@ copy predate the claim fixes; the app's wording is authoritative).
      and/or current medicine names and doses — each off by default, ticked by that adult on
      their own phone — sealed to the linked phone's reply key via the relay. Never reports,
      prescriptions or history. Unlink tells the other phone to delete its copy.
+   - 1f. **Export** (DPDP access right): the patient, or whoever `actingGrantor()` allows,
+     taps Export; an unencrypted zip (readable HTML, JSON, originals, access log) goes to the
+     system share sheet the patient chooses from. Logged (`AuditAction.export`) before the file
+     is built; the screen says the file is not encrypted.
 2. No UI string may assert unreconstructibility (that LifeTrack/the server/anyone cannot read,
    open or access the patient's data) until the offline-guessing oracle is closed by a PAKE or a
    system-generated passphrase. Enforced on claim *subject* by `ui_claims_test.dart`, not by a

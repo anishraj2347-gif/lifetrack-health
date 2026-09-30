@@ -25,6 +25,7 @@ import '../storage/attachment_store.dart';
 import '../storage/byte_store.dart';
 import '../storage/record_repository.dart';
 import '../share/clinical_share_service.dart';
+import '../export/record_export.dart';
 import '../family/family_link.dart';
 import '../share/http_relay_client.dart';
 import '../share/relay.dart';
@@ -608,6 +609,32 @@ class AppServices {
       refused += r;
     }
     return (added, handled, refused);
+  }
+
+  // ---- export -------------------------------------------------------------
+
+  /// A complete, unencrypted copy of the profile on screen, for the patient
+  /// to keep or pass on. The export is logged before the file exists (#13).
+  /// A parent may export a child's records; the same rule as sharing decides.
+  Future<RecordExport> exportCurrent() async {
+    final id = currentPatientId!;
+    final grantor = actingGrantor();
+    final at = clock();
+    await audit.append(AuditEntry(at: at, actorId: grantor, patientId: id, action: AuditAction.export, detail: 'records, Emergency ID, originals and access log'));
+    final records = repository.recordsOf(id);
+    return RecordExport(
+      patient: repository.patient(id)!,
+      records: records,
+      profile: repository.profileOf(id),
+      emergency: await emergency.load(id),
+      audit: audit.entriesFor(id),
+      originals: {
+        for (final r in records)
+          if (r.attachmentId != null)
+            if (await originals(r).then((p) => p, onError: (_) => const <Uint8List>[]) case final pages when pages.isNotEmpty) r.id: pages,
+      },
+      at: at,
+    );
   }
 
   // ---- erasure (DPDP §12) -------------------------------------------------

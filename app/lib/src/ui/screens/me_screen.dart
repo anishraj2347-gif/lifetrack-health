@@ -158,6 +158,7 @@ class AuditScreen extends StatelessWidget {
         AuditAction.vaultBackup => 'backed up',
         AuditAction.vaultRestore => 'restored from backup',
         AuditAction.erasure => 'erased the profile',
+        AuditAction.export => 'exported an unencrypted copy of the records',
       };
 
   @override

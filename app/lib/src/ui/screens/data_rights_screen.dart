@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../model/custody.dart';
 import '../app_scope.dart';
@@ -23,6 +27,33 @@ const kGrievanceContact = '[Grievance Officer — name and email to be added bef
 class _DataRightsScreenState extends State<DataRightsScreen> {
   final _confirm = TextEditingController();
   bool _erasing = false;
+  bool _exporting = false;
+
+  Future<void> _export() async {
+    setState(() => _exporting = true);
+    final s = AppScope.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    File? file;
+    try {
+      final export = await s.exportCurrent();
+      file = File('${(await getTemporaryDirectory()).path}/${export.fileName}');
+      await file.writeAsBytes(export.zip(), flush: true);
+      await SharePlus.instance.share(ShareParams(files: [XFile(file.path, mimeType: 'application/zip')], subject: 'My LifeTrack records'));
+    } on CustodyRefused catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } on Object catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not export: $e')));
+    } finally {
+      // share_plus has copied it into this app's private cache (cleared on the
+      // next share), so this copy is not needed.
+      try {
+        await file?.delete();
+      } on Object {
+        // Already gone.
+      }
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -35,6 +66,17 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
           _section('Why we process it', 'To keep your medical records for you, to compare values with published ranges when you turn Insights on, and to let a doctor see what you choose to share, for as long as you choose.'),
           _section('Your rights', 'You can see everything held (it is all in this app), correct any record, withdraw any permission from Share at any time, and erase everything below. Withdrawing consent does not affect access that already happened; it appears in your access log.'),
           _section('Complaints', 'Data Fiduciary: $kDataFiduciary\nGrievance Officer: $kGrievanceContact\nIf you are not satisfied with our response you may complain to the Data Protection Board of India.'),
+          const Eyebrow('Take a copy'),
+          const Note(
+            'One file with everything held for this profile: a page you can read or print, the same records for another app, the original report photos and your access log. '
+            'The file is not encrypted — anyone you send it to can read it.',
+            icon: LucideIcons.download,
+            margin: EdgeInsets.fromLTRB(16, 0, 16, 12),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: SlabButton('Export my records', variant: ButtonVariant.outline, icon: LucideIcons.fileDown, onPressed: _exporting ? null : _export),
+          ),
           const Eyebrow('Danger zone'),
           const Note(icon: LucideIcons.trash2, 'Deletes this profile\'s records, notes, permissions and Emergency ID from this phone. It cannot be undone, and with no backup there is no way to get them back.', margin: EdgeInsets.fromLTRB(20, 0, 20, 12)),
           LabeledField(label: 'Type ERASE to confirm', child: TextField(controller: _confirm, onChanged: (_) => setState(() {}), decoration: const InputDecoration(hintText: 'ERASE'))),

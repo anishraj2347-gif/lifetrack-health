@@ -25,6 +25,10 @@ enum AuditAction {
   vaultBackup,
   vaultRestore,
   erasure,
+
+  /// The patient exported an unencrypted copy of their records to hand to
+  /// another app of their choosing. Written before the file is handed over.
+  export,
 }
 
 class AuditEntry {
