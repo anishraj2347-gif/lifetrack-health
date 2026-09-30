@@ -95,6 +95,13 @@ class _RecordsScreenState extends State<RecordsScreen> {
                     Text(all.isEmpty ? 'No records yet' : 'Nothing matches', style: LT.label),
                     const SizedBox(height: 4),
                     Text(all.isEmpty ? 'Add your first prescription or report.' : 'Try another search or filter.', style: LT.small, textAlign: TextAlign.center),
+                    if (all.isEmpty && AppScope.of(context).demoTools) ...[
+                      const SizedBox(height: 16),
+                      SlabButton('Add sample records', variant: ButtonVariant.outline, icon: LucideIcons.sparkles, onPressed: () async {
+                        await AppScope.of(context).addSampleRecords();
+                        if (context.mounted) AppScope.changed(context);
+                      }),
+                    ],
                   ]),
                 ),
               )

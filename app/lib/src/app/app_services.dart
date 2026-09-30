@@ -176,6 +176,7 @@ class AppServices {
     IdDirectory Function()? idDirectoryOverride,
     IdentityVerifier Function()? verifierOverride,
     bool identityRequired = false,
+    bool demoTools = false,
   }) async {
     final now = clock ?? DateTime.now;
     final sealed = SealedStore(bytes, deviceKey);
@@ -202,6 +203,7 @@ class AppServices {
     );
     services.backupEnabled = backupEnabled;
     services.identityRequired = identityRequired;
+    services.demoTools = demoTools;
     services._backup = ((await sealed.read(_backupBlob) as Map?) ?? {}).cast<String, Object?>();
     consent.evictFinished(now());
     await services._settleOwner();
@@ -303,6 +305,20 @@ class AppServices {
 
   /// The patient's own originals — their phone, their data, no grant.
   Future<List<Uint8List>> originals(HealthRecord r) async => r.attachmentId == null ? const [] : attachments.load(r.attachmentId!);
+
+  /// Demo builds only (`LT_DEMO_TOOLS=true`): shows the add-sample button.
+  bool demoTools = false;
+
+  /// Fills the profile on screen with the sample records (photos stamped
+  /// SAMPLE) and a sample allergy/condition list, for demonstrations.
+  Future<void> addSampleRecords() async {
+    final id = currentPatientId!;
+    await repository.addAll(DemoData.records(id));
+    await repository.saveProfile(id, DemoData.profile(clock()));
+    await _saveDemoOriginals(id);
+    await audit.append(AuditEntry(at: clock(), actorId: 'patient:$id', patientId: id, action: AuditAction.edit, detail: 'Sample records added for a demonstration'));
+    await _backUpQuietly();
+  }
 
   Future<void> _saveDemoOriginals(String patientId) async {
     final name = repository.patient(patientId)!.name;
