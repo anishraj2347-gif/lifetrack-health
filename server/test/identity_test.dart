@@ -67,7 +67,14 @@ void main() {
     expect(jsonEncode(r), isNot(contains('practice-anjali')), reason: 'the DigiLocker id never leaves the server');
   });
 
-  test('an account without Aadhaar is refused', () async {
+  test('an account without Aadhaar is refused — in the app and on the browser page', () async {
+    final start = await json(await call('POST', '/v1/verify/start', body: {'purpose': 'self'}));
+    final auth = Uri.parse(start['authorizeUrl']! as String);
+    final approve = await call('GET', '/v1/practice-digilocker/approve?state=${auth.queryParameters['state']}&challenge=${Uri.encodeQueryComponent(auth.queryParameters['challenge']!)}&account=noaadhaar');
+    final cb = Uri.parse(approve.headers['location']!);
+    final page = await (await call('GET', '${cb.path}?${cb.query}')).readAsString();
+    expect(page, contains('Not verified'));
+    expect(page, isNot(contains('Verified —')));
     final r = await verify('noaadhaar');
     expect(r['status'], 'error');
     expect(r['error'], contains('not linked to an Aadhaar'));

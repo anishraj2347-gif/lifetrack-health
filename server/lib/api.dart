@@ -373,16 +373,20 @@ class LifeTrackApi {
 
   Future<Response> _verifyCallback(Request req) async {
     final q = req.requestedUri.queryParameters;
-    var title = 'Done — go back to LifeTrack';
+    String title;
+    String body;
     try {
-      await identity!.callback(state: q['state'] ?? '', code: q['code'], error: q['error']);
+      final refused = await identity!.callback(state: q['state'] ?? '', code: q['code'], error: q['error']);
+      title = refused == null ? 'Verified — go back to LifeTrack' : 'Not verified';
+      body = refused == null ? 'You can close this page. LifeTrack picks up the result by itself.' : '$refused Go back to LifeTrack to try again.';
     } on VerifyRefused catch (e) {
-      title = e.message;
+      title = 'Not verified';
+      body = e.message;
     }
     return Response.ok(
       '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>LifeTrack</title></head>'
       '<body style="font:18px system-ui;padding:32px;background:#f4f4f2"><h2>${const HtmlEscape().convert(title)}</h2>'
-      '<p>You can close this page. LifeTrack picks up the result by itself.</p></body></html>',
+      '<p>${const HtmlEscape().convert(body)}</p></body></html>',
       headers: {'content-type': 'text/html; charset=utf-8'},
     );
   }

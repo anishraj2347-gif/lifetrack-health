@@ -109,8 +109,10 @@ class IdentityService {
     return (id, secret, provider.authorizeUrl(base: base, state: id, codeChallenge: challenge, purpose: purpose.name));
   }
 
-  /// DigiLocker sent the user back. Records the result or the reason.
-  Future<void> callback({required String state, required String? code, String? error}) async {
+  /// DigiLocker sent the user back. Records the result or the reason, and
+  /// returns the reason (null when the check succeeded) for the page the
+  /// person sees in the browser.
+  Future<String?> callback({required String state, required String? code, String? error}) async {
     _purge();
     final s = _sessions[state];
     if (s == null) throw const VerifyRefused('This verification has expired. Start again in the app.');
@@ -118,7 +120,7 @@ class IdentityService {
       s
         ..status = 'error'
         ..error = error == null ? 'DigiLocker sign-in was cancelled.' : 'DigiLocker said: $error';
-      return;
+      return s.error;
     }
     try {
       final acct = await provider.finish(code: code, codeVerifier: s.verifier);
@@ -127,10 +129,12 @@ class IdentityService {
         VerifyPurpose.newborn => await _newborn(acct, s.parent!),
       };
       s.status = 'done';
+      return null;
     } on VerifyRefused catch (e) {
       s
         ..status = 'error'
         ..error = e.message;
+      return e.message;
     }
   }
 
