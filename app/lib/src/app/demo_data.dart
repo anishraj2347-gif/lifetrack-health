@@ -1,3 +1,4 @@
+import '../model/clinical_profile.dart';
 import '../model/health_record.dart';
 import '../model/patient.dart';
 
@@ -13,6 +14,16 @@ abstract final class DemoData {
         name: 'Anjali Sharma',
         dateOfBirth: DateTime(1984, 6, 14),
         sex: Sex.female,
+      );
+
+  static ClinicalProfile profile(DateTime at) => ClinicalProfile(
+        allergies: const [Allergy(substance: 'Penicillin', reaction: 'rash')],
+        conditions: const [Condition(name: 'Type 2 diabetes', sinceYear: 2021), Condition(name: 'Hypertension', sinceYear: 2023)],
+        familyIllnesses: const [
+          FamilyIllness(relation: Relation.father, condition: 'Heart attack', ageAtOnset: 58),
+          FamilyIllness(relation: Relation.mother, condition: 'Type 2 diabetes', ageAtOnset: 45),
+        ],
+        updatedAt: at,
       );
 
   static List<HealthRecord> records(String patientId) {

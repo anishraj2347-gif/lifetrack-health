@@ -19,6 +19,10 @@ void main() {
       remote: InMemoryRemoteVaultStore(),
       kdf: KdfParams.production,
       cloudFactory: defaultCloud,
+      share: const ShareConfig(
+        relayUrl: String.fromEnvironment('LT_RELAY_URL'),
+        registryKey: String.fromEnvironment('LT_REGISTRY_KEY'),
+      ),
     ),
   ));
 }

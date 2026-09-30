@@ -57,7 +57,8 @@ void main() {
   test('the audit log, grants and records survive the process dying', () async {
     final s = await open();
     await s.createProfile(name: '', dob: DateTime(1984), sex: Sex.female, demo: true);
-    final g = await s.grantDoctor(doctorRegistryId: 'NMC-7', scopes: {DataClass.reports}, window: const Duration(hours: 24), type: GrantType.session);
+    await s.enableInsights();
+    final g = s.activeGrants().single;
     await s.flush();
 
     final relaunched = await open();
@@ -73,12 +74,12 @@ void main() {
   test('expired grants are gone after a relaunch the next week', () async {
     final s = await open();
     await s.createProfile(name: '', dob: DateTime(1984), sex: Sex.female, demo: true);
-    await s.grantDoctor(doctorRegistryId: 'NMC-7', scopes: {DataClass.reports}, window: const Duration(hours: 24), type: GrantType.session);
+    await s.enableInsights();
     await s.flush();
     now = now.add(const Duration(days: 7));
     final later = await open();
     expect(later.activeGrants(), isEmpty);
-    await later.grantDoctor(doctorRegistryId: 'NMC-7', scopes: {DataClass.reports}, window: const Duration(hours: 24), type: GrantType.session);
+    await later.enableInsights();
     expect(later.activeGrants(), hasLength(1));
   });
 
@@ -137,7 +138,7 @@ void main() {
     final s = await open();
     final p = await s.createProfile(name: '', dob: DateTime(1984), sex: Sex.female, demo: true);
     await s.emergency.save(p.id, const EmergencyCard(bloodType: 'B+', allergies: 'Penicillin'));
-    await s.grantDoctor(doctorRegistryId: 'NMC-7', scopes: {DataClass.reports}, window: const Duration(hours: 24), type: GrantType.session);
+    await s.enableInsights();
     await s.vault.create(account: 'acct', patientId: p.id, passphrase: 'x', records: s.records(), at: now);
 
     await s.eraseProfile(account: 'acct');

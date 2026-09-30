@@ -41,6 +41,7 @@ dependencies:
     path: ../packages/lifetrack_protocol
   lucide_icons_flutter: ^3.1.20
   http: ^1.6.0
+  flutter_zxing: ^3.1.0
 
 dev_dependencies:
   flutter_test:

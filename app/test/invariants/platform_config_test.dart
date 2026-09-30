@@ -14,7 +14,12 @@ void main() {
     // Approved custody change, 30 Sep 2026. Any second network permission or
     // network-capable file is a new custody event and must fail here first.
     expect(RegExp('android.permission.INTERNET').allMatches(manifest), hasLength(1));
-    expect(manifest.contains('ACCESS_NETWORK_STATE'), isFalse);
+  });
+
+  test('permissions plugins add but scanning does not need are stripped', () {
+    for (final p in ['RECORD_AUDIO', 'READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE', 'ACCESS_NETWORK_STATE']) {
+      expect(manifest, contains('android.permission.$p" tools:node="remove"'), reason: p);
+    }
   });
 
   test('Android backup and device transfer are refused', () {
@@ -42,7 +47,7 @@ void main() {
     final pubspec = File('pubspec.yaml').readAsStringSync();
     final deps = RegExp(r'^dependencies:\n((?:  .*\n|\s*\n|  #.*\n)*)', multiLine: true).firstMatch(pubspec)!.group(1)!;
     final names = RegExp(r'^  ([a-z_]+):', multiLine: true).allMatches(deps).map((m) => m.group(1)).toSet();
-    expect(names, {'flutter', 'cupertino_icons', 'cryptography', 'path_provider', 'flutter_secure_storage', 'lucide_icons_flutter', 'lifetrack_protocol', 'http'});
+    expect(names, {'flutter', 'cupertino_icons', 'cryptography', 'path_provider', 'flutter_secure_storage', 'lucide_icons_flutter', 'lifetrack_protocol', 'http', 'flutter_zxing'});
     expect(pubspec.contains('google_fonts'), isFalse, reason: 'runtime font download is network egress');
   });
 
