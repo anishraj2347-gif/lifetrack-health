@@ -234,10 +234,13 @@ class ClinicalShareService {
       title: rx.medicine,
       date: rx.issuedAt,
       source: RecordSource.doctorIssued,
-      doctor: '${rx.doctorName}, ${rx.qualification} (${rx.registrationNo})',
+      doctor: '${rx.doctorName}, ${rx.qualification}',
+      prescriberRegistration: rx.registrationNo,
       dose: Dose(morning: rx.morning, afternoon: rx.afternoon, night: rx.night),
       ingredient: rx.ingredient,
       endDate: rx.issuedAt.add(Duration(days: rx.days)),
+      instructions: rx.note,
+      timing: rx.timing,
     );
     await repository.add(record);
     await audit.append(AuditEntry(

@@ -295,7 +295,7 @@ void main() {
       final rec = await service.acceptPrescription(patientId: 'p1', rx: await write(d), doctorCertificateQr: d.qr, at: now.add(const Duration(minutes: 21)));
       expect(rec.provenance, Provenance.signed);
       expect(rec.isActiveAt(now.add(const Duration(days: 30))), isTrue);
-      expect(rec.doctor, contains('DMC-12345'));
+      expect(rec.prescriberRegistration, 'DMC-12345');
       expect(audit.entriesFor('p1').first.action, AuditAction.prescriptionReceived);
     });
 
@@ -346,6 +346,8 @@ void main() {
         night: 1,
         days: 90,
         issuedAt: now.add(const Duration(minutes: 20)),
+        note: 'Repeat lipid panel in 3 months',
+        timing: 'after_food',
       ).signedWith(d.sign);
       final replyKey = base64Decode(replyTo['key']! as String);
       final sealed = await ShareEnvelope.seal(
@@ -360,6 +362,12 @@ void main() {
       final (added, refused) = await service.collectPrescriptions('p1', now.add(const Duration(minutes: 30)));
       expect(refused, 0);
       expect(added.single.title, 'Atorvastatin 10 mg');
+      expect(added.single.instructions, 'Repeat lipid panel in 3 months');
+      expect(added.single.timing, 'after_food');
+      expect(added.single.prescriberRegistration, 'DMC-12345');
+      expect(added.single.endDate!.difference(added.single.date).inDays, 90);
+      final reloaded = repo.recordsOf('p1').firstWhere((r) => r.title == 'Atorvastatin 10 mg');
+      expect(reloaded.instructions, 'Repeat lipid panel in 3 months', reason: 'survives storage');
       expect(repo.recordsOf('p1').any((r) => r.title == 'Atorvastatin 10 mg' && r.provenance == Provenance.signed), isTrue);
     });
 

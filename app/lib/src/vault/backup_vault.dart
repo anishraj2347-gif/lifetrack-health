@@ -155,22 +155,7 @@ class BackupVault {
     final body = await VaultCodec.open(blob, SecretKey(dataKey)) as List;
     final records = [
       for (final r in body)
-        () {
-          final rec = HealthRecord.fromJson((r as Map).cast<String, Object?>());
-          return HealthRecord(
-            id: rec.id,
-            patientId: rec.patientId,
-            kind: rec.kind,
-            title: rec.title,
-            date: rec.date,
-            source: RecordSource.restoredFromBackup,
-            doctor: rec.doctor,
-            facility: rec.facility,
-            results: rec.results,
-            dose: rec.dose,
-            ingredient: rec.ingredient,
-          );
-        }(),
+        HealthRecord.fromJson((r as Map).cast<String, Object?>()).copyWith(source: RecordSource.restoredFromBackup),
     ];
     // A restore reads the entire record set; it belongs in "who opened what".
     await audit.append(AuditEntry(

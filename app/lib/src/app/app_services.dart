@@ -147,24 +147,7 @@ class AppServices {
   /// The patient ticked "still taking" at share time.
   Future<void> confirmMedicines(Set<String> recordIds, DateTime at) async {
     for (final r in records().where((r) => recordIds.contains(r.id))) {
-      await repository.add(HealthRecord(
-        id: r.id,
-        patientId: r.patientId,
-        kind: r.kind,
-        title: r.title,
-        date: r.date,
-        source: r.source,
-        doctor: r.doctor,
-        facility: r.facility,
-        results: r.results,
-        dose: r.dose,
-        ingredient: r.ingredient,
-        labName: r.labName,
-        sampleDate: r.sampleDate,
-        attachmentId: r.attachmentId,
-        endDate: r.endDate,
-        patientConfirmedAt: at,
-      ));
+      await repository.add(r.copyWith(patientConfirmedAt: at));
     }
   }
 

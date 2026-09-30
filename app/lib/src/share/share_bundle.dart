@@ -86,6 +86,8 @@ abstract final class ShareBundle {
         'prescriber': r.doctor,
         'endsOn': r.endDate?.toIso8601String(),
         'patientConfirmedAt': r.patientConfirmedAt?.toIso8601String(),
+        'timing': r.timing,
+        'instructions': r.instructions,
         'source': r.provenance.name,
       };
 

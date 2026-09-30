@@ -22,18 +22,18 @@ abstract final class DT {
   static const label = TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w500, color: ink);
 
   static ThemeData theme() => ThemeData(
-        useMaterial3: true,
-        fontFamily: 'Poppins',
-        scaffoldBackgroundColor: surface,
-        colorScheme: const ColorScheme.light(primary: ink, secondary: accent, surface: surface, error: signal),
-        inputDecorationTheme: const InputDecorationTheme(
-          filled: true,
-          fillColor: raised,
-          isDense: true,
-          border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(14)), borderSide: BorderSide.none),
-          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        ),
-      );
+    useMaterial3: true,
+    fontFamily: 'Poppins',
+    scaffoldBackgroundColor: surface,
+    colorScheme: const ColorScheme.light(primary: ink, secondary: accent, surface: surface, error: signal),
+    inputDecorationTheme: const InputDecorationTheme(
+      filled: true,
+      fillColor: raised,
+      isDense: true,
+      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(14)), borderSide: BorderSide.none),
+      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    ),
+  );
 }
 
 class Card0 extends StatelessWidget {
@@ -43,13 +43,17 @@ class Card0 extends StatelessWidget {
   final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Material(
-          color: dark ? DT.ink : DT.raised,
-          borderRadius: BorderRadius.circular(22),
-          child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(22), child: Padding(padding: const EdgeInsets.all(18), child: child)),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Material(
+      color: dark ? DT.ink : DT.raised,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Padding(padding: const EdgeInsets.all(18), child: child),
+      ),
+    ),
+  );
 }
 
 class Pill extends StatelessWidget {
@@ -58,18 +62,24 @@ class Pill extends StatelessWidget {
   final VoidCallback? onTap;
   final bool dark;
   @override
-  Widget build(BuildContext context) => Material(
-        color: onTap == null ? DT.ink3 : (dark ? DT.ink : DT.raised),
-        shape: const StadiumBorder(),
-        child: InkWell(
-          onTap: onTap,
-          customBorder: const StadiumBorder(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-            child: Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: dark ? DT.onDark : DT.ink)),
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.centerLeft,
+    child: Material(
+      color: onTap == null ? DT.ink3 : (dark ? DT.ink : DT.raised),
+      shape: const StadiumBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+          child: Text(
+            label,
+            style: TextStyle(fontWeight: FontWeight.w600, color: dark ? DT.onDark : DT.ink),
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class Field extends StatelessWidget {
@@ -79,11 +89,17 @@ class Field extends StatelessWidget {
   final String? hint;
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: DT.label),
-          const SizedBox(height: 6),
-          TextField(controller: controller, decoration: InputDecoration(hintText: hint)),
-        ]),
-      );
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: DT.label),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          decoration: InputDecoration(hintText: hint),
+        ),
+      ],
+    ),
+  );
 }

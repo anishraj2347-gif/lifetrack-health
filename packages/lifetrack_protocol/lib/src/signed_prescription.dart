@@ -22,6 +22,7 @@ class SignedPrescription {
     required this.days,
     required this.issuedAt,
     this.note,
+    this.timing,
     this.signature = const [],
   });
 
@@ -38,6 +39,10 @@ class SignedPrescription {
   final int days;
   final DateTime issuedAt;
   final String? note;
+
+  /// When to take it relative to food: `before_food`, `after_food`,
+  /// `with_food`, or null when it does not matter.
+  final String? timing;
   final List<int> signature;
 
   Map<String, Object?> _body() => {
@@ -53,6 +58,7 @@ class SignedPrescription {
         'days': days,
         'issuedAt': issuedAt.toUtc().toIso8601String(),
         'note': note,
+        if (timing != null) 'timing': timing,
       };
 
   List<int> get signedBytes => utf8.encode(jsonEncode(_body()));
@@ -83,6 +89,7 @@ class SignedPrescription {
       days: j['days']! as int,
       issuedAt: DateTime.parse(j['issuedAt']! as String),
       note: j['note'] as String?,
+      timing: j['timing'] as String?,
       signature: j['signature'] == null ? const [] : base64Decode(j['signature']! as String),
     );
   }

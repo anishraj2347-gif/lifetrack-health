@@ -115,6 +115,9 @@ class HealthRecord {
     this.attachmentId,
     this.endDate,
     this.patientConfirmedAt,
+    this.instructions,
+    this.timing,
+    this.prescriberRegistration,
   });
 
   final String id;
@@ -148,7 +151,41 @@ class HealthRecord {
   /// When the patient last confirmed they are still taking this medicine.
   final DateTime? patientConfirmedAt;
 
+  /// The prescriber's own words to the patient ("Repeat lipid panel in 3
+  /// months"). Reproduced exactly; never rewritten by the app.
+  final String? instructions;
+
+  /// `before_food`, `after_food`, `with_food`, or null.
+  final String? timing;
+
+  /// The prescriber's registration number, from a verified signature.
+  final String? prescriberRegistration;
+
   DataClass get dataClass => dataClassOf(kind);
+
+  /// Every field carried over; only [source] and [patientConfirmedAt] ever
+  /// change after a record is written.
+  HealthRecord copyWith({RecordSource? source, DateTime? patientConfirmedAt}) => HealthRecord(
+        id: id,
+        patientId: patientId,
+        kind: kind,
+        title: title,
+        date: date,
+        source: source ?? this.source,
+        doctor: doctor,
+        facility: facility,
+        results: results,
+        dose: dose,
+        ingredient: ingredient,
+        labName: labName,
+        sampleDate: sampleDate,
+        attachmentId: attachmentId,
+        endDate: endDate,
+        patientConfirmedAt: patientConfirmedAt ?? this.patientConfirmedAt,
+        instructions: instructions,
+        timing: timing,
+        prescriberRegistration: prescriberRegistration,
+      );
 
   DateTime get effectiveDate => sampleDate ?? date;
 
@@ -185,6 +222,9 @@ class HealthRecord {
         if (attachmentId != null) 'attachment': attachmentId,
         if (endDate != null) 'ends': endDate!.toIso8601String(),
         if (patientConfirmedAt != null) 'confirmed': patientConfirmedAt!.toIso8601String(),
+        if (instructions != null) 'instructions': instructions,
+        if (timing != null) 'timing': timing,
+        if (prescriberRegistration != null) 'prescriberReg': prescriberRegistration,
       };
 
   static HealthRecord fromJson(Map<String, Object?> j) => HealthRecord(
@@ -207,6 +247,9 @@ class HealthRecord {
         attachmentId: j['attachment'] as String?,
         endDate: _date(j['ends']),
         patientConfirmedAt: _date(j['confirmed']),
+        instructions: j['instructions'] as String?,
+        timing: j['timing'] as String?,
+        prescriberRegistration: j['prescriberReg'] as String?,
       );
 
   static DateTime? _date(Object? v) => v == null ? null : DateTime.parse(v as String);
