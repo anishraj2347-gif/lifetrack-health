@@ -2,10 +2,9 @@ import 'dart:typed_data';
 
 /// The encrypted mailbox between a patient's phone and a doctor's device.
 ///
-/// It carries ciphertext it cannot open, keyed by the doctor's key id, and
-/// deletes it on pickup or at [deposit]'s `expiresAt` (CLAUDE.md #1b). No
-/// network implementation exists yet: the release build has no INTERNET
-/// permission, and the relay server is a phase 2 hosting decision.
+/// It carries ciphertext it cannot open and deletes it on pickup or at expiry
+/// (CLAUDE.md #1b). Mailbox ids follow `RelayApi`: `d-…` for a doctor
+/// device, `p-…` for a patient's reply mailbox.
 abstract interface class RelayClient {
   Future<void> deposit({required String mailbox, required String grantId, required Uint8List envelope, required DateTime expiresAt});
 
@@ -13,6 +12,9 @@ abstract interface class RelayClient {
   /// out of reach — the doctor app is asked to discard it, which is
   /// cooperative, and the UI says so.
   Future<void> withdraw({required String mailbox, required String grantId});
+
+  /// The patient collects their reply mailbox (prescriptions coming back).
+  Future<List<Uint8List>> collect({required String mailbox, required String secret});
 }
 
 /// For tests and for the doctor-side simulation.
@@ -25,6 +27,10 @@ class InMemoryRelay implements RelayClient {
 
   @override
   Future<void> withdraw({required String mailbox, required String grantId}) async => _boxes[mailbox]?.remove(grantId);
+
+  @override
+  Future<List<Uint8List>> collect({required String mailbox, required String secret}) async =>
+      [for (final (env, _) in (_boxes.remove(mailbox) ?? {}).values) env];
 
   /// Doctor pickup: returns and deletes every unexpired share.
   List<Uint8List> pickUp(String mailbox, DateTime at) {

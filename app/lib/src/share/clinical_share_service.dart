@@ -9,6 +9,7 @@ import '../model/clinical_profile.dart';
 import '../model/health_record.dart';
 import '../storage/record_repository.dart';
 import 'relay.dart';
+import 'reply_identity.dart';
 import 'share_bundle.dart';
 
 class ShareReceipt {
@@ -38,6 +39,7 @@ class ClinicalShareService {
     required this.audit,
     required this.repository,
     required this.relay,
+    required this.replyIdentity,
   });
 
   final RegistryTrust trust;
@@ -46,6 +48,9 @@ class ClinicalShareService {
   final AuditLog audit;
   final RecordRepository repository;
   final RelayClient relay;
+
+  /// This phone's reply mailbox and key, per patient.
+  final Future<ReplyIdentity> Function(String patientId) replyIdentity;
 
   /// Step 1 — the patient scans the doctor's code. Throws
   /// [CertificateRejected] with a patient-readable reason.
@@ -67,6 +72,7 @@ class ClinicalShareService {
     if (!at.isBefore(doctor.expiresAt)) throw const CertificateRejected(CertificateProblem.expired);
     final patient = repository.patient(patientId)!;
     final keyId = await doctor.keyId();
+    final mailbox = await RelayApi.doctorMailbox(doctor.encryptionKey);
     final actor = Actors.doctor(doctor.registryId);
 
     // One live grant per doctor per patient: a new approval replaces the old.
@@ -123,11 +129,11 @@ class ClinicalShareService {
       reports: await read(DataClass.reports),
       scans: await read(DataClass.scans),
       profileUpdatedAt: repository.profileOf(patientId).updatedAt,
-    );
+    )..['replyTo'] = (await replyIdentity(patientId)).replyTo;
 
     final envelope = await ShareEnvelope.seal(
       bundle: bundle,
-      doctorEncryptionKey: doctor.encryptionKey,
+      recipientKey: doctor.encryptionKey,
       keyId: keyId,
       grantId: grant.id,
       expiresAt: grant.expiresAt,
@@ -141,7 +147,7 @@ class ClinicalShareService {
       tokenId: grant.id,
       detail: 'Sent to ${doctor.name} (${doctor.registrationNo}), encrypted to their device',
     ));
-    await relay.deposit(mailbox: keyId, grantId: grant.id, envelope: envelope, expiresAt: grant.expiresAt);
+    await relay.deposit(mailbox: mailbox, grantId: grant.id, envelope: envelope, expiresAt: grant.expiresAt);
     return ShareReceipt(grant: grant, doctor: doctor, withheld: requestedScopes.difference(scopes));
   }
 
@@ -153,7 +159,7 @@ class ClinicalShareService {
   Future<void> _end(ConsentToken grant, DateTime at, String why) async {
     consent.revoke(grant.id);
     if (grant.granteeKeyId != null) {
-      await relay.withdraw(mailbox: grant.granteeKeyId!, grantId: grant.id);
+      await relay.withdraw(mailbox: 'd-${grant.granteeKeyId!}', grantId: grant.id);
     }
     await audit.append(AuditEntry(
       at: at,
@@ -163,6 +169,37 @@ class ClinicalShareService {
       tokenId: grant.id,
       detail: why,
     ));
+  }
+
+  /// Checks this patient's reply mailbox and adds every prescription that
+  /// verifies. Returns (added, refused): a refused one is audited, never
+  /// silently dropped.
+  Future<(List<HealthRecord>, int)> collectPrescriptions(String patientId, DateTime at) async {
+    final me = await replyIdentity(patientId);
+    final added = <HealthRecord>[];
+    var refused = 0;
+    for (final env in await relay.collect(mailbox: me.mailbox, secret: me.secret)) {
+      try {
+        final payload = await ShareEnvelope.open(env, me.keyPair, at);
+        added.add(await acceptPrescription(
+          patientId: patientId,
+          rx: SignedPrescription.fromJson((payload['prescription']! as Map).cast()),
+          doctorCertificateQr: payload['certificate']! as String,
+          at: at,
+        ));
+      } on Object catch (e) {
+        refused++;
+        await audit.append(AuditEntry(
+          at: at,
+          actorId: 'relay',
+          patientId: patientId,
+          action: AuditAction.denied,
+          dataClass: DataClass.prescriptions,
+          detail: 'A prescription was refused: ${e is PrescriptionRejected ? e.reason : e is CertificateRejected ? e.patientMessage : 'it could not be opened'}',
+        ));
+      }
+    }
+    return (added, refused);
   }
 
   /// A prescription arriving from a doctor. Accepted only when the doctor's

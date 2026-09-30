@@ -10,9 +10,11 @@ void main() {
   final manifest = File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
   final gradle = File('android/app/build.gradle.kts').readAsStringSync();
 
-  test('the release manifest requests no INTERNET permission', () {
-    // Debug and profile manifests add it for the Flutter tool; release must not.
-    expect(manifest.contains('android.permission.INTERNET'), isFalse);
+  test('INTERNET is requested once, for the encrypted relay only (CLAUDE.md #3)', () {
+    // Approved custody change, 30 Sep 2026. Any second network permission or
+    // network-capable file is a new custody event and must fail here first.
+    expect(RegExp('android.permission.INTERNET').allMatches(manifest), hasLength(1));
+    expect(manifest.contains('ACCESS_NETWORK_STATE'), isFalse);
   });
 
   test('Android backup and device transfer are refused', () {
@@ -36,11 +38,11 @@ void main() {
     expect(RegExp('CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;').allMatches(pbx), hasLength(3));
   });
 
-  test('dependencies are the allowlist — none can reach the network', () {
+  test('dependencies are the allowlist — only http can reach the network', () {
     final pubspec = File('pubspec.yaml').readAsStringSync();
     final deps = RegExp(r'^dependencies:\n((?:  .*\n|\s*\n|  #.*\n)*)', multiLine: true).firstMatch(pubspec)!.group(1)!;
     final names = RegExp(r'^  ([a-z_]+):', multiLine: true).allMatches(deps).map((m) => m.group(1)).toSet();
-    expect(names, {'flutter', 'cupertino_icons', 'cryptography', 'path_provider', 'flutter_secure_storage', 'lucide_icons_flutter', 'lifetrack_protocol'});
+    expect(names, {'flutter', 'cupertino_icons', 'cryptography', 'path_provider', 'flutter_secure_storage', 'lucide_icons_flutter', 'lifetrack_protocol', 'http'});
     expect(pubspec.contains('google_fonts'), isFalse, reason: 'runtime font download is network egress');
   });
 

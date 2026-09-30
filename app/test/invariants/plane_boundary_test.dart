@@ -69,10 +69,19 @@ void main() {
     expect(code.contains('plane_'), isFalse);
   });
 
-  test('nothing in lib/ can open a socket', () {
+  test('exactly one file in lib/ can reach the network: the encrypted relay client', () {
     final banned = RegExp(r'\b(HttpClient|Socket|RawSocket|WebSocket|SecureSocket|HttpServer|NetworkInterface|InternetAddress)\b');
     for (final f in lib) {
       expect(banned.hasMatch(codeOf(f)), isFalse, reason: rel(f));
+    }
+    final httpImporters = [for (final f in lib) if (codeOf(f).contains("package:http/")) rel(f)];
+    expect(httpImporters, ['lib/src/share/http_relay_client.dart']);
+  });
+
+  test('the relay client never touches records in the clear', () {
+    final code = codeOf(lib.firstWhere((f) => rel(f) == 'lib/src/share/http_relay_client.dart'));
+    for (final s in ['health_record.dart', 'record_repository.dart', 'record_access.dart', 'clinical_profile.dart']) {
+      expect(code.contains(s), isFalse, reason: s);
     }
   });
 }

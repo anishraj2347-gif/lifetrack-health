@@ -3,7 +3,8 @@ import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 
-/// A clinical share, sealed to one doctor device (CLAUDE.md #1b).
+/// A clinical share sealed to one doctor device, or a prescription sealed back
+/// to one patient's reply key (CLAUDE.md #1b).
 ///
 /// X25519 with a fresh ephemeral key per share → HKDF-SHA256 → AES-256-GCM.
 /// Mirrors the shape of ABDM's ECDH-Curve25519 exchange so moving to the
@@ -19,7 +20,7 @@ abstract final class ShareEnvelope {
 
   static Future<Uint8List> seal({
     required Map<String, Object?> bundle,
-    required List<int> doctorEncryptionKey,
+    required List<int> recipientKey,
     required String keyId,
     required String grantId,
     required DateTime expiresAt,
@@ -28,7 +29,7 @@ abstract final class ShareEnvelope {
     final ephPub = await eph.extractPublicKey();
     final shared = await _x.sharedSecretKey(
       keyPair: eph,
-      remotePublicKey: SimplePublicKey(doctorEncryptionKey, type: KeyPairType.x25519),
+      remotePublicKey: SimplePublicKey(recipientKey, type: KeyPairType.x25519),
     );
     final key = await _hkdf.deriveKey(secretKey: shared, nonce: ephPub.bytes, info: _info(keyId, grantId));
     // The routing fields are bound into the ciphertext as associated data,
@@ -51,6 +52,7 @@ abstract final class ShareEnvelope {
   /// Doctor side: opens a share with the device's X25519 key pair. Refuses an
   /// expired share even if the relay failed to delete it.
   static Future<Map<String, Object?>> open(Uint8List envelope, SimpleKeyPair doctorKeyPair, DateTime at) async {
+    // doctorKeyPair: whichever X25519 pair the envelope was sealed to.
     final j = (jsonDecode(utf8.decode(envelope)) as Map).cast<String, Object?>();
     if (j['v'] != version) throw const FormatException('Unknown share version.');
     final expires = DateTime.parse(j['exp']! as String);

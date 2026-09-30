@@ -11,7 +11,7 @@ void main() {
     final at = DateTime.utc(2026, 9, 30, 12);
     final env = await ShareEnvelope.seal(
       bundle: {'hello': 'doctor'},
-      doctorEncryptionKey: pub,
+      recipientKey: pub,
       keyId: await RelayApi.keyId(pub),
       grantId: 'g1',
       expiresAt: at.add(const Duration(hours: 4)),

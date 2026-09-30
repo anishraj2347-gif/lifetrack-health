@@ -13,6 +13,7 @@ import 'package:lifetrack/src/model/clinical_profile.dart';
 import 'package:lifetrack/src/model/health_record.dart';
 import 'package:lifetrack/src/share/clinical_share_service.dart';
 import 'package:lifetrack/src/share/relay.dart';
+import 'package:lifetrack/src/share/reply_identity.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
 import 'package:lifetrack/src/storage/record_repository.dart';
 import 'package:lifetrack/src/storage/sealed_store.dart';
@@ -34,6 +35,7 @@ void main() {
   late RecordRepository repo;
   late InMemoryRelay relay;
   late ClinicalShareService service;
+  late ReplyIdentity me;
 
   Future<Doctor> doctor({String id = 'DMC-12345', DateTime? expires, SimpleKeyPair? signer}) async {
     final enc = await X25519().newKeyPair();
@@ -68,7 +70,7 @@ void main() {
 
   Future<Map<String, Object?>> pickUpAndOpen(Doctor d, {DateTime? at}) async {
     final cert = DoctorCertificate.decode(d.qr);
-    final envs = relay.pickUp(await cert.keyId(), at ?? now);
+    final envs = relay.pickUp(await RelayApi.doctorMailbox(cert.encryptionKey), at ?? now);
     expect(envs, hasLength(1));
     return ShareEnvelope.open(envs.single, d.enc, at ?? now);
   }
@@ -92,7 +94,9 @@ void main() {
       ),
     );
     relay = InMemoryRelay();
+    me = await ReplyIdentity.create();
     service = ClinicalShareService(
+      replyIdentity: (_) async => me,
       trust: trust,
       consent: consent,
       access: RecordAccess(consent: consent, audit: audit, repository: repo),
@@ -159,7 +163,7 @@ void main() {
     test('a different device key cannot open it', () async {
       final d = await doctor();
       await service.share(patientId: 'p1', doctor: await service.scan(d.qr, now), levels: {AccessLevel.summary}, at: now);
-      final env = relay.pickUp(await DoctorCertificate.decode(d.qr).keyId(), now).single;
+      final env = relay.pickUp(await RelayApi.doctorMailbox(DoctorCertificate.decode(d.qr).encryptionKey), now).single;
       await expectLater(ShareEnvelope.open(env, await X25519().newKeyPair(), now), throwsA(anything));
     });
 
@@ -247,7 +251,7 @@ void main() {
       final live = consent.activeGrantsFor('p1', now.add(const Duration(minutes: 6)));
       expect(live.map((g) => g.id), [second.grant.id]);
       expect(live.single.id, isNot(first.grant.id));
-      expect(relay.pending(await cert.keyId()), 1, reason: 'the first, undelivered share was withdrawn');
+      expect(relay.pending(await RelayApi.doctorMailbox(cert.encryptionKey)), 1, reason: 'the first, undelivered share was withdrawn');
     });
 
     test('ending access removes a share the doctor has not picked up', () async {
@@ -255,14 +259,14 @@ void main() {
       final cert = await service.scan(d.qr, now);
       final r = await service.share(patientId: 'p1', doctor: cert, levels: {AccessLevel.summary}, at: now);
       await service.endAccess(r.grant, now.add(const Duration(minutes: 1)));
-      expect(relay.pending(await cert.keyId()), 0);
+      expect(relay.pending(await RelayApi.doctorMailbox(cert.encryptionKey)), 0);
       expect(consent.activeGrantsFor('p1', now), isEmpty);
     });
 
     test('a relay cannot re-address a share to another grant', () async {
       final d = await doctor();
       await service.share(patientId: 'p1', doctor: await service.scan(d.qr, now), levels: {AccessLevel.summary}, at: now);
-      final env = relay.pickUp(await DoctorCertificate.decode(d.qr).keyId(), now).single;
+      final env = relay.pickUp(await RelayApi.doctorMailbox(DoctorCertificate.decode(d.qr).encryptionKey), now).single;
       final j = jsonDecode(utf8.decode(env)) as Map;
       j['gid'] = 'grant-someone-else';
       await expectLater(ShareEnvelope.open(Uint8List.fromList(utf8.encode(jsonEncode(j))), d.enc, now), throwsA(anything));
@@ -319,6 +323,54 @@ void main() {
         service.acceptPrescription(patientId: 'p1', rx: await write(d, patient: 'p2'), doctorCertificateQr: d.qr, at: now),
         throwsA(isA<PrescriptionRejected>()),
       );
+    });
+  });
+
+  group('the full round trip over the relay', () {
+    test('patient shares, doctor replies with a sealed signed prescription, patient collects it', () async {
+      final d = await doctor();
+      await service.share(patientId: 'p1', doctor: await service.scan(d.qr, now), levels: {AccessLevel.summary}, at: now);
+      final bundle = await pickUpAndOpen(d);
+      final replyTo = (bundle['replyTo']! as Map).cast<String, Object?>();
+
+      final rx = await SignedPrescription(
+        patientId: 'p1',
+        doctorRegistryId: 'DMC-12345',
+        doctorName: 'Dr. R. Mehta',
+        qualification: 'MD (Medicine)',
+        registrationNo: 'DMC-12345',
+        medicine: 'Atorvastatin 10 mg',
+        ingredient: 'atorvastatin',
+        morning: 0,
+        afternoon: 0,
+        night: 1,
+        days: 90,
+        issuedAt: now.add(const Duration(minutes: 20)),
+      ).signedWith(d.sign);
+      final replyKey = base64Decode(replyTo['key']! as String);
+      final sealed = await ShareEnvelope.seal(
+        bundle: {'prescription': rx.toJson(), 'certificate': d.qr},
+        recipientKey: replyKey,
+        keyId: await RelayApi.keyId(replyKey),
+        grantId: 'rx-1',
+        expiresAt: now.add(const Duration(hours: 48)),
+      );
+      await relay.deposit(mailbox: replyTo['mailbox']! as String, grantId: 'rx-1', envelope: sealed, expiresAt: now.add(const Duration(hours: 48)));
+
+      final (added, refused) = await service.collectPrescriptions('p1', now.add(const Duration(minutes: 30)));
+      expect(refused, 0);
+      expect(added.single.title, 'Atorvastatin 10 mg');
+      expect(repo.recordsOf('p1').any((r) => r.title == 'Atorvastatin 10 mg' && r.provenance == Provenance.signed), isTrue);
+    });
+
+    test('a tampered or unreadable reply is refused and logged, never silently dropped', () async {
+      final d = await doctor();
+      await service.share(patientId: 'p1', doctor: await service.scan(d.qr, now), levels: {AccessLevel.summary}, at: now);
+      await relay.deposit(mailbox: me.mailbox, grantId: 'junk', envelope: Uint8List.fromList(utf8.encode('{"v":1}')), expiresAt: now.add(const Duration(hours: 1)));
+      final (added, refused) = await service.collectPrescriptions('p1', now);
+      expect(added, isEmpty);
+      expect(refused, 1);
+      expect(audit.entriesFor('p1').first.action, AuditAction.denied);
     });
   });
 }
