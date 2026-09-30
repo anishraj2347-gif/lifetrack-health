@@ -86,6 +86,7 @@ class OriginalsStrip extends StatelessWidget {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('Original ${record.kind == RecordKind.prescription ? 'prescription' : 'report'}', style: LT.label.copyWith(fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 4),
                       Text('${pages.length} page${pages.length == 1 ? '' : 's'} · tap to view and zoom', style: LT.small),
                     ]),
                   ),

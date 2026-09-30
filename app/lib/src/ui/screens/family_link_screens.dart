@@ -186,6 +186,7 @@ Widget _tick(String title, String sub, bool value, ValueChanged<bool> onChanged)
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title, style: LT.label),
+            const SizedBox(height: 4),
             Text(sub, style: LT.small),
           ]),
         ),
@@ -220,6 +221,7 @@ class LinkedAdultsSection extends StatelessWidget {
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(l.name, style: LT.label.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
                     Text(theirLine(l), style: LT.small),
                   ]),
                 ),
@@ -227,7 +229,7 @@ class LinkedAdultsSection extends StatelessWidget {
               ]),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
             child: SlabButton('Join a family', variant: ButtonVariant.outline, icon: LucideIcons.scanLine, onPressed: () async {
               await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const JoinFamilyScreen()));
               if (context.mounted) AppScope.changed(context);

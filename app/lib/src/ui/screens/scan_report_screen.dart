@@ -241,7 +241,7 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
               ]),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
             child: SlabButton('Add a value', variant: ButtonVariant.outline, icon: LucideIcons.plus, onPressed: () => setState(() => _values.add(_Value()))),
           ),
         ],

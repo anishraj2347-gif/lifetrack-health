@@ -143,7 +143,7 @@ class Badge2 extends StatelessWidget {
 
 /// shadcn Card.
 class ShadCard extends StatelessWidget {
-  const ShadCard({super.key, required this.child, this.onTap, this.margin = const EdgeInsets.fromLTRB(16, 0, 16, 10), this.padding = const EdgeInsets.all(16), this.color = LT.surface, this.borderColor});
+  const ShadCard({super.key, required this.child, this.onTap, this.margin = const EdgeInsets.fromLTRB(16, 0, 16, 12), this.padding = const EdgeInsets.all(16), this.color = LT.surface, this.borderColor});
   final Widget child;
   final VoidCallback? onTap;
   final EdgeInsets margin;

@@ -62,6 +62,7 @@ class ShareScreen extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Show on my phone', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
+              SizedBox(height: 4),
               Text('Hand the phone to the doctor. Nothing is sent.', style: TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
             ]),
           ),
@@ -80,6 +81,7 @@ class ShareScreen extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Share with a doctor', style: LT.label),
+                SizedBox(height: 4),
                 Text("Scan their verified code; it's encrypted to their device", style: LT.small),
               ]),
             ),
@@ -87,7 +89,7 @@ class ShareScreen extends StatelessWidget {
           ]),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
           child: SlabButton('Check for updates', variant: ButtonVariant.outline, icon: LucideIcons.inbox, onPressed: () async {
             final msg = ScaffoldMessenger.of(context);
             try {
@@ -126,7 +128,7 @@ class ShareScreen extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(describeActor(g.grantedToActorId), style: LT.label),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Text(g.levels.isNotEmpty ? levelsLabel(g.levels) : g.scopes.map((c) => dataClassNames[c]).join(', '), style: LT.small),
                 const SizedBox(height: 8),
                 Badge2('Until ${dateTime(g.expiresAt)}', tone: BadgeTone.outline),

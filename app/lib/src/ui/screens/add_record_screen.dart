@@ -84,6 +84,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('Photograph a paper report', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
+                  SizedBox(height: 4),
                   Text('Best for lab reports and prescriptions on paper', style: TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
                 ]),
               ),

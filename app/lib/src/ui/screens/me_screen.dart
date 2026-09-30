@@ -34,7 +34,7 @@ class MeScreen extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(p.name, style: LT.title.copyWith(fontSize: 22)),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               if (s.isDemo) const Badge2('Sample records', tone: BadgeTone.caution) else const Badge2('On this phone', tone: BadgeTone.trace),
             ]),
           ),
@@ -59,6 +59,7 @@ class MeScreen extends StatelessWidget {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(f.name, style: LT.label.copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
                   Text(FamilyBar.authorityLine(c), style: LT.small),
                   if (c.consentedAt != null) Text('Since ${fullDate(c.consentedAt!)}', style: LT.small.copyWith(fontSize: 12)),
                   if (c.kind == CustodyKind.delegatedByAdult)
@@ -75,7 +76,7 @@ class MeScreen extends StatelessWidget {
           );
         }(),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
         child: SlabButton('Add a family member', variant: ButtonVariant.outline, icon: LucideIcons.userPlus, onPressed: () async {
           await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AddFamilyScreen()));
           if (context.mounted) AppScope.changed(context);
@@ -105,7 +106,7 @@ class MeScreen extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(title, style: LT.label),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(sub, style: LT.small),
               ]),
             ),

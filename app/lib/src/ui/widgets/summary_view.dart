@@ -136,6 +136,7 @@ class SummaryView extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(main, style: LT.label.copyWith(fontWeight: FontWeight.w600, color: quiet ? LT.ink3 : LT.ink)),
+          const SizedBox(height: 4),
           if (sub.isNotEmpty) Text(sub, style: LT.small.copyWith(fontSize: 12)),
         ]),
       );
