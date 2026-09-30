@@ -11,6 +11,7 @@ import '../consent/record_access.dart';
 import '../model/clinical_profile.dart';
 import '../model/health_record.dart';
 import '../storage/record_repository.dart';
+import 'http_relay_client.dart' show WithdrawTokenStore, InMemoryWithdrawTokens;
 import 'relay.dart';
 import 'reply_identity.dart';
 import 'share_bundle.dart';
@@ -45,7 +46,12 @@ class ClinicalShareService {
     required this.replyIdentity,
     this.originals,
     this.shrink,
-  });
+    WithdrawTokenStore? keyBook,
+  }) : keyBook = keyBook ?? InMemoryWithdrawTokens();
+
+  /// Each live share's doctor key, so ending access can tell that device to
+  /// close a share it has already picked up.
+  final WithdrawTokenStore keyBook;
 
   /// Loads a record's original pages; null in tests that do not need them.
   final Future<List<Uint8List>> Function(HealthRecord record)? originals;
@@ -153,7 +159,8 @@ class ClinicalShareService {
       profileUpdatedAt: repository.profileOf(patientId).updatedAt,
     )
       ..['replyTo'] = (await replyIdentity(patientId)).replyTo
-      ..['sharedBy'] = sharedBy;
+      ..['sharedBy'] = sharedBy
+      ..['closeSecret'] = await _closeSecret(patientId, grant.id);
     await _attachOriginals(bundle, released);
 
     final envelope = await ShareEnvelope.seal(
@@ -173,6 +180,7 @@ class ClinicalShareService {
       detail: 'Sent to ${doctor.name} (${doctor.registrationNo}), encrypted to their device',
     ));
     await relay.deposit(mailbox: mailbox, grantId: grant.id, envelope: envelope, expiresAt: grant.expiresAt);
+    await keyBook.put('dk-${grant.id}', base64Encode(doctor.encryptionKey));
     return ShareReceipt(grant: grant, doctor: doctor, withheld: requestedScopes.difference(scopes));
   }
 
@@ -209,12 +217,36 @@ class ClinicalShareService {
   /// The patient ends access. Removes anything not yet picked up; a share
   /// already delivered can only be discarded by the doctor app, which the
   /// screen says plainly.
+  Future<String> _closeSecret(String patientId, String grantId) async =>
+      RelayApi.sha256Hex('${(await replyIdentity(patientId)).secret}|close|$grantId');
+
   Future<void> endAccess(ConsentToken grant, DateTime at) => _end(grant, at, 'ended by patient');
 
   Future<void> _end(ConsentToken grant, DateTime at, String why) async {
     consent.revoke(grant.id);
     if (grant.granteeKeyId != null) {
-      await relay.withdraw(mailbox: 'd-${grant.granteeKeyId!}', grantId: grant.id);
+      final mailbox = 'd-${grant.granteeKeyId!}';
+      await relay.withdraw(mailbox: mailbox, grantId: grant.id);
+      // Already picked up? Tell the doctor's device to close it now rather
+      // than at expiry. Only this phone knows the secret, so nobody else can
+      // close a patient's share.
+      final key = await keyBook.take('dk-${grant.id}');
+      if (key != null && at.isBefore(grant.expiresAt)) {
+        final k = base64Decode(key);
+        final id = 'close-${grant.id}';
+        await relay.deposit(
+          mailbox: mailbox,
+          grantId: id,
+          envelope: await ShareEnvelope.seal(
+            bundle: {'type': 'close', 'grantId': grant.id, 'closeSecret': await _closeSecret(grant.patientId, grant.id)},
+            recipientKey: k,
+            keyId: grant.granteeKeyId!,
+            grantId: id,
+            expiresAt: grant.expiresAt,
+          ),
+          expiresAt: grant.expiresAt,
+        );
+      }
     }
     await audit.append(AuditEntry(
       at: at,

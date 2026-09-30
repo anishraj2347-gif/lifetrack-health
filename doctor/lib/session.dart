@@ -7,8 +7,9 @@ import 'package:http/http.dart' as http;
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// A patient's share as the doctor holds it: in memory only, and dropped at
-/// the grant's expiry. The doctor keeps their own consult note and any
+/// A patient's share as the doctor holds it: opened in memory; on disk only
+/// as the envelope still encrypted to this device, dropped at the grant's
+/// expiry or when the patient ends access. The doctor keeps their own consult note and any
 /// prescription they write — not the patient's shared records.
 class ReceivedShare {
   ReceivedShare({required this.grantId, required this.bundle, required this.expiresAt, required this.receivedAt});
@@ -37,6 +38,7 @@ class DoctorSession {
   static const _kSign = 'lt.doctor.sign';
   static const _kProfile = 'lt.doctor.profile';
   static const _kCert = 'lt.doctor.cert';
+  static const _kInbox = 'lt.doctor.inbox';
 
   final SharedPreferences prefs;
   final Uri base;
@@ -50,6 +52,9 @@ class DoctorSession {
   String? note;
   final List<ReceivedShare> inbox = [];
 
+  /// Names whose shares the patient closed since the screen last showed it.
+  final List<String> closedByPatient = [];
+
   static Future<DoctorSession> load(Uri base) async {
     final s = DoctorSession._(await SharedPreferences.getInstance(), base);
     final encSeed = s.prefs.getString(_kEnc);
@@ -60,6 +65,7 @@ class DoctorSession {
       s.profile = (jsonDecode(s.prefs.getString(_kProfile) ?? '{}') as Map).cast();
       s.certificateQr = s.prefs.getString(_kCert);
       s.state = s.certificateQr != null ? EnrolmentState.approved : EnrolmentState.pending;
+      await s._restoreInbox();
     }
     return s;
   }
@@ -122,18 +128,65 @@ class DoctorSession {
       final header = (jsonDecode(utf8.decode(env)) as Map);
       try {
         final bundle = await ShareEnvelope.open(Uint8List.fromList(env), enc!, now);
+        if (bundle['type'] == 'close') {
+          // The patient ended access. Only their phone knows this secret.
+          final gone = inbox.where((s) => s.grantId == bundle['grantId'] && s.bundle['closeSecret'] == bundle['closeSecret']).toList();
+          for (final s in gone) {
+            inbox.remove(s);
+            closedByPatient.add(s.patientName);
+          }
+          continue;
+        }
         inbox.removeWhere((s) => s.patientName == ((bundle['patient'] as Map?)?['name']));
-        inbox.insert(0, ReceivedShare(grantId: i['grantId']! as String, bundle: bundle, expiresAt: DateTime.parse(header['exp']! as String), receivedAt: now));
+        final grantId = i['grantId']! as String;
+        inbox.insert(0, ReceivedShare(grantId: grantId, bundle: bundle, expiresAt: DateTime.parse(header['exp']! as String), receivedAt: now));
+        _sealed[grantId] = (i['envelope']! as String, now);
         n++;
       } on ShareExpired {
         // Arrived too late: dropped unread.
       }
     }
+    await _saveInbox();
     return n;
   }
 
   /// Drops every share whose access window has ended.
-  void closeExpired(DateTime now) => inbox.removeWhere((s) => !now.isBefore(s.expiresAt));
+  Future<void> closeExpired(DateTime now) async {
+    final before = inbox.length;
+    inbox.removeWhere((s) => !now.isBefore(s.expiresAt));
+    if (inbox.length != before) await _saveInbox();
+  }
+
+  /// Envelopes as they arrived — still encrypted to this device — so a page
+  /// reload re-opens them instead of losing them. Each is removed when its
+  /// share expires or the patient closes it.
+  final Map<String, (String envelope, DateTime receivedAt)> _sealed = {};
+
+  Future<void> _saveInbox() async {
+    _sealed.removeWhere((id, _) => !inbox.any((s) => s.grantId == id));
+    await prefs.setString(_kInbox, jsonEncode([
+      for (final e in _sealed.entries) {'grantId': e.key, 'envelope': e.value.$1, 'at': e.value.$2.toIso8601String()},
+    ]));
+  }
+
+  Future<void> _restoreInbox() async {
+    final now = DateTime.now();
+    for (final i in (jsonDecode(prefs.getString(_kInbox) ?? '[]') as List).cast<Map>()) {
+      final raw = i['envelope']! as String;
+      final env = base64Decode(raw);
+      try {
+        final bundle = await ShareEnvelope.open(Uint8List.fromList(env), enc!, now);
+        final header = jsonDecode(utf8.decode(env)) as Map;
+        final at = DateTime.parse(i['at']! as String);
+        inbox.add(ReceivedShare(grantId: i['grantId']! as String, bundle: bundle, expiresAt: DateTime.parse(header['exp']! as String), receivedAt: at));
+        _sealed[i['grantId']! as String] = (raw, at);
+      } on Object {
+        // Expired while the page was closed, or unreadable: dropped.
+      }
+    }
+    inbox.sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
+    await _saveInbox();
+  }
 
   /// Signs a prescription with this device's key and seals it to the
   /// patient's reply key. Returns the doctor's own copy.

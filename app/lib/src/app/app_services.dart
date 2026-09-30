@@ -130,6 +130,7 @@ class AppServices {
         replyIdentity: services._replyIdentity,
         originals: services.originals,
         shrink: ReportImage.forShare,
+        keyBook: tokens,
       );
       services.links = FamilyLinkService(sealed: sealed, relay: services.sharing!.relay, audit: audit, replyIdentity: services._replyIdentity);
     }

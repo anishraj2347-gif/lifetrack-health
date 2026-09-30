@@ -56,7 +56,13 @@ class _ShellState extends State<Shell> {
     try {
       if (s.state == EnrolmentState.pending) await s.refreshStatus();
       if (s.state == EnrolmentState.approved && s.certificateQr != null) await s.pickUp();
-      s.closeExpired(DateTime.now());
+      await s.closeExpired(DateTime.now());
+      if (s.closedByPatient.isNotEmpty && mounted) {
+        for (final name in s.closedByPatient) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$name ended access. Their shared records are closed.')));
+        }
+        s.closedByPatient.clear();
+      }
       if (_open != null && !s.inbox.contains(_open)) _open = null;
       _error = null;
     } on Object catch (e) {

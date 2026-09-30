@@ -251,7 +251,8 @@ void main() {
       final live = consent.activeGrantsFor('p1', now.add(const Duration(minutes: 6)));
       expect(live.map((g) => g.id), [second.grant.id]);
       expect(live.single.id, isNot(first.grant.id));
-      expect(relay.pending(await RelayApi.doctorMailbox(cert.encryptionKey)), 1, reason: 'the first, undelivered share was withdrawn');
+      expect(relay.pending(await RelayApi.doctorMailbox(cert.encryptionKey)), 2,
+          reason: 'the first, undelivered share was withdrawn; the new share and a close notice for the old one wait');
     });
 
     test('ending access removes a share the doctor has not picked up', () async {
@@ -259,8 +260,29 @@ void main() {
       final cert = await service.scan(d.qr, now);
       final r = await service.share(patientId: 'p1', doctor: cert, levels: {AccessLevel.summary}, at: now);
       await service.endAccess(r.grant, now.add(const Duration(minutes: 1)));
-      expect(relay.pending(await RelayApi.doctorMailbox(cert.encryptionKey)), 0);
+      // Only the close notice is left for the doctor; the share itself is gone.
+      final close = await pickUpAndOpen(d, at: now.add(const Duration(minutes: 1)));
+      expect(close['type'], 'close');
       expect(consent.activeGrantsFor('p1', now), isEmpty);
+    });
+
+    test('ending access after pickup tells the doctor device to close it, with a secret only the patient holds', () async {
+      final d = await doctor();
+      final cert = await service.scan(d.qr, now);
+      final r = await service.share(patientId: 'p1', doctor: cert, levels: {AccessLevel.summary}, at: now);
+      final bundle = await pickUpAndOpen(d);
+      expect(bundle['closeSecret'], isA<String>());
+      await service.endAccess(r.grant, now.add(const Duration(minutes: 5)));
+      final close = await pickUpAndOpen(d, at: now.add(const Duration(minutes: 5)));
+      expect(close['type'], 'close');
+      expect(close['grantId'], r.grant.id);
+      expect(close['closeSecret'], bundle['closeSecret']);
+
+      // A second share gets a different secret: one close cannot end another.
+      final r2 = await service.share(patientId: 'p1', doctor: cert, levels: {AccessLevel.summary}, at: now.add(const Duration(minutes: 6)));
+      final b2 = await pickUpAndOpen(d, at: now.add(const Duration(minutes: 6)));
+      expect(b2['closeSecret'], isNot(bundle['closeSecret']));
+      expect(r2.grant.id, isNot(r.grant.id));
     });
 
     test('a relay cannot re-address a share to another grant', () async {
