@@ -2,8 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>To add a photo of a report you already have. LifeTrack keeps its own encrypted copy.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>To scan a doctor's verified LifeTrack code. The camera image stays on your phone.</string>
+	<string>To scan a doctor's verified LifeTrack code and to photograph paper reports. Photos stay encrypted on your phone.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

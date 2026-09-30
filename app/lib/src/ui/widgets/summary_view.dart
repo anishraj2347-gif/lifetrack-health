@@ -8,8 +8,11 @@ import 'parts.dart';
 /// medicines, conditions, latest tests with source and age, family
 /// illnesses. Values are reproduced, never judged.
 class SummaryView extends StatelessWidget {
-  const SummaryView({super.key, required this.bundle});
+  const SummaryView({super.key, required this.bundle, this.onOpenOriginal});
   final Map<String, Object?> bundle;
+
+  /// Opens a record's original pages; the test row shows a link when set.
+  final void Function(String recordId)? onOpenOriginal;
 
   static String age(int days) => days < 14
       ? '$days days ago'
@@ -96,6 +99,14 @@ class SummaryView extends StatelessWidget {
                     Text('${analyteName(m['analyte'] as String)} ${fmt(m['value'])} ${m['unit']}',
                         style: LT.label.copyWith(fontWeight: FontWeight.w600, color: m['source'] == 'patientTyped' ? LT.ink3 : LT.ink)),
                     Text(sub, style: LT.small.copyWith(fontSize: 12)),
+                    if (onOpenOriginal != null && m['hasOriginal'] == true)
+                      GestureDetector(
+                        onTap: () => onOpenOriginal!(m['recordId'] as String),
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text('View original report', style: LT.small.copyWith(color: LT.ink, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
+                        ),
+                      ),
                   ]),
                 ),
                 Badge2(label, tone: tone),

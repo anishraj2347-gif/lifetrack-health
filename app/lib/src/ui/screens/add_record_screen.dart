@@ -9,6 +9,7 @@ import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
 import 'records_screen.dart' show kindLabel;
+import 'scan_report_screen.dart';
 
 class AddRecordScreen extends StatefulWidget {
   const AddRecordScreen({super.key});
@@ -70,6 +71,26 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
         appBar: AppBar(),
         body: ListView(children: [
           const Masthead(eyebrow: 'Add record', title: 'Type it in'),
+          ShadCard(
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            color: LT.primary,
+            onTap: () async {
+              final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => const ScanReportScreen()));
+              if (saved == true && context.mounted) Navigator.of(context).pop();
+            },
+            child: const Row(children: [
+              IconTile(LucideIcons.camera, color: LT.ink, background: LT.accent),
+              SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Photograph a paper report', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
+                  Text('Best for lab reports and prescriptions on paper', style: TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
+                ]),
+              ),
+              Icon(LucideIcons.chevronRight, color: LT.onDarkMuted),
+            ]),
+          ),
+          const Eyebrow('Or type it in'),
           const Note('Copy values exactly as printed, including the unit. LifeTrack compares only what matches its ranges; anything else is shown as not checked.', icon: LucideIcons.info),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),

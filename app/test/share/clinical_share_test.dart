@@ -381,4 +381,47 @@ void main() {
       expect(audit.entriesFor('p1').first.action, AuditAction.denied);
     });
   });
+
+  group('original pages travel with the share', () {
+    ClinicalShareService withOriginals(Map<String, List<Uint8List>> pages) => ClinicalShareService(
+          trust: trust,
+          consent: consent,
+          access: RecordAccess(consent: consent, audit: audit, repository: repo),
+          audit: audit,
+          repository: repo,
+          relay: relay,
+          replyIdentity: (_) async => me,
+          originals: (r) async => pages[r.attachmentId] ?? const [],
+        );
+
+    test('the latest tests carry their photographed originals; unreleased records never do', () async {
+      final svc = withOriginals({
+        'demo-photo-demo-hba1c-2026-09': [Uint8List.fromList(List.filled(1000, 1))],
+        'demo-photo-demo-lipid-2026-03': [Uint8List.fromList(List.filled(1000, 2)), Uint8List.fromList(List.filled(1000, 3))],
+        'demo-photo-xray': [Uint8List.fromList(List.filled(1000, 4))],
+      });
+      final d = await doctor();
+      await svc.share(patientId: 'p1', doctor: await svc.scan(d.qr, now), levels: {AccessLevel.summary}, at: now);
+      final b = await pickUpAndOpen(d);
+      final originals = (b['originals']! as Map).cast<String, Object?>();
+      expect(originals.keys, containsAll(['demo-hba1c-2026-09', 'demo-lipid-2026-03']));
+      expect((originals['demo-lipid-2026-03']! as List), hasLength(2));
+      expect(originals.containsKey('demo-xray-2026-01'), isFalse, reason: 'scans are not in the Summary level');
+      expect(b['originalsOmitted'], 0);
+    });
+
+    test('pages past the size budget are counted, not silently dropped', () async {
+      final big = Uint8List(ClinicalShareService.originalsBudget ~/ 2 + 10);
+      final svc = withOriginals({
+        'demo-photo-demo-hba1c-2026-09': [big],
+        'demo-photo-demo-lipid-2026-03': [big],
+        'demo-photo-demo-glucose-2026-03': [big],
+      });
+      final d = await doctor();
+      await svc.share(patientId: 'p1', doctor: await svc.scan(d.qr, now), levels: {AccessLevel.summary}, at: now);
+      final b = await pickUpAndOpen(d);
+      expect((b['originals']! as Map).length, 1);
+      expect(b['originalsOmitted'], 2);
+    });
+  });
 }

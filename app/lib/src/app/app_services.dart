@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'dart:convert';
 
@@ -18,6 +19,8 @@ import '../emergency/emergency_card.dart';
 import '../model/clinical_profile.dart';
 import '../model/health_record.dart';
 import '../model/patient.dart';
+import '../capture/report_image.dart';
+import '../storage/attachment_store.dart';
 import '../storage/byte_store.dart';
 import '../storage/record_repository.dart';
 import '../share/clinical_share_service.dart';
@@ -29,6 +32,7 @@ import '../storage/sealed_store.dart';
 import '../vault/backup_vault.dart';
 import 'cloud_escalation_adapter.dart';
 import 'demo_data.dart';
+import 'demo_report_images.dart';
 
 /// Everything the screens use, assembled once. Screens call these methods
 /// rather than reaching into stores, so every patient action that changes
@@ -46,7 +50,11 @@ class AppServices {
     required this.vault,
     required this.cloud,
     required this.settings,
+    required this.attachments,
   });
+
+  /// Original pages of paper reports and prescriptions, encrypted.
+  final AttachmentStore attachments;
 
   /// Phase 2 sharing, or null when this build has no relay or registry
   /// configured — the Share screen then says so instead of pretending.
@@ -100,6 +108,7 @@ class AppServices {
       vault: BackupVault(remote: remote, audit: audit, params: kdf),
       cloud: cloudFactory(repository: repository, consent: consent, audit: audit, access: access, clock: now),
       settings: settings,
+      attachments: AttachmentStore(bytes, deviceKey),
     );
     consent.evictFinished(now());
     if (share != null && share.isComplete) {
@@ -112,6 +121,8 @@ class AppServices {
         repository: repository,
         relay: relayOverride?.call(tokens) ?? HttpRelayClient(baseUrl: Uri.parse(share.relayUrl!), tokens: tokens),
         replyIdentity: services._replyIdentity,
+        originals: services.originals,
+        shrink: ReportImage.forShare,
       );
     }
     return services;
@@ -143,6 +154,66 @@ class AppServices {
     }
     return _replies[patientId] = id;
   }
+
+  /// Saves a photographed paper document: every page is straightened,
+  /// shrunk and stripped of metadata, encrypted, and linked to the record.
+  Future<HealthRecord> addScanned({required HealthRecord draft, required List<Uint8List> rawPages}) async {
+    final pages = <Uint8List>[for (final p in rawPages) await ReportImage.prepare(p)];
+    final attachmentId = 'a-${_randomId()}';
+    await attachments.save(attachmentId, pages);
+    final r = HealthRecord(
+      id: draft.id,
+      patientId: draft.patientId,
+      kind: draft.kind,
+      title: draft.title,
+      date: draft.date,
+      source: RecordSource.smartCapture,
+      doctor: draft.doctor,
+      facility: draft.facility,
+      results: draft.results,
+      dose: draft.dose,
+      ingredient: draft.ingredient,
+      labName: draft.labName,
+      sampleDate: draft.sampleDate,
+      attachmentId: attachmentId,
+    );
+    await addRecord(r);
+    return r;
+  }
+
+  /// The patient's own originals — their phone, their data, no grant.
+  Future<List<Uint8List>> originals(HealthRecord r) async => r.attachmentId == null ? const [] : attachments.load(r.attachmentId!);
+
+  Future<void> _saveDemoOriginals(String patientId) async {
+    final name = repository.patient(patientId)!.name;
+    for (final r in repository.recordsOf(patientId)) {
+      if (r.attachmentId == null || r.kind != RecordKind.report) continue;
+      final page = DemoReportImages.render(
+        lab: r.labName ?? 'Sample lab',
+        title: r.title,
+        patient: name,
+        date: fullDateOf(r.effectiveDate),
+        rows: [
+          for (final res in r.results)
+            (
+              res.analyte.replaceAll('_', ' ').toUpperCase(),
+              res.value == res.value.roundToDouble() ? res.value.toStringAsFixed(0) : '${res.value}',
+              res.unit,
+              res.printedLow != null && res.printedHigh != null
+                  ? '${res.printedLow}-${res.printedHigh}'
+                  : res.printedHigh != null
+                      ? '< ${res.printedHigh}'
+                      : res.printedLow != null
+                          ? '> ${res.printedLow}'
+                          : '-',
+            ),
+        ],
+      );
+      await attachments.save(r.attachmentId!, [page]);
+    }
+  }
+
+  static String fullDateOf(DateTime d) => '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   /// The patient ticked "still taking" at share time.
   Future<void> confirmMedicines(Set<String> recordIds, DateTime at) async {
@@ -195,6 +266,7 @@ class AppServices {
     if (demo && repository.recordsOf(id).isEmpty) {
       await repository.addAll(DemoData.records(id));
       await repository.saveProfile(id, DemoData.profile(clock()));
+      await _saveDemoOriginals(id);
     }
     settings['currentPatientId'] = id;
     settings['demo'] = demo;
@@ -280,6 +352,9 @@ class AppServices {
   Future<void> eraseProfile({required String account}) async {
     final id = currentPatientId!;
     final at = clock();
+    for (final r in repository.recordsOf(id)) {
+      if (r.attachmentId != null) await attachments.delete(r.attachmentId!);
+    }
     await repository.eraseFor(id);
     consent.eraseFor(id);
     await emergency.erase(id);

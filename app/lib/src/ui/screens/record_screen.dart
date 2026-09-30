@@ -9,6 +9,7 @@ import '../theme.dart';
 import '../widgets/insight_card.dart';
 import '../widgets/parts.dart';
 import '../widgets/prescription_card.dart';
+import 'originals_viewer.dart';
 import 'records_screen.dart' show iconForKind, kindLabel;
 
 /// One record, reproduced as written.
@@ -79,6 +80,7 @@ class _RecordScreenState extends State<RecordScreen> {
               ],
             ),
           ),
+          if (r.attachmentId != null) OriginalsStrip(record: r),
           if (r.kind == RecordKind.prescription)
             PrescriptionCard(record: r, now: s.clock())
           else

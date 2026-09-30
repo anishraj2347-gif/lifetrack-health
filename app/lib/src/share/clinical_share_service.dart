@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 
 import '../audit/audit_log.dart';
@@ -40,7 +43,20 @@ class ClinicalShareService {
     required this.repository,
     required this.relay,
     required this.replyIdentity,
+    this.originals,
+    this.shrink,
   });
+
+  /// Loads a record's original pages; null in tests that do not need them.
+  final Future<List<Uint8List>> Function(HealthRecord record)? originals;
+
+  /// Budget for original pages in one share (raw JPEG bytes). The relay
+  /// takes 5 MB per share; base64 grows bytes by a third.
+  static const originalsBudget = 2800 * 1024;
+
+  /// Makes a smaller copy of a page for a share; pages go as stored when null.
+  final Uint8List Function(Uint8List page)? shrink;
+
 
   final RegistryTrust trust;
   final ConsentStore consent;
@@ -115,6 +131,9 @@ class ClinicalShareService {
     final conditions = await profile(DataClass.conditions);
     final family = await profile(DataClass.familyHistory);
     final requestedScopes = scopesFor(requested ?? levels);
+    final released = {
+      for (final r in [...await read(DataClass.reports), ...await read(DataClass.prescriptions), ...await read(DataClass.scans)]) r.id: r,
+    };
     final bundle = ShareBundle.build(
       patient: patient,
       at: at,
@@ -125,11 +144,12 @@ class ClinicalShareService {
       allergies: allergies.allergies,
       conditions: conditions.conditions,
       familyIllnesses: family.familyIllnesses,
-      prescriptions: await read(DataClass.prescriptions),
-      reports: await read(DataClass.reports),
-      scans: await read(DataClass.scans),
+      prescriptions: [for (final r in released.values) if (r.kind == RecordKind.prescription) r],
+      reports: [for (final r in released.values) if (r.kind == RecordKind.report) r],
+      scans: [for (final r in released.values) if (r.kind == RecordKind.scan) r],
       profileUpdatedAt: repository.profileOf(patientId).updatedAt,
     )..['replyTo'] = (await replyIdentity(patientId)).replyTo;
+    await _attachOriginals(bundle, released);
 
     final envelope = await ShareEnvelope.seal(
       bundle: bundle,
@@ -149,6 +169,36 @@ class ClinicalShareService {
     ));
     await relay.deposit(mailbox: mailbox, grantId: grant.id, envelope: envelope, expiresAt: grant.expiresAt);
     return ShareReceipt(grant: grant, doctor: doctor, withheld: requestedScopes.difference(scopes));
+  }
+
+  /// Adds the original pages of the records this share already released —
+  /// the latest tests (Summary) and every document (All my reports) — until
+  /// the budget is used. What does not fit is counted, so the doctor knows
+  /// to ask to see it on the patient's phone.
+  Future<void> _attachOriginals(Map<String, Object?> bundle, Map<String, HealthRecord> released) async {
+    final load = originals;
+    if (load == null) return;
+    final wanted = <String>[
+      for (final t in (bundle['latestTests'] as List?) ?? const []) (t as Map)['recordId']! as String,
+      for (final d in (bundle['documents'] as List?) ?? const []) (d as Map)['id']! as String,
+    ];
+    final out = <String, List<String>>{};
+    var used = 0, omitted = 0;
+    for (final id in {...wanted}) {
+      final r = released[id];
+      if (r == null || r.attachmentId == null) continue;
+      final pages = [for (final p in await load(r)) shrink?.call(p) ?? p];
+      final size = pages.fold<int>(0, (a, p) => a + p.length);
+      if (pages.isEmpty) continue;
+      if (used + size > originalsBudget) {
+        omitted++;
+        continue;
+      }
+      used += size;
+      out[id] = [for (final p in pages) base64Encode(p)];
+    }
+    bundle['originals'] = out;
+    bundle['originalsOmitted'] = omitted;
   }
 
   /// The patient ends access. Removes anything not yet picked up; a share

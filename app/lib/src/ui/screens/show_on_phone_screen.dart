@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/summary_view.dart';
+import 'originals_viewer.dart';
 
 /// P8, the pilot: the patient hands the phone to the doctor. Built from the
 /// patient's own data on the phone; nothing is sent anywhere, no doctor app
@@ -30,7 +31,15 @@ class ShowOnPhoneScreen extends StatelessWidget {
             ),
           ]),
         ),
-        SummaryView(bundle: bundle),
+        SummaryView(
+          bundle: bundle,
+          onOpenOriginal: (id) async {
+            final r = s.records().firstWhere((x) => x.id == id);
+            final pages = await s.originals(r);
+            if (!context.mounted || pages.isEmpty) return;
+            await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => OriginalsViewer(title: r.title, pages: pages)));
+          },
+        ),
         const SizedBox(height: 28),
       ]),
     );
