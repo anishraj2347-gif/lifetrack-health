@@ -63,7 +63,7 @@ class OriginalsStrip extends StatelessWidget {
         if (pages == null) return const SizedBox.shrink();
         if (pages.isEmpty) {
           return Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
             child: Text(record.attachmentId == null ? 'No original attached.' : 'The original is not on this phone.', style: LT.small),
           );
         }

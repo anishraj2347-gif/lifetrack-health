@@ -113,7 +113,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: SlabButton('Continue', onPressed: ready && !_busy ? () => _createProfile(demo: false) : null),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+          padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
           child: SlabButton('Explore with sample records', variant: ButtonVariant.outline, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true)),
         ),
       ],

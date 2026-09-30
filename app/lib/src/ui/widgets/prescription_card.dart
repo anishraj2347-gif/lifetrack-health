@@ -66,7 +66,7 @@ class PrescriptionCard extends StatelessWidget {
               const SizedBox(width: 8),
               _slot(LucideIcons.moon, 'Night', d.night),
             ]),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Row(children: [
               const Icon(LucideIcons.utensils, size: 16, color: LT.ink3),
               const SizedBox(width: 8),
