@@ -86,6 +86,17 @@ void main() {
     await tester.tap(find.text('Access log'));
     await tester.pumpAndSettle();
     expect(find.textContaining('On-device insights read'), findsWidgets);
+    await tester.scrollUntilVisible(find.textContaining('You gave access'), 300,
+        scrollable: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).last);
     expect(find.textContaining('You gave access'), findsOneWidget);
+    // The Insights view holds the grant and its reads, and nothing else.
+    await tester.scrollUntilVisible(find.textContaining('Insights ·'), -300,
+        scrollable: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).last);
+    await tester.ensureVisible(find.textContaining('Insights ·'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Insights ·'), warnIfMissed: true);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Reads by on-device insights'), findsOneWidget);
+    expect(find.textContaining('added'), findsNothing);
   });
 }
