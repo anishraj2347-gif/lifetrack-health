@@ -16,6 +16,7 @@ import 'package:lifetrack_server/api.dart';
 import 'package:lifetrack_server/registry.dart';
 import 'package:lifetrack_server/relay_store.dart';
 import 'package:lifetrack_server/vault_store.dart';
+import 'package:lifetrack_server/id_registry.dart';
 import 'package:shelf/shelf.dart' as shelf;
 
 /// Backup and restore through the app's real HTTP client and the real server
@@ -27,6 +28,7 @@ void main() {
       registry: await DoctorRegistry.open(signingKey: await Ed25519().newKeyPair()),
       relay: RelayStore(),
       vault: VaultStore(dir),
+      ids: await IdRegistry.open(),
       adminToken: 'a',
     ).handler;
     final client = MockClient((req) async {

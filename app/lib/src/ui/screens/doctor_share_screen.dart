@@ -4,6 +4,7 @@ import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../consent/consent_token.dart';
+import '../../share/access_requests.dart';
 import '../../share/clinical_share_service.dart';
 import '../app_scope.dart';
 import '../theme.dart';
@@ -12,7 +13,12 @@ import '../widgets/parts.dart';
 /// P4: scan the doctor's verified code → see who they are → pick a level →
 /// confirm medicines → share. Every step is the patient's own tap.
 class DoctorShareScreen extends StatefulWidget {
-  const DoctorShareScreen({super.key});
+  const DoctorShareScreen({super.key, this.request});
+
+  /// A doctor's request by LifeTrack ID, already verified: the scan step is
+  /// skipped and the levels they asked for are preselected. The patient can
+  /// still lower them.
+  final PendingRequest? request;
   @override
   State<DoctorShareScreen> createState() => _DoctorShareScreenState();
 }
@@ -27,6 +33,19 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
   bool _lastTwoYears = false;
   final Set<String> _stillTaking = {};
   ShareReceipt? _receipt;
+
+  @override
+  void initState() {
+    super.initState();
+    final r = widget.request;
+    if (r != null) {
+      _doctor = r.doctor;
+      _scanning = false;
+      _levels
+        ..clear()
+        ..addAll(r.levels.isEmpty ? {AccessLevel.summary} : r.levels);
+    }
+  }
 
   Future<void> _verify(String code) async {
     final sharing = AppScope.of(context).sharing!;
@@ -57,8 +76,10 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
         doctor: _doctor!,
         levels: _levels,
         filter: _lastTwoYears ? RecordFilter(from: at.subtract(const Duration(days: 730))) : null,
+        requested: widget.request?.levels,
         at: at,
       );
+      if (widget.request != null) await s.requests!.remove(widget.request!.request.requestId);
       if (!mounted) return;
       setState(() => _receipt = r);
       AppScope.changed(context);

@@ -147,6 +147,17 @@ copy predate the claim fixes; the app's wording is authoritative).
 16. Access levels are presets over data classes plus an optional filter — Summary (default),
     All my reports, Family illnesses. A level never widens `authorize`; the patient may always
     grant less. Results show their age, never "valid" or "expired".
+17. **LifeTrack ID** (1 Oct 2026): 12 digits shown `XXXX XXXX XXXX`, Verhoeff check digit,
+    random, one per profile, unique by server registration. Always starts with **1** so it can
+    never be (or validate as) an Aadhaar number. The server maps it only to a reply mailbox and
+    key — no name, no records. Only the token held on the phone (and in the encrypted backup)
+    moves or deletes it; restore re-points it; erasure deletes it.
+    - 17a. A doctor may **request** access by ID; the request is signed and verified on the phone
+      (certificate + signature, #15) before it is shown, and nothing is shared until the patient
+      approves — the patient may lower the level. Declines are logged under Refused and the
+      doctor is told. Requests last ≤ 48 h.
+    - 17b. The Emergency QR is **plain text** (any camera, no internet): the card's own fields,
+      name, LifeTrack ID and masked ABHA. The card is not stored on the server.
 
 ### Rules for working here
 

@@ -1,7 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:lifetrack_protocol/lifetrack_protocol.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../emergency/emergency_card.dart';
+import '../../emergency/emergency_qr.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
@@ -41,7 +48,12 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     final c = _card;
     final s = AppScope.of(context);
     // Masked: this screen opens from the lock screen for anyone holding the phone.
-    final abha = (widget.fromLockScreen ? s.selfPatient : s.currentPatient)?.abha;
+    final who = widget.fromLockScreen ? s.selfPatient : s.currentPatient;
+    final abha = who?.abha;
+    final ltId = who == null ? null : s.lifeTrackIdOf(who.id);
+    final qrText = c == null || who == null
+        ? ''
+        : emergencyQrText(name: who.name, card: c, lifeTrackId: ltId, abhaMasked: abha?.masked, updated: s.clock());
     return Scaffold(
       appBar: AppBar(),
       body: c == null
@@ -76,6 +88,35 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                   if (abha != null) _field(LucideIcons.idCard, 'ABHA (last four digits)', abha.masked, last: true),
                 ]),
               ),
+              if (ltId != null)
+                ShadCard(
+                  child: Row(children: [
+                    const Icon(LucideIcons.fingerprint, size: 17, color: LT.ink3),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        const Text('LifeTrack ID', style: LT.small),
+                        const SizedBox(height: 2),
+                        Text(LifeTrackId.display(ltId), style: LT.label.copyWith(fontSize: 18, letterSpacing: 1)),
+                      ]),
+                    ),
+                  ]),
+                ),
+              if (!c.isEmpty)
+                ShadCard(
+                  child: Column(children: [
+                    const Text('Scan for these details', style: LT.label),
+                    const SizedBox(height: 10),
+                    QrImageView(data: qrText, size: 220, backgroundColor: Colors.white),
+                    const SizedBox(height: 8),
+                    const Text('Any phone camera can read it — no app or internet needed.', textAlign: TextAlign.center, style: LT.small),
+                  ]),
+                ),
+              if (!widget.fromLockScreen && !c.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                  child: SlabButton('Save wallet card', icon: LucideIcons.wallet, variant: ButtonVariant.outline, onPressed: () => _saveWalletCard(qrText, who!.name)),
+                ),
               if (!widget.fromLockScreen)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
@@ -95,6 +136,20 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
               ),
             ]),
     );
+  }
+
+  /// The QR as an image to print and keep in a wallet. It carries the card
+  /// as it is now; after changing the card, save a new one.
+  Future<void> _saveWalletCard(String text, String name) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final img = await QrPainter(data: text, version: QrVersions.auto, gapless: true, eyeStyle: const QrEyeStyle(color: Colors.black, eyeShape: QrEyeShape.square), dataModuleStyle: const QrDataModuleStyle(color: Colors.black, dataModuleShape: QrDataModuleShape.square)).toImageData(900);
+      final f = File('${(await getTemporaryDirectory()).path}/emergency-id.png');
+      await f.writeAsBytes(img!.buffer.asUint8List(), flush: true);
+      await SharePlus.instance.share(ShareParams(files: [XFile(f.path, mimeType: 'image/png')], text: 'Emergency ID — $name. Scan with any phone camera.'));
+    } on Object catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+    }
   }
 
   Widget _field(IconData icon, String label, String value, {bool last = false}) => Container(

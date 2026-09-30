@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -30,6 +31,8 @@ import '../crypto/vault_codec.dart';
 import '../export/record_export.dart';
 import '../model/abha.dart';
 import '../family/family_link.dart';
+import '../identity/lifetrack_ids.dart';
+import '../share/access_requests.dart';
 import '../share/http_relay_client.dart';
 import '../share/relay.dart';
 import '../share/share_bundle.dart';
@@ -70,6 +73,22 @@ class AppServices {
   /// relay as sharing, so it exists exactly when sharing does.
   FamilyLinkService? links;
 
+  /// Each profile's 12-digit LifeTrack ID, when the service is configured.
+  LifeTrackIds? ids;
+
+  /// Doctors' requests that arrived by LifeTrack ID.
+  AccessRequestInbox? requests;
+
+  String? lifeTrackIdOf(String patientId) => ids?.idOf(patientId);
+
+  /// Registers an ID for every profile that has none. Best effort.
+  Future<void> assignLifeTrackIds() async => ids?.ensureAll([for (final p in familyOnPhone()) p.id]);
+
+  Future<List<PendingRequest>> pendingRequests() async =>
+      requests == null || currentPatientId == null ? const [] : requests!.pending(currentPatientId!, clock());
+
+  Future<void> declineRequest(PendingRequest p) => requests!.decline(p, actorId: actingGrantor(), at: clock());
+
   static const _grantsBlob = 'grants';
   static const _settingsBlob = 'settings';
 
@@ -97,6 +116,7 @@ class AppServices {
     ShareConfig? share,
     RelayClient Function(WithdrawTokenStore tokens)? relayOverride,
     bool backupEnabled = true,
+    IdDirectory Function()? idDirectoryOverride,
   }) async {
     final now = clock ?? DateTime.now;
     final sealed = SealedStore(bytes, deviceKey);
@@ -139,6 +159,14 @@ class AppServices {
         shrink: ReportImage.forShare,
         keyBook: tokens,
       );
+      services.ids = LifeTrackIds(
+        sealed: sealed,
+        directory: idDirectoryOverride?.call() ?? HttpIdDirectory(baseUrl: Uri.parse(share.relayUrl!)),
+        replyIdentity: services._replyIdentity,
+      );
+      await services.ids!.load();
+      services.requests = AccessRequestInbox(sealed: sealed, audit: audit, relay: services.sharing!.relay, trust: services.sharing!.trust);
+      unawaited(services.assignLifeTrackIds());
       services.links = FamilyLinkService(sealed: sealed, relay: services.sharing!.relay, audit: audit, replyIdentity: services._replyIdentity);
     }
     return services;
@@ -303,6 +331,7 @@ class AppServices {
     settings['demo'] = demo;
     await _saveSettings();
     await repository.saveCustody(Custody(patientId: id, kind: CustodyKind.self, custodianId: id, relation: 'self'));
+    await assignLifeTrackIds();
     return patient;
   }
 
@@ -373,6 +402,7 @@ class AppServices {
       statement: '${self.name} declared they are ${child.name}\'s parent.',
     ));
     await audit.append(AuditEntry(at: at, actorId: Actors.patient(self.id), patientId: child.id, action: AuditAction.edit, tokenId: 'family-custody-${child.id}', detail: 'Profile created by ${self.name} (parent)'));
+    await assignLifeTrackIds();
     return child;
   }
 
@@ -404,6 +434,7 @@ class AppServices {
       signedName: typedName.trim(),
     ));
     await audit.append(AuditEntry(at: at, actorId: Actors.patient(adult.id), patientId: adult.id, action: AuditAction.grantIssued, tokenId: 'family-custody-${adult.id}', detail: 'Asked ${self.name} to manage their records (confirmed in person)'));
+    await assignLifeTrackIds();
     return adult;
   }
 
@@ -603,22 +634,24 @@ class AppServices {
 
   /// Prescriptions for whoever is on screen; family-link messages for the
   /// owner. Returns (prescriptions added, link messages handled, refused).
+  /// Checks every profile's mailbox on this phone: prescriptions, family-link
+  /// messages (the owner's), and doctors' requests by LifeTrack ID.
   Future<(int, int, int)> checkInbox() async {
     final at = clock();
+    await assignLifeTrackIds();
     var (added, handled, refused) = (0, 0, 0);
-    if (selfPatientId != null) {
-      final (a, h, r) = await sharing!.collectInbox(selfPatientId!, at, handlers: links!.handlers(ownerId: selfPatientId!, at: at));
-      (added, handled, refused) = (a.length, h, r);
-      if (a.isNotEmpty) {
-        await _tellLinkedFamily(selfPatientId!);
-        await _backUpQuietly();
-      }
-    }
-    if (currentPatientId != null && currentPatientId != selfPatientId) {
-      final (a, _, r) = await sharing!.collectInbox(currentPatientId!, at);
+    for (final p in familyOnPhone()) {
+      final handlers = {
+        if (p.id == selfPatientId) ...links!.handlers(ownerId: p.id, at: at),
+        'access_request': requests!.handler(patientId: p.id, lifeTrackId: lifeTrackIdOf(p.id), at: at),
+      };
+      final (a, h, r) = await sharing!.collectInbox(p.id, at, handlers: handlers);
       added += a.length;
+      handled += h;
       refused += r;
+      if (a.isNotEmpty && p.id == selfPatientId) await _tellLinkedFamily(p.id);
     }
+    if (added > 0) await _backUpQuietly();
     return (added, handled, refused);
   }
 
@@ -733,6 +766,7 @@ class AppServices {
       'profiles': {for (final p in patients) p.id: repository.profileOf(p.id).toJson()},
       'emergency': {for (final p in patients) p.id: (await emergency.load(p.id)).toJson()},
       'records': [for (final r in records) r.toJson()],
+      'lifetrackIds': ids?.export() ?? const {},
       'originals': {
         for (final r in records)
           if (r.attachmentId != null)
@@ -840,6 +874,9 @@ class AppServices {
     }
     final records = [for (final r in (b['records']! as List).cast<Map>()) HealthRecord.fromJson(r.cast())];
     await repository.addAll(records);
+    if (ids != null && b['lifetrackIds'] is Map) {
+      await ids!.import((b['lifetrackIds']! as Map).cast());
+    }
     final self = b['selfPatientId'] as String? ?? repository.patients.first.id;
     settings['selfPatientId'] = self;
     settings['currentPatientId'] = self;
@@ -851,6 +888,7 @@ class AppServices {
       'at': at.toIso8601String(),
     };
     await _saveBackup();
+    await assignLifeTrackIds(); // the same IDs now point at this phone
     await audit.append(AuditEntry(
       at: at,
       actorId: Actors.patient(self),
@@ -883,6 +921,11 @@ class AppServices {
       } on Object {
         // Offline: the link is removed here, but their copy stays until they unlink.
       }
+    }
+    try {
+      await ids?.remove(id);
+    } on Object {
+      // Offline: the ID's entry stays on the server until erased again.
     }
     await repository.eraseFor(id);
     consent.eraseFor(id);

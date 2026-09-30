@@ -8,6 +8,7 @@ import 'package:lifetrack_server/api.dart';
 import 'package:lifetrack_server/registry.dart';
 import 'package:lifetrack_server/relay_store.dart';
 import 'package:lifetrack_server/vault_store.dart';
+import 'package:lifetrack_server/id_registry.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
@@ -48,7 +49,7 @@ void main() {
     relay = RelayStore();
     final registry = await DoctorRegistry.open(signingKey: await Ed25519().newKeyPair());
     vaultDir = Directory.systemTemp.createTempSync('lt-vault-');
-    h = LifeTrackApi(registry: registry, relay: relay, vault: VaultStore(vaultDir), adminToken: admin, clock: () => now).handler;
+    h = LifeTrackApi(registry: registry, relay: relay, vault: VaultStore(vaultDir), ids: await IdRegistry.open(), adminToken: admin, clock: () => now).handler;
   });
 
   group('registry', () {
@@ -203,6 +204,43 @@ void main() {
     test('account codes are checked for shape', () async {
       expect((await call('PUT', '/v1/vault/../etc', body: entry)).statusCode, isNot(201));
       expect((await call('PUT', '/v1/vault/lt-abc', body: entry)).statusCode, 400);
+    });
+  });
+
+  group('LifeTrack IDs', () {
+    final key = base64Encode(List.filled(32, 5));
+    Future<(String, String)> register() async {
+      final id = LifeTrackId.generate();
+      const token = 'owner-token';
+      final r = await call('POST', '/v1/ids', body: {'id': id, 'mailbox': 'p-${'a' * 64}', 'key': key, 'tokenHash': await RelayApi.sha256Hex(token)});
+      expect(r.statusCode, 201);
+      return (id, token);
+    }
+
+    test('registered once, found by anyone, and reveals only where to send', () async {
+      final (id, _) = await register();
+      final r = await json(await call('GET', '/v1/ids/${LifeTrackId.display(id)}'));
+      expect(r.keys.toSet(), {'id', 'mailbox', 'key'});
+      expect((await call('POST', '/v1/ids', body: {'id': id, 'mailbox': 'p-${'b' * 64}', 'key': key, 'tokenHash': 'x'})).statusCode, 409);
+    });
+
+    test('a mistyped ID is refused before any lookup', () async {
+      final (id, _) = await register();
+      final wrong = id.replaceRange(5, 6, id[5] == '0' ? '1' : '0');
+      expect((await call('GET', '/v1/ids/$wrong')).statusCode, 404);
+      expect((await call('POST', '/v1/ids', body: {'id': '234567890123', 'mailbox': 'p-${'a' * 64}', 'key': key, 'tokenHash': 'x'})).statusCode, 400);
+    });
+
+    test('only the owning phone can move or delete it', () async {
+      final (id, token) = await register();
+      final move = {'mailbox': 'p-${'c' * 64}', 'key': key};
+      expect((await call('PUT', '/v1/ids/$id', body: move)).statusCode, 403);
+      expect((await call('PUT', '/v1/ids/$id', body: move, headers: {RelayApi.hIdToken: 'nope'})).statusCode, 403);
+      expect((await call('PUT', '/v1/ids/$id', body: move, headers: {RelayApi.hIdToken: token})).statusCode, 200);
+      expect((await json(await call('GET', '/v1/ids/$id')))['mailbox'], 'p-${'c' * 64}');
+      expect((await call('DELETE', '/v1/ids/$id')).statusCode, 403);
+      expect((await json(await call('DELETE', '/v1/ids/$id', headers: {RelayApi.hIdToken: token})))['deleted'], true);
+      expect((await call('GET', '/v1/ids/$id')).statusCode, 404);
     });
   });
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../audit/audit_log.dart';
@@ -40,6 +42,19 @@ class MeScreen extends StatelessWidget {
               Text(p.name, style: LT.title.copyWith(fontSize: 22)),
               const SizedBox(height: 8),
               if (s.isDemo) const Badge2('Sample records', tone: BadgeTone.caution) else const Badge2('On this phone', tone: BadgeTone.trace),
+              if (s.lifeTrackIdOf(p.id) case final id?) ...[
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: id));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('LifeTrack ID copied.')));
+                  },
+                  child: Text('LifeTrack ID  ${LifeTrackId.display(id)}', style: LT.small.copyWith(color: LT.ink, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+                ),
+              ] else if (s.ids != null) ...[
+                const SizedBox(height: 8),
+                const Text('LifeTrack ID: assigned when the phone reaches LifeTrack', style: LT.small),
+              ],
             ]),
           ),
         ]),
@@ -50,7 +65,7 @@ class MeScreen extends StatelessWidget {
           _link(context, LucideIcons.heartPulse, 'Emergency ID', 'What a paramedic sees', const EmergencyScreen()),
           _link(context, LucideIcons.idCard, 'ABHA health ID', p.abha == null ? 'Optional · not added' : '${p.abha!.display} · not verified', const AbhaScreen()),
           _link(context, LucideIcons.cloudUpload, 'Backup', s.backupAccount == null ? 'Off · records are only on this phone' : s.lastBackupError != null ? 'On · last attempt failed' : 'On · ${s.lastBackupAt == null ? 'not yet run' : 'last ${dateTime(s.lastBackupAt!)}'}', const BackupScreen()),
-          _link(context, LucideIcons.history, 'Access log', '${s.auditEntries().length} entries on this phone', const AuditScreen()),
+          _link(context, LucideIcons.history, 'Access log', '${s.auditEntries().length} ${s.auditEntries().length == 1 ? 'entry' : 'entries'} on this phone', const AuditScreen()),
           _link(context, LucideIcons.scale, 'Your data and your rights', 'What is held where, and how to erase it', const DataRightsScreen(), last: true),
         ]),
       ),
@@ -172,6 +187,7 @@ class _AuditScreenState extends State<AuditScreen> {
         AuditAction.vaultRestore => 'restored from backup',
         AuditAction.erasure => 'erased the profile',
         AuditAction.export => 'exported an unencrypted copy of the records',
+        AuditAction.accessRequested => 'asked for access',
       };
 
   static const _views = [

@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../consent/consent_token.dart';
 import '../../model/health_record.dart';
+import '../../share/access_requests.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
@@ -113,6 +114,7 @@ class ShareScreen extends StatelessWidget {
         ),
       ] else
         const Note('Sharing with a doctor\'s device is not set up in this build. "Show on my phone" works without it.', icon: LucideIcons.cloudOff),
+      if (sharing != null) const _Requests(),
       const Eyebrow('Who has access now'),
       if (grants.isEmpty)
         const ShadCard(
@@ -152,5 +154,73 @@ class ShareScreen extends StatelessWidget {
         ),
       const SizedBox(height: 28),
     ]);
+  }
+}
+
+/// Doctors who asked by LifeTrack ID. Verified on arrival; nothing is shared
+/// until the patient reviews and approves.
+class _Requests extends StatelessWidget {
+  const _Requests();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    return FutureBuilder<List<PendingRequest>>(
+      future: s.pendingRequests(),
+      builder: (context, snap) {
+        final list = snap.data ?? const <PendingRequest>[];
+        if (list.isEmpty) return const SizedBox.shrink();
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Eyebrow('Doctors asking for access'),
+          for (final p in list)
+            ShadCard(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  const IconTile(LucideIcons.stethoscope),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(p.doctor.name, style: LT.label.copyWith(fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 4),
+                      Text('${p.doctor.speciality} · ${p.doctor.registrationNo}', style: LT.small),
+                    ]),
+                  ),
+                  const Badge2('Verified', tone: BadgeTone.trace),
+                ]),
+                const SizedBox(height: 10),
+                Text('Asks for: ${levelsLabel(p.levels)}', style: LT.label),
+                if (p.request.note != null && p.request.note!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text('"${p.request.note!.trim()}"', style: LT.small),
+                ],
+                const SizedBox(height: 4),
+                Text('Request ends ${dateTime(p.request.expiresAt.toLocal())}', style: LT.small.copyWith(fontSize: 12, color: LT.inactive)),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(
+                    child: SlabButton('Review', icon: LucideIcons.eye, onPressed: () async {
+                      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => DoctorShareScreen(request: p)));
+                      if (context.mounted) AppScope.changed(context);
+                    }),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: SlabButton('Decline', variant: ButtonVariant.outline, onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      try {
+                        await s.declineRequest(p);
+                        messenger.showSnackBar(SnackBar(content: Text('Declined. ${p.doctor.name} has been told.')));
+                      } on Object {
+                        messenger.showSnackBar(const SnackBar(content: Text('Declined here, but the doctor could not be told yet.')));
+                      }
+                      if (context.mounted) AppScope.changed(context);
+                    }),
+                  ),
+                ]),
+              ]),
+            ),
+        ]);
+      },
+    );
   }
 }

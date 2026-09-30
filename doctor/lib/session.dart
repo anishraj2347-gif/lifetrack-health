@@ -52,6 +52,39 @@ class DoctorSession {
   String? note;
   final List<ReceivedShare> inbox = [];
 
+  /// Requests this doctor sent by LifeTrack ID, newest first.
+  final List<SentRequest> sent = [];
+
+  /// Asks a patient, by their 12-digit LifeTrack ID, for access at [levels].
+  /// Signed with this device's key and sealed to the patient's phone; the
+  /// patient approves, lowers or declines there.
+  Future<void> requestAccess({required String lifeTrackId, required List<String> levels, String? note}) async {
+    final id = LifeTrackId.parse(lifeTrackId) ?? (throw Exception('That is not a valid LifeTrack ID — check the 12 digits.'));
+    final look = await _http.get(base.resolve('/v1/ids/$id'));
+    if (look.statusCode == 404) throw Exception('No patient has that LifeTrack ID.');
+    if (look.statusCode != 200) throw Exception('LifeTrack could not be reached (${look.statusCode}).');
+    final j = jsonDecode(look.body) as Map;
+    final key = base64Decode(j['key']! as String);
+    final now = DateTime.now();
+    final r = await AccessRequest(
+      requestId: 'req-${now.microsecondsSinceEpoch}',
+      lifeTrackId: id,
+      levels: levels,
+      issuedAt: now,
+      expiresAt: now.add(AccessRequest.lifetime - const Duration(minutes: 5)),
+      certificate: certificateQr!,
+      note: note == null || note.trim().isEmpty ? null : note.trim(),
+    ).signedWith(sign!);
+    final sealed = await ShareEnvelope.seal(bundle: r.toJson(), recipientKey: key, keyId: await RelayApi.keyId(key), grantId: r.requestId, expiresAt: r.expiresAt);
+    final put = await _http.put(
+      base.resolve(RelayApi.itemPath(j['mailbox']! as String, r.requestId)),
+      body: sealed,
+      headers: {RelayApi.hExpires: r.expiresAt.toUtc().toIso8601String(), 'content-type': 'application/octet-stream'},
+    );
+    if (put.statusCode != 201) throw Exception('Request not delivered (${put.statusCode}).');
+    sent.insert(0, SentRequest(requestId: r.requestId, lifeTrackId: id, levels: levels, at: now));
+  }
+
   /// Names whose shares the patient closed since the screen last showed it.
   final List<String> closedByPatient = [];
 
@@ -128,6 +161,12 @@ class DoctorSession {
       final header = (jsonDecode(utf8.decode(env)) as Map);
       try {
         final bundle = await ShareEnvelope.open(Uint8List.fromList(env), enc!, now);
+        if (bundle['type'] == 'declined') {
+          for (final r in sent) {
+            if (r.requestId == bundle['requestId']) r.declined = true;
+          }
+          continue;
+        }
         if (bundle['type'] == 'close') {
           // The patient ended access. Only their phone knows this secret.
           final gone = inbox.where((s) => s.grantId == bundle['grantId'] && s.bundle['closeSecret'] == bundle['closeSecret']).toList();
@@ -219,4 +258,13 @@ class DoctorSession {
     state = EnrolmentState.none;
     inbox.clear();
   }
+}
+
+class SentRequest {
+  SentRequest({required this.requestId, required this.lifeTrackId, required this.levels, required this.at});
+  final String requestId;
+  final String lifeTrackId;
+  final List<String> levels;
+  final DateTime at;
+  bool declined = false;
 }

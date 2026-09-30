@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 
 import '../crypto/vault_codec.dart' show VaultAuthenticationFailed, VaultLockedOut;
+import '../identity/lifetrack_ids.dart';
 import '../vault/backup_vault.dart';
 import 'relay.dart';
 
@@ -146,5 +147,35 @@ class HttpRemoteVaultStore implements RemoteVaultStore {
     final r = await _call(() => _http.delete(_u(account), headers: {RelayApi.hVerifier: base64Encode(verifier)}));
     if (r.statusCode == 403) throw const VaultAuthenticationFailed();
     if (r.statusCode != 200) throw RelayUnavailable('Backup not deleted (${r.statusCode}).');
+  }
+}
+
+/// LifeTrack ID registration on the LifeTrack server.
+class HttpIdDirectory implements IdDirectory {
+  HttpIdDirectory({required this.baseUrl, http.Client? client}) : _http = client ?? http.Client();
+
+  final Uri baseUrl;
+  final http.Client _http;
+
+  @override
+  Future<bool> register({required String id, required String mailbox, required List<int> key, required String tokenHash}) async {
+    final r = await _http.post(baseUrl.resolve('/v1/ids'),
+        headers: {'content-type': 'application/json'}, body: jsonEncode({'id': id, 'mailbox': mailbox, 'key': base64Encode(key), 'tokenHash': tokenHash}));
+    if (r.statusCode == 409) return false;
+    if (r.statusCode != 201) throw RelayUnavailable('LifeTrack ID not registered (${r.statusCode}).');
+    return true;
+  }
+
+  @override
+  Future<void> move({required String id, required String token, required String mailbox, required List<int> key}) async {
+    final r = await _http.put(baseUrl.resolve('/v1/ids/$id'),
+        headers: {'content-type': 'application/json', RelayApi.hIdToken: token}, body: jsonEncode({'mailbox': mailbox, 'key': base64Encode(key)}));
+    if (r.statusCode != 200) throw RelayUnavailable('LifeTrack ID not moved (${r.statusCode}).');
+  }
+
+  @override
+  Future<void> delete({required String id, required String token}) async {
+    final r = await _http.delete(baseUrl.resolve('/v1/ids/$id'), headers: {RelayApi.hIdToken: token});
+    if (r.statusCode != 200) throw RelayUnavailable('LifeTrack ID not deleted (${r.statusCode}).');
   }
 }

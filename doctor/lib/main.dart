@@ -178,7 +178,9 @@ class _ShellState extends State<Shell> {
                       const SizedBox(height: 4),
                       Text('Shares arrive here the moment a patient approves. They close when access ends.', style: DT.muted),
                       const SizedBox(height: 16),
-                      if (s.inbox.isEmpty) Card0(child: Text('Nothing yet. Ask the patient to scan your code.', style: DT.body)),
+                      RequestByIdCard(session: s, onSent: () => setState(() {})),
+                      const SizedBox(height: 8),
+                      if (s.inbox.isEmpty) Card0(child: Text('Nothing yet. Ask the patient to scan your code, or request access by their LifeTrack ID.', style: DT.body)),
                       for (final sh in s.inbox)
                         Card0(
                           onTap: () => setState(() => _open = sh),
@@ -528,6 +530,86 @@ class _CountdownState extends State<Countdown> {
         txt,
         style: const TextStyle(fontWeight: FontWeight.w600, color: DT.ink),
       ),
+    );
+  }
+}
+
+/// Ask a patient for access by their 12-digit LifeTrack ID. The patient sees
+/// who is asking and for what, and approves, lowers or declines.
+class RequestByIdCard extends StatefulWidget {
+  const RequestByIdCard({super.key, required this.session, required this.onSent});
+  final DoctorSession session;
+  final VoidCallback onSent;
+  @override
+  State<RequestByIdCard> createState() => _RequestByIdCardState();
+}
+
+class _RequestByIdCardState extends State<RequestByIdCard> {
+  final _id = TextEditingController();
+  final _note = TextEditingController();
+  final Set<String> _levels = {'summary'};
+  bool _busy = false;
+  String? _msg;
+  bool _ok = false;
+
+  static const _labels = {'summary': 'Summary', 'allReports': 'All reports', 'familyIllnesses': 'Family illnesses'};
+
+  Future<void> _send() async {
+    setState(() {
+      _busy = true;
+      _msg = null;
+    });
+    try {
+      await widget.session.requestAccess(lifeTrackId: _id.text, levels: [for (final l in _labels.keys) if (_levels.contains(l)) l], note: _note.text);
+      _ok = true;
+      _msg = 'Request sent. It appears on the patient\'s phone when they check for updates.';
+      _id.clear();
+      _note.clear();
+      widget.onSent();
+    } on Object catch (e) {
+      _ok = false;
+      _msg = '$e'.replaceFirst('Exception: ', '');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.session;
+    return Card0(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Request access by LifeTrack ID', style: DT.h2),
+        const SizedBox(height: 4),
+        Text('For a patient who is not in front of you. They approve on their phone.', style: DT.muted),
+        const SizedBox(height: 12),
+        Field('LifeTrack ID (12 digits)', _id, hint: '1482 0937 5516'),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, children: [
+          for (final e in _labels.entries)
+            FilterChip(
+              label: Text(e.value),
+              selected: _levels.contains(e.key),
+              onSelected: (v) => setState(() => v ? _levels.add(e.key) : _levels.remove(e.key)),
+            ),
+        ]),
+        const SizedBox(height: 8),
+        Field('Reason (optional)', _note, hint: 'Follow-up for diabetes'),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton(onPressed: _busy || _levels.isEmpty ? null : _send, child: Text(_busy ? 'Sending…' : 'Send request')),
+        ),
+        if (_msg != null) ...[
+          const SizedBox(height: 8),
+          Text(_msg!, style: TextStyle(color: _ok ? DT.trace : DT.signal)),
+        ],
+        for (final r in s.sent.take(5)) ...[
+          const SizedBox(height: 6),
+          Text('${r.declined ? 'Declined' : 'Sent'} · ${r.lifeTrackId.substring(0, 4)} ${r.lifeTrackId.substring(4, 8)} ${r.lifeTrackId.substring(8)} · ${r.levels.map((l) => _labels[l]).join(', ')}',
+              style: TextStyle(fontSize: 12.5, color: r.declined ? DT.signal : DT.ink3)),
+        ],
+      ]),
     );
   }
 }

@@ -29,6 +29,10 @@ enum AuditAction {
   /// The patient exported an unencrypted copy of their records to hand to
   /// another app of their choosing. Written before the file is handed over.
   export,
+
+  /// A verified doctor asked, by LifeTrack ID, for access. Nothing is shared
+  /// until the patient approves.
+  accessRequested,
 }
 
 class AuditEntry {

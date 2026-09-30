@@ -8,17 +8,19 @@ import 'package:shelf_router/shelf_router.dart';
 
 import 'registry.dart';
 import 'relay_store.dart';
+import 'id_registry.dart';
 import 'vault_store.dart';
 
 /// HTTP routes. Every response is JSON; no response ever contains a
 /// decrypted record, because the server never holds a key that makes one.
 class LifeTrackApi {
-  LifeTrackApi({required this.registry, required this.relay, required this.vault, required this.adminToken, DateTime Function()? clock})
+  LifeTrackApi({required this.registry, required this.relay, required this.vault, required this.ids, required this.adminToken, DateTime Function()? clock})
       : clock = clock ?? DateTime.now;
 
   final DoctorRegistry registry;
   final RelayStore relay;
   final VaultStore vault;
+  final IdRegistry ids;
   final String adminToken;
   final DateTime Function() clock;
 
@@ -39,7 +41,11 @@ class LifeTrackApi {
       ..get('/v1/vault/<account>/salt', _vaultSalt)
       ..post('/v1/vault/<account>/open', _vaultOpen)
       ..get('/v1/vault/<account>/blob', _vaultBlob)
-      ..delete('/v1/vault/<account>', _vaultDelete);
+      ..delete('/v1/vault/<account>', _vaultDelete)
+      ..post('/v1/ids', _idRegister)
+      ..get('/v1/ids/<id>', _idLookup)
+      ..put('/v1/ids/<id>', _idMove)
+      ..delete('/v1/ids/<id>', _idDelete);
     return const Pipeline().addMiddleware(_cors()).addHandler(r.call);
   }
 
@@ -249,6 +255,66 @@ class LifeTrackApi {
     if (e == null) return _json({'deleted': false});
     if (!_same(req.headers[RelayApi.hVerifier], e['verifier'] as String?)) return _error(403, 'Wrong password.');
     await vault.delete(account);
+    return _json({'deleted': true});
+  }
+
+  // ---- LifeTrack IDs -------------------------------------------------------
+
+  static bool _validKey(Object? k) {
+    try {
+      return base64Decode(k! as String).length == 32;
+    } on Object {
+      return false;
+    }
+  }
+
+  /// Registers a new ID. A duplicate is refused, so the phone draws another.
+  Future<Response> _idRegister(Request req) async {
+    final Map<String, Object?> b;
+    try {
+      b = (jsonDecode(await req.readAsString()) as Map).cast();
+    } on Object {
+      return _error(400, 'Invalid registration.');
+    }
+    final id = LifeTrackId.parse('${b['id']}');
+    if (id == null || !_validMailbox('${b['mailbox']}') || !'${b['mailbox']}'.startsWith('p-') || !_validKey(b['key']) || b['tokenHash'] is! String) {
+      return _error(400, 'Invalid registration.');
+    }
+    if (ids.contains(id)) return _error(409, 'That ID is taken.');
+    await ids.put(id, {'mailbox': b['mailbox'], 'key': b['key'], 'tokenHash': b['tokenHash'], 'createdAt': clock().toIso8601String()});
+    return _json({'id': id}, status: 201);
+  }
+
+  /// Where to send a request for this person. Public: it names a mailbox
+  /// and a key, nothing about who they are.
+  Response _idLookup(Request _, String id) {
+    final e = LifeTrackId.parse(Uri.decodeComponent(id)) == null ? null : ids[LifeTrackId.parse(Uri.decodeComponent(id))!];
+    return e == null ? _error(404, 'No such LifeTrack ID.') : _json({'id': LifeTrackId.parse(Uri.decodeComponent(id)), 'mailbox': e['mailbox'], 'key': e['key']});
+  }
+
+  /// A restored phone points its ID at its new mailbox and key.
+  Future<Response> _idMove(Request req, String id) async {
+    final e = LifeTrackId.parse(Uri.decodeComponent(id)) == null ? null : ids[LifeTrackId.parse(Uri.decodeComponent(id))!];
+    if (e == null) return _error(404, 'No such LifeTrack ID.');
+    final token = req.headers[RelayApi.hIdToken];
+    if (token == null || !_same(await RelayApi.sha256Hex(token), e['tokenHash'] as String?)) return _error(403, 'Not your ID.');
+    final Map<String, Object?> b;
+    try {
+      b = (jsonDecode(await req.readAsString()) as Map).cast();
+    } on Object {
+      return _error(400, 'Invalid update.');
+    }
+    if (!_validMailbox('${b['mailbox']}') || !_validKey(b['key'])) return _error(400, 'Invalid update.');
+    await ids.put(LifeTrackId.parse(Uri.decodeComponent(id))!, {...e, 'mailbox': b['mailbox'], 'key': b['key']});
+    return _json({'ok': true});
+  }
+
+  Future<Response> _idDelete(Request req, String id) async {
+    final e = LifeTrackId.parse(Uri.decodeComponent(id)) == null ? null : ids[LifeTrackId.parse(Uri.decodeComponent(id))!];
+    if (e == null) return _json({'deleted': false});
+    final token = req.headers[RelayApi.hIdToken];
+    if (token == null || !_same(await RelayApi.sha256Hex(token), e['tokenHash'] as String?)) return _error(403, 'Not your ID.');
+    await ids.remove(LifeTrackId.parse(Uri.decodeComponent(id))!);
     return _json({'deleted': true});
   }
 

@@ -9,6 +9,7 @@ import 'package:lifetrack/src/model/patient.dart';
 import 'package:lifetrack/src/security/unlocker.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
 import 'package:lifetrack/src/ui/lifetrack_app.dart';
+import 'package:lifetrack/src/ui/screens/emergency_screen.dart';
 import 'package:lifetrack/src/vault/backup_vault.dart';
 
 class FakeUnlocker implements Unlocker {
@@ -90,7 +91,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Emergency ID'));
     await tester.pumpAndSettle();
-    expect(find.text('Edit card'), findsOneWidget);
+    expect(find.byType(EmergencyScreen), findsOneWidget);
 
     u.answer = false;
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
@@ -101,7 +102,7 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
-    expect(find.text('Edit card'), findsOneWidget, reason: 'a short switch away does not lock');
+    expect(find.byType(EmergencyScreen), findsOneWidget, reason: 'a short switch away does not lock');
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
@@ -112,7 +113,7 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
     expect(find.text('LifeTrack is locked'), findsOneWidget);
-    expect(find.text('Edit card'), findsNothing);
+    expect(find.byType(EmergencyScreen), findsNothing);
   });
 
   testWidgets('turning the lock off needs the phone lock first', (tester) async {

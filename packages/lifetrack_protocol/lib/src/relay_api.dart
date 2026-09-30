@@ -30,6 +30,9 @@ abstract final class RelayApi {
   /// delete a backup.
   static const hVerifier = 'x-lt-verifier';
 
+  /// Proves ownership of a LifeTrack ID (the token its phone registered).
+  static const hIdToken = 'x-lt-id-token';
+
   static String mailboxPath(String mailbox) => '/$version/relay/$mailbox';
   static String itemPath(String mailbox, String grantId) => '/$version/relay/$mailbox/${Uri.encodeComponent(grantId)}';
 

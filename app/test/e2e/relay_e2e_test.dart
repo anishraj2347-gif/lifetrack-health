@@ -23,6 +23,7 @@ import 'package:lifetrack_server/api.dart';
 import 'package:lifetrack_server/registry.dart';
 import 'package:lifetrack_server/relay_store.dart';
 import 'package:lifetrack_server/vault_store.dart';
+import 'package:lifetrack_server/id_registry.dart';
 import 'package:shelf/shelf.dart' as shelf;
 
 /// The patient app's real HTTP client against the real server handler,
@@ -33,7 +34,7 @@ void main() {
     const admin = 'admin';
     final registry = await DoctorRegistry.open(signingKey: await Ed25519().newKeyPair());
     final relayStore = RelayStore();
-    final handler = LifeTrackApi(registry: registry, relay: relayStore, vault: VaultStore(Directory.systemTemp.createTempSync('lt-vault-')), adminToken: admin).handler;
+    final handler = LifeTrackApi(registry: registry, relay: relayStore, vault: VaultStore(Directory.systemTemp.createTempSync('lt-vault-')), ids: await IdRegistry.open(), adminToken: admin).handler;
     final client = MockClient((req) async {
       final res = await handler(shelf.Request(req.method, req.url, body: req.bodyBytes, headers: req.headers));
       return http.Response.bytes(await res.read().expand((c) => c).toList(), res.statusCode, headers: res.headers);
