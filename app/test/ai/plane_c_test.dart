@@ -155,6 +155,17 @@ void main() {
     }
     final slice = PseudonymisedSlice.fromRecords(patient: patient, records: repo.recordsOf('p1'), at: now);
     expect(slice.entries.length, lessThanOrEqualTo(PseudonymisedSlice.maxEntries));
-    expect(text.contains('vitamin_d'), isFalse, reason: 'unknown analytes are excluded');
+    final withFreeText = PseudonymisedSlice.fromRecords(patient: patient, at: now, records: [
+      HealthRecord(
+        id: 'x',
+        patientId: 'p1',
+        kind: RecordKind.report,
+        title: 'x',
+        date: DateTime(2031, 1, 1),
+        source: RecordSource.typedByPatient,
+        results: const [LabResult(analyte: 'Ramesh special test', value: 1, unit: 'u')],
+      ),
+    ]).canonical;
+    expect(withFreeText.contains('Ramesh'), isFalse, reason: 'free-text analyte names are excluded');
   });
 }

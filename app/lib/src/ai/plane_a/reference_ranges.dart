@@ -76,6 +76,7 @@ const analyteNames = <String, String>{
   'creatinine': 'Creatinine',
   'tsh': 'TSH',
   'ferritin': 'Ferritin',
+  'vitamin_d': 'Vitamin D',
 };
 
 String analyteName(String key) => analyteNames[key] ?? key;

@@ -13,6 +13,7 @@ const _names = {
   'creatinine': 'Creatinine',
   'tsh': 'TSH',
   'ferritin': 'Ferritin',
+  'vitamin_d': 'Vitamin D',
 };
 
 /// The patient's shared Summary, in the order a doctor reads it in an OPD.
@@ -20,6 +21,18 @@ const _names = {
 class SummaryPanel extends StatelessWidget {
   const SummaryPanel({super.key, required this.bundle});
   final Map<String, Object?> bundle;
+
+  static String fmt(Object? v) {
+    final d = (v! as num).toDouble();
+    return d == d.roundToDouble() ? d.toStringAsFixed(0) : '$d';
+  }
+
+  static String range(Map r) {
+    final lo = r['low'], hi = r['high'];
+    if (lo != null && hi != null) return '${fmt(lo)}–${fmt(hi)}';
+    if (hi != null) return '${fmt(hi)} or below';
+    return '${fmt(lo)} or above';
+  }
 
   static String age(int d) => d < 14 ? '$d days ago' : d < 60 ? '${(d / 7).round()} weeks ago' : d < 730 ? '${(d / 30.4).round()} months ago' : '${(d / 365).round()} years ago';
 
@@ -62,12 +75,12 @@ class SummaryPanel extends StatelessWidget {
             final prev = m['previous'] as Map?;
             final src = switch (m['source']) { 'signed' => 'Lab / doctor signed', 'photoOfReport' => 'Photo of report', _ => 'Patient-typed, no source' };
             return _row(
-              '${_names[m['analyte']] ?? m['analyte']}  ${m['value']} ${m['unit']}',
+              '${_names[m['analyte']] ?? m['analyte']}  ${fmt(m['value'])} ${m['unit']}',
               [
                 age(m['ageDays'] as int),
                 if (m['lab'] != null) m['lab'],
-                if (r != null) 'lab range ${r['low'] ?? ''}${r['low'] != null && r['high'] != null ? '–' : ''}${r['high'] ?? ''}',
-                if (prev != null) 'previous ${prev['value']} (${(prev['sampledOn'] as String).substring(0, 7)})',
+                if (r != null) 'lab range ${range(r)}',
+                if (prev != null) 'previous ${fmt(prev['value'])} (${(prev['sampledOn'] as String).substring(0, 7)})',
                 src,
               ].join(' · '),
               quiet: m['source'] == 'patientTyped',

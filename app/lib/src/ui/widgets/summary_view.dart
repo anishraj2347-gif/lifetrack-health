@@ -25,6 +25,20 @@ class SummaryView extends StatelessWidget {
         _ => ('Patient-typed', BadgeTone.outline),
       };
 
+  static String fmt(Object? v) {
+    final d = (v! as num).toDouble();
+    return d == d.roundToDouble() ? d.toStringAsFixed(0) : '$d';
+  }
+
+  /// "70–100", "5.6 or below", "50 or above" — never a bare number that
+  /// reads as either bound.
+  static String range(Map r) {
+    final lo = r['low'], hi = r['high'];
+    if (lo != null && hi != null) return '${fmt(lo)}–${fmt(hi)}';
+    if (hi != null) return '${fmt(hi)} or below';
+    return '${fmt(lo)} or above';
+  }
+
   @override
   Widget build(BuildContext context) {
     final b = bundle;
@@ -71,15 +85,15 @@ class SummaryView extends StatelessWidget {
             final sub = [
               age(m['ageDays'] as int),
               if (m['lab'] != null) m['lab'],
-              if (range != null) "lab range ${range['low'] ?? ''}${range['low'] != null && range['high'] != null ? '–' : ''}${range['high'] ?? ''}",
-              if (prev != null) 'was ${prev['value']} (${(prev['sampledOn'] as String).substring(0, 7)})',
+              if (range != null) 'lab range ${SummaryView.range(range)}',
+              if (prev != null) 'was ${fmt(prev['value'])} (${(prev['sampledOn'] as String).substring(0, 7)})',
             ].join(' · ');
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('${analyteName(m['analyte'] as String)} ${m['value']} ${m['unit']}',
+                    Text('${analyteName(m['analyte'] as String)} ${fmt(m['value'])} ${m['unit']}',
                         style: LT.label.copyWith(fontWeight: FontWeight.w600, color: m['source'] == 'patientTyped' ? LT.ink3 : LT.ink)),
                     Text(sub, style: LT.small.copyWith(fontSize: 12)),
                   ]),
