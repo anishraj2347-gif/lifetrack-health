@@ -10,6 +10,7 @@ import '../../model/custody.dart';
 import '../widgets/family_bar.dart';
 import '../widgets/parts.dart';
 import 'data_rights_screen.dart';
+import 'abha_screen.dart';
 import 'add_family_screen.dart';
 import 'emergency_screen.dart';
 import 'family_link_screens.dart';
@@ -46,6 +47,7 @@ class MeScreen extends StatelessWidget {
         padding: EdgeInsets.zero,
         child: Column(children: [
           _link(context, LucideIcons.heartPulse, 'Emergency ID', 'What a paramedic sees', const EmergencyScreen()),
+          _link(context, LucideIcons.idCard, 'ABHA health ID', p.abha == null ? 'Optional · not added' : '${p.abha!.display} · not verified', const AbhaScreen()),
           _link(context, LucideIcons.history, 'Access log', '${s.auditEntries().length} entries on this phone', const AuditScreen()),
           _link(context, LucideIcons.scale, 'Your data and your rights', 'What is held where, and how to erase it', const DataRightsScreen(), last: true),
         ]),

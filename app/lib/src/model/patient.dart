@@ -1,3 +1,5 @@
+import 'abha.dart';
+
 /// The demographics a reference interval depends on.
 ///
 /// Carried per patient, never as a global: the moment a second profile exists
@@ -12,6 +14,7 @@ class Patient {
     required this.dateOfBirth,
     required this.sex,
     this.pregnant = false,
+    this.abha,
   });
 
   final String id;
@@ -23,6 +26,11 @@ class Patient {
   /// it is true, Plane A declines to apply a non-pregnant adult interval and
   /// reports the result as not checked rather than guessing.
   final bool pregnant;
+
+  /// Optional. Everything in LifeTrack works without it.
+  final Abha? abha;
+
+  Patient withAbha(Abha? a) => Patient(id: id, name: name, dateOfBirth: dateOfBirth, sex: sex, pregnant: pregnant, abha: a);
 
   /// Age in whole years at [at]. Takes the clock explicitly — see
   /// CLAUDE.md "two clocks": a function that reads wall time internally
@@ -41,6 +49,7 @@ class Patient {
         'dob': dateOfBirth.toIso8601String(),
         'sex': sex.name,
         'pregnant': pregnant,
+        if (abha != null) 'abha': abha!.toJson(),
       };
 
   static Patient fromJson(Map<String, Object?> j) => Patient(
@@ -49,5 +58,6 @@ class Patient {
         dateOfBirth: DateTime.parse(j['dob']! as String),
         sex: Sex.values.byName(j['sex']! as String),
         pregnant: (j['pregnant'] as bool?) ?? false,
+        abha: j['abha'] == null ? null : Abha.fromJson((j['abha']! as Map).cast()),
       );
 }

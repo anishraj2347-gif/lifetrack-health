@@ -44,6 +44,7 @@ void main() {
       );
       await services.createProfile(name: 'Anjali Sharma', dob: DateTime(1984), sex: Sex.female);
       await services.emergency.save(services.selfPatientId!, const EmergencyCard(bloodType: 'B+', allergies: 'Penicillin'));
+      await services.setAbha(number: '91-1234-5678-9012');
     });
     await tester.pumpWidget(LifeTrackApp(boot: () async => services, unlocker: u));
     await tester.pumpAndSettle();
@@ -70,6 +71,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Penicillin'), findsOneWidget);
     expect(find.text('Edit card'), findsNothing);
+    expect(find.text('XX-XXXX-XXXX-9012'), findsOneWidget, reason: 'only the last four digits of the ABHA, to anyone holding the phone');
+    expect(find.textContaining('1234'), findsNothing);
     expect(services.audit.entriesFor(services.selfPatientId!).any((e) => e.actorId == EmergencyCardStore.unauthenticatedActor && e.action == AuditAction.emergencyRead), isTrue);
   });
 

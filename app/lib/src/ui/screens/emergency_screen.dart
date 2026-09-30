@@ -40,6 +40,8 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   Widget build(BuildContext context) {
     final c = _card;
     final s = AppScope.of(context);
+    // Masked: this screen opens from the lock screen for anyone holding the phone.
+    final abha = (widget.fromLockScreen ? s.selfPatient : s.currentPatient)?.abha;
     return Scaffold(
       appBar: AppBar(),
       body: c == null
@@ -70,7 +72,8 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                   _field(LucideIcons.droplet, 'Blood type', c.bloodType),
                   _field(LucideIcons.activity, 'Ongoing conditions', c.conditions),
                   _field(LucideIcons.pill, 'Current medicines', c.medications),
-                  _field(LucideIcons.phone, 'Emergency contact', [c.contactName, c.contactRelation, c.contactPhone].where((x) => x.isNotEmpty).join(' · '), last: true),
+                  _field(LucideIcons.phone, 'Emergency contact', [c.contactName, c.contactRelation, c.contactPhone].where((x) => x.isNotEmpty).join(' · '), last: abha == null),
+                  if (abha != null) _field(LucideIcons.idCard, 'ABHA (last four digits)', abha.masked, last: true),
                 ]),
               ),
               if (!widget.fromLockScreen)

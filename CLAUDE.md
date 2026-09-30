@@ -105,6 +105,11 @@ copy predate the claim fixes; the app's wording is authoritative).
      or device PIN; release permissions add USE_BIOMETRIC/USE_FINGERPRINT only). The lock
      screen offers the owner's Emergency ID read-only, logged as `unauthenticated:lock_screen`.
      Relock after 1 min away pops pushed routes first. Turning it off needs an unlock.
+   - 7b. **ABHA** is optional, per profile, typed in and shown as "not verified" until the ABDM
+     integration exists; it is sealed with the profile, never in the Emergency ID blob. The
+     Emergency ID shows only its last four digits. **Aadhaar is never asked for or stored**
+     (Aadhaar Act s.29; LifeTrack is not a UIDAI-approved entity) — ABHA is made with Aadhaar on
+     ABDM's side. The registration QR (name, DOB, sex, ABHA) opens only inside the unlocked app.
 8. All patient-facing clinical output — **including the view layer** — goes through the
    `Insight` contract. Screens render Insights; they never compare values with ranges.
 9. Tier 1 states position or movement and routes to a person. No diagnosis, no forecast

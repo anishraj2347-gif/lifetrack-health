@@ -26,6 +26,7 @@ import '../storage/byte_store.dart';
 import '../storage/record_repository.dart';
 import '../share/clinical_share_service.dart';
 import '../export/record_export.dart';
+import '../model/abha.dart';
 import '../family/family_link.dart';
 import '../share/http_relay_client.dart';
 import '../share/relay.dart';
@@ -609,6 +610,32 @@ class AppServices {
       refused += r;
     }
     return (added, handled, refused);
+  }
+
+  // ---- ABHA -------------------------------------------------------------
+
+  /// Adds, replaces or (with null) removes the ABHA of the profile on screen.
+  /// Whoever may act for the profile may do this — the same rule as sharing.
+  Future<void> setAbha({String? number, String? address}) async {
+    final id = currentPatientId!;
+    final actor = actingGrantor();
+    final p = repository.patient(id)!;
+    Abha? next;
+    if (number != null) {
+      final n = Abha.parseNumber(number) ?? (throw const FormatException('An ABHA number has 14 digits.'));
+      final a = (address == null || address.trim().isEmpty)
+          ? null
+          : Abha.parseAddress(address) ?? (throw const FormatException('An ABHA address looks like name@abdm.'));
+      next = Abha(number: n, address: a, addedAt: clock());
+    }
+    await repository.savePatient(p.withAbha(next));
+    await audit.append(AuditEntry(
+      at: clock(),
+      actorId: actor,
+      patientId: id,
+      action: AuditAction.edit,
+      detail: next == null ? 'ABHA removed' : 'ABHA ${next.masked} added (typed in, not verified)',
+    ));
   }
 
   // ---- export -------------------------------------------------------------
