@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import '../model/health_record.dart';
 import 'consent_token.dart';
 
@@ -7,7 +9,10 @@ import 'consent_token.dart';
 /// These build tokens; only a human-driven flow passes them to
 /// `ConsentStore.issue`.
 abstract final class Grants {
-  /// A doctor's consult grant, approved at the clinic by QR or in-app.
+  /// A doctor's consult grant. A fresh id per approval, so moving from
+  /// Summary to All reports within one visit is a new grant, not a
+  /// conflicting re-issue; "one live grant per doctor" is enforced by the
+  /// share service superseding the old one.
   static ConsentToken clinician({
     required String patientId,
     required String doctorRegistryId,
@@ -16,9 +21,12 @@ abstract final class Grants {
     required Duration window,
     required GrantType type,
     String? grantorId,
+    Set<AccessLevel> levels = const {},
+    RecordFilter? filter,
+    String? granteeKeyId,
   }) =>
       ConsentToken(
-        id: 'grant-$patientId-doctor-$doctorRegistryId',
+        id: 'grant-$patientId-doctor-$doctorRegistryId-${_nonce()}',
         patientId: patientId,
         grantedToActorId: Actors.doctor(doctorRegistryId),
         grantorId: grantorId ?? Actors.patient(patientId),
@@ -27,7 +35,19 @@ abstract final class Grants {
         issuedAt: at,
         expiresAt: at.add(window),
         type: type,
+        levels: levels,
+        filter: filter,
+        granteeKeyId: granteeKeyId,
       );
+
+  /// A visit: session-typed (a one-time grant would be spent by the first
+  /// data class read), at most 4 hours, bound to one doctor device.
+  static const visitWindow = Duration(hours: 4);
+
+  static String _nonce() {
+    final r = Random.secure();
+    return List.generate(6, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+  }
 
   /// Lets Plane A read reports and prescriptions to build on-device insights.
   /// Approved by the patient when they turn Insights on.

@@ -45,6 +45,20 @@ abstract final class DeterministicInsights {
     }
 
     for (final MapEntry(key: analyte, value: (rec, res)) in latest.entries) {
+      // The lab's own printed range, in the result's own unit, comes first:
+      // it is what the report says, and labs differ by method.
+      if (res.hasPrintedRange) {
+        final printed = ReferenceRange(
+          analyte: analyte,
+          unit: res.unit,
+          low: res.printedLow,
+          high: res.printedHigh,
+          population: 'this lab',
+        );
+        if (printed.contains(res.value)) continue;
+        out.add(_rangeInsight(analyte, rec, res, printed, "the lab's printed range"));
+        continue;
+      }
       final (lookup, range) = referenceRangeFor(analyte, patient, at);
       if (lookup == RangeLookup.noRange) {
         unresolved.add(_nc(rec, res, NotCheckedReason.noRangeForAnalyte));
@@ -59,23 +73,7 @@ abstract final class DeterministicInsights {
         continue;
       }
       if (range.contains(res.value)) continue;
-
-      final critical = criticalLimits
-          .where((c) => c.analyte == analyte && c.unit == range.unit)
-          .map((c) => c.classify(res.value))
-          .whereType<Severity>()
-          .firstOrNull;
-      final severity = critical ?? Severity.discussSoon;
-      final side = range.isAbove(res.value) ? 'above' : 'below';
-      out.add(Insight(
-        kind: critical == null ? InsightKind.outOfRange : InsightKind.critical,
-        severity: severity,
-        analyte: analyte,
-        finding: '${analyteName(analyte)} was ${_fmt(res.value)} ${res.unit} on ${_date(rec.date)}. '
-            'That is $side the reference range of ${range.describe()} for ${range.population}.',
-        action: actionFor(severity),
-        evidence: [rec.id],
-      ));
+      out.add(_rangeInsight(analyte, rec, res, range, 'the reference range', forWhom: range.population));
     }
 
     for (final MapEntry(key: analyte, value: points) in series.entries) {
@@ -112,12 +110,33 @@ abstract final class DeterministicInsights {
     return InsightRun(insights: kept, unresolved: unresolved, dropped: out.length - kept.length);
   }
 
-  /// Two prescriptions for the same ingredient within 90 days.
+  static Insight _rangeInsight(String analyte, HealthRecord rec, LabResult res, ReferenceRange range, String which, {String? forWhom}) {
+    final critical = criticalLimits
+        .where((c) => c.analyte == analyte && c.unit == range.unit)
+        .map((c) => c.classify(res.value))
+        .whereType<Severity>()
+        .firstOrNull;
+    final severity = critical ?? Severity.discussSoon;
+    final side = range.isAbove(res.value) ? 'above' : 'below';
+    return Insight(
+      kind: critical == null ? InsightKind.outOfRange : InsightKind.critical,
+      severity: severity,
+      analyte: analyte,
+      finding: '${analyteName(analyte)} was ${_fmt(res.value)} ${res.unit} on ${_date(rec.effectiveDate)}. '
+          'That is $side $which of ${range.describe()}${forWhom == null ? '' : ' for $forWhom'}.',
+      action: actionFor(severity),
+      evidence: [rec.id],
+    );
+  }
+
+  /// Two ACTIVE prescriptions for the same ingredient. A course that has
+  /// ended is history, not a double dose.
   static List<Insight> _duplicateIngredients(List<HealthRecord> records, DateTime at) {
     final recent = records.where((r) =>
         r.kind == RecordKind.prescription &&
         r.ingredient != null &&
-        at.difference(r.date).inDays <= 90);
+        r.isActiveAt(at) &&
+        at.difference(r.date).inDays <= 180);
     final byIngredient = <String, List<HealthRecord>>{};
     for (final r in recent) {
       byIngredient.putIfAbsent(r.ingredient!, () => []).add(r);

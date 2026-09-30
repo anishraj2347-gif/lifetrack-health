@@ -23,6 +23,9 @@ const dataClassNames = {
   DataClass.personalNotes: 'Personal notes',
   DataClass.vitals: 'Vitals',
   DataClass.emergencyCard: 'Emergency ID',
+  DataClass.allergies: 'Allergies',
+  DataClass.conditions: 'Conditions',
+  DataClass.familyHistory: 'Family illnesses',
 };
 
 IconData iconForActor(String actorId) {

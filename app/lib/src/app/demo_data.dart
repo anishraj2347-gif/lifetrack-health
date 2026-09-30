@@ -16,36 +16,46 @@ abstract final class DemoData {
       );
 
   static List<HealthRecord> records(String patientId) {
-    HealthRecord report(String id, String title, DateTime date, String doctor, String facility, List<LabResult> results) =>
+    HealthRecord report(String id, String title, DateTime date, String doctor, String lab, List<LabResult> results, {bool photo = true}) =>
         HealthRecord(
           id: id,
           patientId: patientId,
           kind: RecordKind.report,
           title: title,
           date: date,
-          source: RecordSource.doctorIssued,
+          sampleDate: date,
+          source: photo ? RecordSource.smartCapture : RecordSource.typedByPatient,
+          attachmentId: photo ? 'demo-photo-$id' : null,
+          labName: lab,
           doctor: doctor,
-          facility: facility,
+          facility: lab,
           results: results,
         );
 
     return [
-      report('demo-lipid-2026-03', 'Lipid panel', DateTime(2026, 3, 9), 'Dr. R. Mehta', 'Apollo', const [
-        LabResult(analyte: 'total_cholesterol', value: 214, unit: 'mg/dL'),
-        LabResult(analyte: 'ldl', value: 132, unit: 'mg/dL'),
-        LabResult(analyte: 'hdl', value: 52, unit: 'mg/dL'),
-        LabResult(analyte: 'triglycerides', value: 141, unit: 'mg/dL'),
+      report('demo-hba1c-2026-09', 'HbA1c', DateTime(2026, 9, 8), 'Dr. S. Iyer', 'Thyrocare', const [
+        LabResult(analyte: 'hba1c', value: 6.1, unit: '%', printedHigh: 5.6),
       ]),
-      report('demo-glucose-2026-03', 'Fasting glucose', DateTime(2026, 3, 9), 'Dr. R. Mehta', 'Apollo', const [
-        LabResult(analyte: 'glucose_fasting', value: 112, unit: 'mg/dL'),
+      report('demo-lipid-2026-03', 'Lipid panel', DateTime(2026, 3, 9), 'Dr. R. Mehta', 'Apollo Diagnostics', const [
+        LabResult(analyte: 'total_cholesterol', value: 214, unit: 'mg/dL', printedHigh: 200),
+        LabResult(analyte: 'ldl', value: 132, unit: 'mg/dL', printedHigh: 100),
+        LabResult(analyte: 'hdl', value: 52, unit: 'mg/dL', printedLow: 50),
+        LabResult(analyte: 'triglycerides', value: 141, unit: 'mg/dL', printedHigh: 150),
       ]),
+      report('demo-glucose-2026-03', 'Fasting glucose', DateTime(2026, 3, 9), 'Dr. R. Mehta', 'Apollo Diagnostics', const [
+        LabResult(analyte: 'glucose_fasting', value: 112, unit: 'mg/dL', printedLow: 70, printedHigh: 100),
+      ]),
+      report('demo-creatinine-2025-10', 'Creatinine', DateTime(2025, 10, 20), 'Dr. S. Iyer', 'Unknown lab', const [
+        LabResult(analyte: 'creatinine', value: 0.9, unit: 'mg/dL'),
+      ], photo: false),
       HealthRecord(
         id: 'demo-rx-metformin-2026-03',
         patientId: patientId,
         kind: RecordKind.prescription,
         title: 'Metformin 500 mg',
         date: DateTime(2026, 3, 2),
-        source: RecordSource.doctorIssued,
+        source: RecordSource.smartCapture,
+        attachmentId: 'demo-photo-rx-metformin',
         doctor: 'Dr. S. Iyer',
         facility: 'Fortis',
         dose: const Dose(morning: 1, afternoon: 0, night: 1),
@@ -57,11 +67,13 @@ abstract final class DemoData {
         kind: RecordKind.prescription,
         title: 'Glycomet 500 SR',
         date: DateTime(2026, 2, 11),
-        source: RecordSource.doctorIssued,
+        source: RecordSource.smartCapture,
+        attachmentId: 'demo-photo-rx-glycomet',
         doctor: 'Dr. R. Mehta',
         facility: 'Apollo',
         dose: const Dose(morning: 0, afternoon: 0, night: 1),
         ingredient: 'metformin',
+        endDate: DateTime(2026, 3, 1),
       ),
       HealthRecord(
         id: 'demo-xray-2026-01',
@@ -69,12 +81,13 @@ abstract final class DemoData {
         kind: RecordKind.scan,
         title: 'Chest X-ray',
         date: DateTime(2026, 1, 18),
-        source: RecordSource.doctorIssued,
+        source: RecordSource.smartCapture,
+        attachmentId: 'demo-photo-xray',
         doctor: 'Dr. R. Mehta',
         facility: 'Apollo',
       ),
       report('demo-hba1c-2026-01', 'HbA1c', DateTime(2026, 1, 5), 'Dr. S. Iyer', 'Fortis', const [
-        LabResult(analyte: 'hba1c', value: 6.1, unit: '%'),
+        LabResult(analyte: 'hba1c', value: 6.4, unit: '%'),
       ]),
       report('demo-cbc-2025-11', 'Complete blood count', DateTime(2025, 11, 20), 'Dr. S. Iyer', 'Fortis', const [
         LabResult(analyte: 'haemoglobin', value: 11.4, unit: 'g/dL'),

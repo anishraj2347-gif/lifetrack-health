@@ -91,6 +91,8 @@ class AuditScreen extends StatelessWidget {
         AuditAction.grantIssued => 'gave access',
         AuditAction.grantRevoked => 'revoked access',
         AuditAction.cloudEgress => 'sent a de-identified summary off this phone',
+        AuditAction.clinicalShare => 'shared records, encrypted to one doctor',
+        AuditAction.prescriptionReceived => 'added a signed prescription',
         AuditAction.emergencyRead => 'opened the Emergency ID',
         AuditAction.vaultBackup => 'backed up',
         AuditAction.vaultRestore => 'restored from backup',

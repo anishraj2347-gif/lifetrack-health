@@ -122,11 +122,34 @@ void main() {
     });
   });
 
-  test('two prescriptions for one ingredient from different doctors are flagged', () {
-    final run = DeterministicInsights.run(patient: DemoData.patient('p1'), records: DemoData.records('p1'), at: at);
-    final med = run.insights.singleWhere((i) => i.kind == InsightKind.medication);
+  test('two ACTIVE prescriptions for one ingredient from different doctors are flagged', () {
+    HealthRecord rx(String id, String doctor, {DateTime? ends}) => HealthRecord(
+          id: id,
+          patientId: 'p1',
+          kind: RecordKind.prescription,
+          title: id,
+          date: DateTime(2026, 3, 1),
+          source: RecordSource.typedByPatient,
+          doctor: doctor,
+          ingredient: 'metformin',
+          endDate: ends,
+        );
+    final both = DeterministicInsights.run(patient: adultWoman, at: at, records: [rx('Metformin 500', 'Dr. A'), rx('Glycomet 500', 'Dr. B')]);
+    final med = both.insights.singleWhere((i) => i.kind == InsightKind.medication);
     expect(med.finding, contains('metformin'));
     expect(med.evidence, hasLength(2));
+  });
+
+  test('an ended course is history, not a double dose', () {
+    final run = DeterministicInsights.run(patient: DemoData.patient('p1'), records: DemoData.records('p1'), at: at);
+    expect(run.insights.where((i) => i.kind == InsightKind.medication), isEmpty);
+  });
+
+  test("the lab's printed range is used when the report has one", () {
+    final run = DeterministicInsights.run(patient: adultWoman, at: at, records: [
+      report('r1', DateTime(2026, 3, 9), const [LabResult(analyte: 'ldl', value: 105, unit: 'mg/dL', printedHigh: 100)]),
+    ]);
+    expect(run.insights.single.finding, contains("the lab's printed range of 100 mg/dL or below"));
   });
 
   group('banned phrases', () {

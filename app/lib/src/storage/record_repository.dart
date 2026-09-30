@@ -1,3 +1,4 @@
+import '../model/clinical_profile.dart';
 import '../model/health_record.dart';
 import '../model/patient.dart';
 import 'sealed_store.dart';
@@ -7,18 +8,21 @@ import 'sealed_store.dart';
 /// The whole set is rewritten on every change; [ByteStore.write]'s atomicity
 /// contract is what makes that safe.
 class RecordRepository {
-  RecordRepository._(this._store, this._records, this._patients);
+  RecordRepository._(this._store, this._records, this._patients, this._profiles);
 
   static const recordsBlob = 'records';
   static const patientsBlob = 'patients';
+  static const profilesBlob = 'clinical_profiles';
 
   final SealedStore _store;
   final List<HealthRecord> _records;
   final Map<String, Patient> _patients;
+  final Map<String, ClinicalProfile> _profiles;
 
   static Future<RecordRepository> open(SealedStore store) async {
     final r = await store.read(recordsBlob) as List?;
     final p = await store.read(patientsBlob) as List?;
+    final c = (await store.read(profilesBlob) as Map?)?.cast<String, Object?>() ?? const {};
     return RecordRepository._(
       store,
       [for (final e in r ?? const []) HealthRecord.fromJson((e as Map).cast<String, Object?>())],
@@ -26,6 +30,7 @@ class RecordRepository {
         for (final e in p ?? const [])
           (e as Map)['id']! as String: Patient.fromJson(e.cast<String, Object?>()),
       },
+      {for (final MapEntry(:key, :value) in c.entries) key: ClinicalProfile.fromJson((value! as Map).cast())},
     );
   }
 
@@ -39,6 +44,15 @@ class RecordRepository {
   /// call it. Agents never do — `plane_boundary_test.dart` enforces that.
   List<HealthRecord> recordsOf(String patientId) =>
       (_records.where((r) => r.patientId == patientId).toList()..sort((a, b) => b.date.compareTo(a.date)));
+
+  /// Unfiltered, like [recordsOf]: the patient's own screens and
+  /// `RecordAccess` only.
+  ClinicalProfile profileOf(String patientId) => _profiles[patientId] ?? const ClinicalProfile();
+
+  Future<void> saveProfile(String patientId, ClinicalProfile profile) async {
+    _profiles[patientId] = profile;
+    await _store.write(profilesBlob, {for (final MapEntry(:key, :value) in _profiles.entries) key: value.toJson()});
+  }
 
   Future<void> savePatient(Patient p) async {
     _patients[p.id] = p;
@@ -61,7 +75,9 @@ class RecordRepository {
   Future<void> eraseFor(String patientId) async {
     _records.removeWhere((r) => r.patientId == patientId);
     _patients.remove(patientId);
+    _profiles.remove(patientId);
     await _flush();
+    await _store.write(profilesBlob, {for (final MapEntry(:key, :value) in _profiles.entries) key: value.toJson()});
     await _store.write(patientsBlob, [for (final x in _patients.values) x.toJson()]);
   }
 

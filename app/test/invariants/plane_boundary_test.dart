@@ -33,6 +33,12 @@ void main() {
       }
     });
 
+    test('reach the clinical share (CLAUDE.md #1a: only a patient approval shares)', () {
+      for (final f in ai) {
+        expect(RegExp(r"import '[^']*share/").hasMatch(codeOf(f)), isFalse, reason: rel(f));
+      }
+    });
+
     test('touch the Emergency ID', () {
       for (final f in ai) {
         expect(RegExp(r"import '[^']*emergency/").hasMatch(codeOf(f)), isFalse, reason: rel(f));

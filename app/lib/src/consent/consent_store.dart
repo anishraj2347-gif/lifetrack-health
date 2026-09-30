@@ -107,10 +107,27 @@ class ConsentStore {
           if (t.patientId == patientId && !_isFinished(t, at)) t,
       ]..sort((a, b) => a.expiresAt.compareTo(b.expiresAt));
 
+  /// Whether a grant to [actorId] bound to [granteeKeyId] was issued for
+  /// [patientId] since [since] — live or finished (finished grants are kept
+  /// until [evictFinished]). Used to accept a prescription only from a doctor
+  /// the patient recently shared with.
+  bool everIssuedTo({required String patientId, required String actorId, required String granteeKeyId, required DateTime since}) =>
+      _issued.values.any((t) =>
+          t.patientId == patientId &&
+          t.grantedToActorId == actorId &&
+          t.granteeKeyId == granteeKeyId &&
+          !t.issuedAt.isBefore(since));
+
   /// Drops every finished grant. Safe at any time: a finished grant can never
   /// authorize again, and its history lives in the audit log, not here.
+  ///
+  /// Kept for [kMaxGrantWindow] after it ends, so a doctor's prescription
+  /// sent just after a visit can still be matched to that visit.
   void evictFinished(DateTime at) {
-    final dead = [for (final t in _issued.values) if (_isFinished(t, at)) t.id];
+    final dead = [
+      for (final t in _issued.values)
+        if (_isFinished(t, at) && at.difference(t.expiresAt.isBefore(at) ? t.expiresAt : t.issuedAt) > kMaxGrantWindow) t.id,
+    ];
     if (dead.isEmpty) return;
     dead.forEach(_evict);
     onChanged?.call(this);

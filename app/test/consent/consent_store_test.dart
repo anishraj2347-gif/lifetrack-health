@@ -8,15 +8,27 @@ void main() {
   final t0 = DateTime(2031, 2, 3, 9);
   late ConsentStore store;
 
+  // Built directly with a fixed id: these tests are about the store's rules
+  // for a given id. Grants.clinician mints a fresh id per approval.
   ConsentToken doctorGrant({String patient = 'p1', String doctor = 'NMC-1', Set<DataClass>? scopes, Duration window = const Duration(hours: 24), GrantType type = GrantType.session, DateTime? at}) =>
-      Grants.clinician(
+      ConsentToken(
+        id: 'grant-$patient-doctor-$doctor',
         patientId: patient,
-        doctorRegistryId: doctor,
+        grantedToActorId: Actors.doctor(doctor),
+        grantorId: Actors.patient(patient),
+        purpose: GrantPurpose.clinicalConsult,
         scopes: scopes ?? {DataClass.reports},
-        at: at ?? t0,
-        window: window,
+        issuedAt: at ?? t0,
+        expiresAt: (at ?? t0).add(window),
         type: type,
       );
+
+  test('Grants.clinician mints a fresh, patient-scoped id per approval', () {
+    ConsentToken g() => Grants.clinician(patientId: 'p1', doctorRegistryId: 'NMC-1', scopes: {DataClass.reports}, at: t0, window: const Duration(hours: 4), type: GrantType.session);
+    final a = g(), b = g();
+    expect(a.id, isNot(b.id));
+    expect(a.id, startsWith('grant-p1-doctor-NMC-1-'));
+  });
 
   ConsentToken authorize(String id, {String actor = 'doctor:NMC-1', String patient = 'p1', DataClass cls = DataClass.reports, GrantPurpose purpose = GrantPurpose.clinicalConsult, DateTime? at}) =>
       store.authorize(tokenId: id, actorId: actor, patientId: patient, dataClass: cls, purpose: purpose, at: at ?? t0.add(const Duration(minutes: 5)));

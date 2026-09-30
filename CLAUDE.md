@@ -68,7 +68,15 @@ copy predate the claim fixes; the app's wording is authoritative).
 
 ### Invariants
 
-1. Records never leave the phone except as a Plane C slice on a human tap, or as backup ciphertext.
+1. Records never leave the phone except in three ways: a Plane C slice on a human tap, backup
+   ciphertext, or a **clinical share** (approved by the founder, 30 Sep 2026, for phase 2):
+   - 1a. A clinical share is built on the patient's phone, only after the patient approves a
+     level for one doctor whose registry-signed device certificate verified on that phone.
+   - 1b. It is encrypted to that doctor's device key alone (X25519 + AES-GCM). A relay may carry
+     it but never holds a key that opens it, and deletes it after pickup or at grant expiry.
+   - 1c. The `clinicalShare` audit entry is written before the bundle leaves (#13).
+   - 1d. No screen promises the doctor "keeps no copy": the doctor keeps their own consult note
+     and prescription; the app cannot stop a photo. Say "shared records close when access ends".
 2. No UI string may assert unreconstructibility (that LifeTrack/the server/anyone cannot read,
    open or access the patient's data) until the offline-guessing oracle is closed by a PAKE or a
    system-generated passphrase. Enforced on claim *subject* by `ui_claims_test.dart`, not by a
@@ -76,7 +84,8 @@ copy predate the claim fixes; the app's wording is authoritative).
    - 2a. Test-only stand-ins must `throw` in release — never `assert`, which release strips — and
      the guard is checked by a derived test covering every file that mentions `kReleaseMode`.
 3. Nothing in `lib/` may be socket-capable; the release manifest has no INTERNET permission.
-   Both are tests, so adding either is a visible custody event.
+   Both are tests, so adding either is a visible custody event. Phase 2's relay client will be
+   the first exception; it lands with its own test change, in one reviewed commit.
 4. Plane C crosses only on a fresh, unspent `HumanAction` bound to the disclosure the patient
    read; the tap is spent synchronously before any `await`.
 5. An agent may never create, extend or exercise a grant it was not given. Nothing under
@@ -108,7 +117,12 @@ copy predate the claim fixes; the app's wording is authoritative).
     - 13a. The audit log is append-only **and durable** (sealed on disk).
 14. Proxy consent only for legal dependents; `grantorId` records who granted. (Enforcement is
     P3 — no dependent profiles exist yet.)
-15. No doctor capability (e.g. prescribing) before registry verification. (No doctor app yet.)
+15. No doctor capability (e.g. prescribing) before registry verification. On the patient's
+    phone this means: no grant to a doctor, and no inbound prescription accepted, unless the
+    doctor's device certificate verifies against the pinned registry key.
+16. Access levels are presets over data classes plus an optional filter — Summary (default),
+    All my reports, Family illnesses. A level never widens `authorize`; the patient may always
+    grant less. Results show their age, never "valid" or "expired".
 
 ### Rules for working here
 

@@ -44,11 +44,13 @@ void main() {
   testWidgets('sample onboarding lands on the timeline', (tester) async {
     await onboardWithSamples(tester);
     expect(find.text('Anjali Sharma'), findsOneWidget);
-    expect(find.text('Lipid panel'), findsOneWidget);
+    expect(find.text('HbA1c'), findsWidgets);
   });
 
   testWidgets('a record shows values without judging them until Insights is on', (tester) async {
     await onboardWithSamples(tester);
+    await tester.scrollUntilVisible(find.text('Lipid panel'), 200, scrollable: find.byType(Scrollable).at(1));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Lipid panel'));
     await tester.pumpAndSettle();
     expect(find.text('132 mg/dL'), findsOneWidget);

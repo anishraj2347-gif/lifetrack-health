@@ -74,9 +74,8 @@ class _InsightsScreenState extends State<InsightsScreen> {
               const SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
+                  Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
                     const Text('Long-term patterns', style: LT.label),
-                    const SizedBox(width: 8),
                     Badge2(s.cloud.isAvailable(s.clock()) ? 'Available' : 'Not available yet', tone: BadgeTone.outline),
                   ]),
                   const SizedBox(height: 4),

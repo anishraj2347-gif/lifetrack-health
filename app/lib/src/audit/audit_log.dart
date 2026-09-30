@@ -13,6 +13,13 @@ enum AuditAction {
   /// of successes.
   cloudEgress,
 
+  /// An approved clinical share left the phone, encrypted to one doctor's
+  /// device key. Written before the send (CLAUDE.md #1c).
+  clinicalShare,
+
+  /// A signed prescription from a verified doctor was added to the record.
+  prescriptionReceived,
+
   /// Someone read the Emergency ID card without unlocking the phone.
   emergencyRead,
   vaultBackup,

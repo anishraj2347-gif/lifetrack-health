@@ -4,13 +4,37 @@ enum RecordKind { prescription, report, scan, note }
 /// Where a record came from. Kept on the record rather than discarded at the
 /// write path: a result typed in by the patient and one issued by a lab carry
 /// different weight, and export (FHIR `Provenance`) needs to say which.
-enum RecordSource { typedByPatient, smartCapture, doctorIssued, restoredFromBackup }
+enum RecordSource { typedByPatient, smartCapture, doctorIssued, restoredFromBackup, labSigned }
+
+/// What a doctor can rely on, shown as a badge on every result. A doctor
+/// reuses a result instead of re-ordering it only when they can trace it to
+/// a lab (clinical review, 30 Sep 2026).
+enum Provenance {
+  /// Delivered by the lab or signed by a verified doctor.
+  signed,
+
+  /// Values typed or confirmed by the patient, with the original image kept.
+  photoOfReport,
+
+  /// Typed by the patient with no source attached.
+  patientTyped,
+}
 
 /// The data classes a consent grant can be scoped to.
 ///
 /// Personal notes and vitals are separate classes because they default to
 /// local-only and are backed up only on opt-in (blueprint §5.2).
-enum DataClass { prescriptions, reports, scans, personalNotes, vitals, emergencyCard }
+enum DataClass {
+  prescriptions,
+  reports,
+  scans,
+  personalNotes,
+  vitals,
+  emergencyCard,
+  allergies,
+  conditions,
+  familyHistory,
+}
 
 DataClass dataClassOf(RecordKind kind) => switch (kind) {
       RecordKind.prescription => DataClass.prescriptions,
@@ -21,7 +45,7 @@ DataClass dataClassOf(RecordKind kind) => switch (kind) {
 
 /// One measured analyte on a report.
 class LabResult {
-  const LabResult({required this.analyte, required this.value, required this.unit});
+  const LabResult({required this.analyte, required this.value, required this.unit, this.printedLow, this.printedHigh});
 
   /// Canonical analyte key, e.g. `glucose_fasting`, `hba1c`. Matching is on
   /// this key only — free-text names are resolved to it at capture time.
@@ -29,12 +53,27 @@ class LabResult {
   final double value;
   final String unit;
 
-  Map<String, Object?> toJson() => {'analyte': analyte, 'value': value, 'unit': unit};
+  /// The reference range printed on this lab's report, in [unit]. Preferred
+  /// over the generic table: labs differ by method and population.
+  final double? printedLow;
+  final double? printedHigh;
+
+  bool get hasPrintedRange => printedLow != null || printedHigh != null;
+
+  Map<String, Object?> toJson() => {
+        'analyte': analyte,
+        'value': value,
+        'unit': unit,
+        if (printedLow != null) 'lo': printedLow,
+        if (printedHigh != null) 'hi': printedHigh,
+      };
 
   static LabResult fromJson(Map<String, Object?> j) => LabResult(
         analyte: j['analyte']! as String,
         value: (j['value']! as num).toDouble(),
         unit: j['unit']! as String,
+        printedLow: (j['lo'] as num?)?.toDouble(),
+        printedHigh: (j['hi'] as num?)?.toDouble(),
       );
 }
 
@@ -71,6 +110,11 @@ class HealthRecord {
     this.results = const [],
     this.dose,
     this.ingredient,
+    this.labName,
+    this.sampleDate,
+    this.attachmentId,
+    this.endDate,
+    this.patientConfirmedAt,
   });
 
   final String id;
@@ -88,7 +132,38 @@ class HealthRecord {
   /// differ; duplicate-medicine checks must compare ingredients.
   final String? ingredient;
 
+  /// Lab that ran a report, as printed on it. Never inferred.
+  final String? labName;
+
+  /// When the sample was collected — what decides whether a doctor can reuse
+  /// a result. Falls back to [date] (the document date) when not captured.
+  final DateTime? sampleDate;
+
+  /// The original photo or PDF, kept so a doctor can check it.
+  final String? attachmentId;
+
+  /// For a prescription: when the course ends. Null = open-ended.
+  final DateTime? endDate;
+
+  /// When the patient last confirmed they are still taking this medicine.
+  final DateTime? patientConfirmedAt;
+
   DataClass get dataClass => dataClassOf(kind);
+
+  DateTime get effectiveDate => sampleDate ?? date;
+
+  /// `doctorIssued` is only ever written by the verified inbound-prescription
+  /// path (signature checked against a registry-certified doctor key), so it
+  /// counts as signed. Everything the patient enters is not.
+  Provenance get provenance {
+    if (source == RecordSource.labSigned || source == RecordSource.doctorIssued) return Provenance.signed;
+    if (attachmentId != null) return Provenance.photoOfReport;
+    return Provenance.patientTyped;
+  }
+
+  /// A prescription is active until its end date. Whether the patient still
+  /// takes it is a separate fact ([patientConfirmedAt]), shown beside it.
+  bool isActiveAt(DateTime at) => kind == RecordKind.prescription && (endDate == null || at.isBefore(endDate!));
 
   /// Doctor-issued documents are backed up automatically (blueprint §5.2).
   bool get backedUpByDefault => kind != RecordKind.note;
@@ -105,6 +180,11 @@ class HealthRecord {
         'results': [for (final r in results) r.toJson()],
         'dose': dose?.toJson(),
         'ingredient': ingredient,
+        if (labName != null) 'lab': labName,
+        if (sampleDate != null) 'sampled': sampleDate!.toIso8601String(),
+        if (attachmentId != null) 'attachment': attachmentId,
+        if (endDate != null) 'ends': endDate!.toIso8601String(),
+        if (patientConfirmedAt != null) 'confirmed': patientConfirmedAt!.toIso8601String(),
       };
 
   static HealthRecord fromJson(Map<String, Object?> j) => HealthRecord(
@@ -122,5 +202,12 @@ class HealthRecord {
         ],
         dose: j['dose'] == null ? null : Dose.fromJson((j['dose']! as Map).cast<String, Object?>()),
         ingredient: j['ingredient'] as String?,
+        labName: j['lab'] as String?,
+        sampleDate: _date(j['sampled']),
+        attachmentId: j['attachment'] as String?,
+        endDate: _date(j['ends']),
+        patientConfirmedAt: _date(j['confirmed']),
       );
+
+  static DateTime? _date(Object? v) => v == null ? null : DateTime.parse(v as String);
 }
