@@ -9,18 +9,26 @@ import 'package:shelf_router/shelf_router.dart';
 import 'registry.dart';
 import 'relay_store.dart';
 import 'id_registry.dart';
+import 'identity.dart';
 import 'vault_store.dart';
 
 /// HTTP routes. Every response is JSON; no response ever contains a
 /// decrypted record, because the server never holds a key that makes one.
 class LifeTrackApi {
-  LifeTrackApi({required this.registry, required this.relay, required this.vault, required this.ids, required this.adminToken, DateTime Function()? clock})
+  LifeTrackApi({required this.registry, required this.relay, required this.vault, required this.ids, required this.adminToken, this.identity, this.requireIdentity = false, DateTime Function()? clock})
       : clock = clock ?? DateTime.now;
 
   final DoctorRegistry registry;
   final RelayStore relay;
   final VaultStore vault;
   final IdRegistry ids;
+
+  /// DigiLocker-backed identity checks; null when not configured.
+  final IdentityService? identity;
+
+  /// When true, a LifeTrack ID is issued only with a signed identity
+  /// attestation, and one person gets one ID.
+  final bool requireIdentity;
   final String adminToken;
   final DateTime Function() clock;
 
@@ -45,7 +53,13 @@ class LifeTrackApi {
       ..post('/v1/ids', _idRegister)
       ..get('/v1/ids/<id>', _idLookup)
       ..put('/v1/ids/<id>', _idMove)
-      ..delete('/v1/ids/<id>', _idDelete);
+      ..delete('/v1/ids/<id>', _idDelete)
+      ..get('/v1/verify/config', _verifyConfig)
+      ..post('/v1/verify/start', _verifyStart)
+      ..get('/v1/verify/callback', _verifyCallback)
+      ..get('/v1/verify/<session>', _verifyPoll)
+      ..get('/v1/practice-digilocker/authorize', _practiceAuthorize)
+      ..get('/v1/practice-digilocker/approve', _practiceApprove);
     return const Pipeline().addMiddleware(_cors()).addHandler(r.call);
   }
 
@@ -281,7 +295,19 @@ class LifeTrackApi {
       return _error(400, 'Invalid registration.');
     }
     if (ids.contains(id)) return _error(409, 'That ID is taken.');
-    await ids.put(id, {'mailbox': b['mailbox'], 'key': b['key'], 'tokenHash': b['tokenHash'], 'createdAt': clock().toIso8601String()});
+    String? subject;
+    if (b['attestation'] is Map) {
+      final a = IdentityAttestation.fromJson((b['attestation']! as Map).cast());
+      if (!await a.verifies(await registry.trust())) return _error(400, 'The identity check is not LifeTrack\'s.');
+      subject = a.subjectHash;
+      final existing = ids.bySubject(subject);
+      if (existing != null) {
+        return _json({'error': 'This person already has a LifeTrack ID. Restore it from backup instead of making a new one.', 'reason': 'person_exists'}, status: 409);
+      }
+    } else if (requireIdentity) {
+      return _error(400, 'A verified identity is needed for a LifeTrack ID.');
+    }
+    await ids.put(id, {'mailbox': b['mailbox'], 'key': b['key'], 'tokenHash': b['tokenHash'], 'subject': ?subject, 'createdAt': clock().toIso8601String()});
     return _json({'id': id}, status: 201);
   }
 
@@ -316,6 +342,71 @@ class LifeTrackApi {
     if (token == null || !_same(await RelayApi.sha256Hex(token), e['tokenHash'] as String?)) return _error(403, 'Not your ID.');
     await ids.remove(LifeTrackId.parse(Uri.decodeComponent(id))!);
     return _json({'deleted': true});
+  }
+
+  // ---- identity (DigiLocker) ----------------------------------------------
+
+  Response _verifyConfig(Request _) => _json({'enabled': identity != null, 'provider': identity?.provider.name, 'required': requireIdentity});
+
+  Future<Response> _verifyStart(Request req) async {
+    final idn = identity;
+    if (idn == null) return _error(404, 'Identity checks are not set up on this server.');
+    final Map<String, Object?> b;
+    try {
+      b = (jsonDecode(await req.readAsString()) as Map).cast();
+    } on Object {
+      return _error(400, 'Invalid request.');
+    }
+    final purpose = VerifyPurpose.values.where((v) => v.name == b['purpose']).firstOrNull;
+    if (purpose == null) return _error(400, 'Unknown purpose.');
+    try {
+      final (id, secret, url) = await idn.start(
+        base: req.requestedUri.replace(path: '', query: null),
+        purpose: purpose,
+        parent: b['parent'] is Map ? IdentityAttestation.fromJson((b['parent']! as Map).cast()) : null,
+      );
+      return _json({'session': id, 'secret': secret, 'authorizeUrl': '$url'});
+    } on VerifyRefused catch (e) {
+      return _error(403, e.message);
+    }
+  }
+
+  Future<Response> _verifyCallback(Request req) async {
+    final q = req.requestedUri.queryParameters;
+    var title = 'Done — go back to LifeTrack';
+    try {
+      await identity!.callback(state: q['state'] ?? '', code: q['code'], error: q['error']);
+    } on VerifyRefused catch (e) {
+      title = e.message;
+    }
+    return Response.ok(
+      '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>LifeTrack</title></head>'
+      '<body style="font:18px system-ui;padding:32px;background:#f4f4f2"><h2>${const HtmlEscape().convert(title)}</h2>'
+      '<p>You can close this page. LifeTrack picks up the result by itself.</p></body></html>',
+      headers: {'content-type': 'text/html; charset=utf-8'},
+    );
+  }
+
+  Future<Response> _verifyPoll(Request req, String session) async {
+    final secret = req.headers[RelayApi.hSessionSecret];
+    if (identity == null || secret == null) return _error(404, 'No such session.');
+    return _json(await identity!.poll(session, secret));
+  }
+
+  Response _practiceAuthorize(Request req) {
+    if (identity?.provider is! PracticeDigiLocker) return _error(404, 'Not here.');
+    final q = req.requestedUri.queryParameters;
+    return Response.ok(PracticeDigiLocker.page(state: q['state'] ?? '', challenge: q['challenge'] ?? '', purpose: q['purpose'] ?? 'self'),
+        headers: {'content-type': 'text/html; charset=utf-8'});
+  }
+
+  Response _practiceApprove(Request req) {
+    final p = identity?.provider;
+    if (p is! PracticeDigiLocker) return _error(404, 'Not here.');
+    final q = req.requestedUri.queryParameters;
+    if (!PracticeDigiLocker.accounts.containsKey(q['account'])) return _error(400, 'Unknown account.');
+    final code = p.approve(q['account']!, q['challenge'] ?? '');
+    return Response.found(req.requestedUri.replace(path: '/v1/verify/callback', queryParameters: {'state': q['state'] ?? '', 'code': code}));
   }
 
   // ---- helpers -------------------------------------------------------------

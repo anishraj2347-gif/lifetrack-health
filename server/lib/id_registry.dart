@@ -23,6 +23,14 @@ class IdRegistry {
   Map<String, Object?>? operator [](String id) => _ids[id];
   bool contains(String id) => _ids.containsKey(id);
 
+  /// The ID already issued to this verified person, if any.
+  String? bySubject(String subject) {
+    for (final e in _ids.entries) {
+      if (e.value['subject'] == subject) return e.key;
+    }
+    return null;
+  }
+
   Future<void> put(String id, Map<String, Object?> entry) async {
     _ids[id] = entry;
     await _save();

@@ -1,3 +1,5 @@
+import 'package:lifetrack_protocol/lifetrack_protocol.dart' show IdentityAttestation;
+
 import 'abha.dart';
 
 /// The demographics a reference interval depends on.
@@ -15,6 +17,7 @@ class Patient {
     required this.sex,
     this.pregnant = false,
     this.abha,
+    this.verification,
   });
 
   final String id;
@@ -30,7 +33,26 @@ class Patient {
   /// Optional. Everything in LifeTrack works without it.
   final Abha? abha;
 
-  Patient withAbha(Abha? a) => Patient(id: id, name: name, dateOfBirth: dateOfBirth, sex: sex, pregnant: pregnant, abha: a);
+  /// DigiLocker's confirmation of name, date of birth and gender, signed by
+  /// the LifeTrack service. Null for profiles made before verification.
+  final IdentityAttestation? verification;
+  bool get isVerified => verification != null;
+
+  Patient withAbha(Abha? a) => Patient(id: id, name: name, dateOfBirth: dateOfBirth, sex: sex, pregnant: pregnant, abha: a, verification: verification);
+
+  /// Takes name, date of birth and sex from [v] — a verified profile shows
+  /// exactly what DigiLocker confirmed.
+  Patient withVerification(IdentityAttestation v) => Patient(
+        id: id,
+        name: v.name,
+        dateOfBirth: v.dateOfBirth,
+        sex: sexFromGender(v.gender),
+        pregnant: pregnant,
+        abha: abha,
+        verification: v,
+      );
+
+  static Sex sexFromGender(String? g) => switch (g) { 'F' => Sex.female, 'M' => Sex.male, _ => Sex.unspecified };
 
   /// Age in whole years at [at]. Takes the clock explicitly — see
   /// CLAUDE.md "two clocks": a function that reads wall time internally
@@ -50,6 +72,7 @@ class Patient {
         'sex': sex.name,
         'pregnant': pregnant,
         if (abha != null) 'abha': abha!.toJson(),
+        if (verification != null) 'verification': verification!.toJson(),
       };
 
   static Patient fromJson(Map<String, Object?> j) => Patient(
@@ -59,5 +82,6 @@ class Patient {
         sex: Sex.values.byName(j['sex']! as String),
         pregnant: (j['pregnant'] as bool?) ?? false,
         abha: j['abha'] == null ? null : Abha.fromJson((j['abha']! as Map).cast()),
+        verification: j['verification'] == null ? null : IdentityAttestation.fromJson((j['verification']! as Map).cast()),
       );
 }

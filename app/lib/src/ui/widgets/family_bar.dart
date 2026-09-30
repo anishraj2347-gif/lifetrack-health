@@ -116,7 +116,9 @@ class FamilyBar extends StatelessWidget {
   }
 
   static String authorityLine(Custody c) => switch (c.kind) {
-    CustodyKind.childOfParent => 'Your ${c.relation}\'s records · you are the parent (declared, not yet verified)',
+    CustodyKind.childOfParent => c.isVerified
+        ? 'Your ${c.relation}\'s records · you are the parent (birth certificate, DigiLocker)'
+        : 'Your ${c.relation}\'s records · you are the parent (declared, not yet verified)',
     CustodyKind.delegatedByAdult => 'Your ${c.relation}\'s records · they asked you to manage (agreed in person)',
     CustodyKind.self => '',
   };

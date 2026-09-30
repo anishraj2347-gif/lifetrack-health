@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import 'package:lifetrack_protocol/lifetrack_protocol.dart' show IdentityAttestation;
+
+import '../../identity/identity_verifier.dart';
 import '../../model/custody.dart';
 import '../../model/patient.dart';
 import '../app_scope.dart';
 import '../theme.dart';
+import '../widgets/digilocker_step.dart';
 import '../widgets/parts.dart';
 import 'family_link_screens.dart';
 
@@ -28,19 +32,75 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
   bool _consentStep = false;
   String? _error;
 
+  /// Verification-required builds: what DigiLocker confirmed, and for a
+  /// child whether it came from a newborn's birth certificate.
+  IdentityAttestation? _verified;
+  bool _newborn = true;
+
   Future<void> _save() async {
     final s = AppScope.of(context);
+    final v = _verified;
     try {
       final p = _who == _Who.child
-          ? await s.addChild(name: _name.text.trim(), dob: _dob!, sex: _sex, relation: _relation.text.trim())
-          : await s.addDelegatingAdult(name: _name.text.trim(), dob: _dob!, sex: _sex, relation: _relation.text.trim(), typedName: _typed.text);
+          ? await s.addChild(name: v?.name ?? _name.text.trim(), dob: v?.dateOfBirth ?? _dob!, sex: _sex, relation: _relation.text.trim(), verification: v)
+          : await s.addDelegatingAdult(
+              name: v?.name ?? _name.text.trim(), dob: v?.dateOfBirth ?? _dob!, sex: _sex, relation: _relation.text.trim(), typedName: _typed.text, verification: v);
       await s.switchTo(p.id);
       if (!mounted) return;
       AppScope.changed(context);
       Navigator.of(context).pop();
     } on CustodyRefused catch (e) {
       setState(() => _error = e.message);
+    } on PersonExists catch (e) {
+      setState(() => _error = e.message);
     }
+  }
+
+  /// Required-verification path: the person comes from DigiLocker.
+  Widget _verifiedDetails() {
+    final child = _who == _Who.child;
+    final v = _verified;
+    final ready = v != null && _relation.text.trim().isNotEmpty;
+    return ListView(children: [
+      Masthead(
+        eyebrow: child ? 'Add a child' : 'Add an adult who wants you to manage',
+        title: child ? 'Verify your child' : 'They verify themselves',
+        description: child
+            ? 'A newborn without Aadhaar: from the birth certificate in your DigiLocker. Any other child: with their own Aadhaar (Baal Aadhaar) through DigiLocker.'
+            : 'Hand the phone to them. They sign in to their own DigiLocker with their Aadhaar.',
+      ),
+      const SizedBox(height: 12),
+      if (child && v == null)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Wrap(spacing: 8, runSpacing: 8, children: [
+            Chip2('Newborn · birth certificate', selected: _newborn, onTap: () => setState(() => _newborn = true)),
+            Chip2('Has Aadhaar', selected: !_newborn, onTap: () => setState(() => _newborn = false)),
+          ]),
+        ),
+      DigiLockerStep(
+        key: ValueKey(_newborn),
+        purpose: child && _newborn ? 'newborn' : 'self',
+        buttonLabel: child && _newborn ? 'Share the birth certificate from my DigiLocker' : 'Verify with DigiLocker (Aadhaar)',
+        onVerified: (x) => setState(() => _verified = x),
+      ),
+      if (v != null)
+        LabeledField(
+          label: 'They are your…',
+          child: Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final r in child ? const ['son', 'daughter'] : const ['mother', 'father', 'grandmother', 'grandfather', 'spouse'])
+              Chip2(r, selected: _relation.text == r, onTap: () => setState(() => _relation.text = r)),
+          ]),
+        ),
+      if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+        child: SlabButton(child ? 'Add child' : 'Next: their consent', onPressed: !ready ? null : (child ? _save : () => setState(() {
+              _name.text = v.name;
+              _consentStep = true;
+            }))),
+      ),
+    ]);
   }
 
   @override
@@ -50,7 +110,9 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
             ? _choose()
             : _consentStep
                 ? _consent()
-                : _details(),
+                : AppScope.of(context).identityRequired
+                    ? _verifiedDetails()
+                    : _details(),
       );
 
   Widget _choose() => ListView(children: [

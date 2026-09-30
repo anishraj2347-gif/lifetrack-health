@@ -33,6 +33,9 @@ abstract final class RelayApi {
   /// Proves ownership of a LifeTrack ID (the token its phone registered).
   static const hIdToken = 'x-lt-id-token';
 
+  /// The secret that collects one identity verification result.
+  static const hSessionSecret = 'x-lt-session-secret';
+
   static String mailboxPath(String mailbox) => '/$version/relay/$mailbox';
   static String itemPath(String mailbox, String grantId) => '/$version/relay/$mailbox/${Uri.encodeComponent(grantId)}';
 

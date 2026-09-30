@@ -31,6 +31,7 @@ import '../crypto/vault_codec.dart';
 import '../export/record_export.dart';
 import '../model/abha.dart';
 import '../family/family_link.dart';
+import '../identity/identity_verifier.dart';
 import '../identity/lifetrack_ids.dart';
 import '../share/access_requests.dart';
 import '../share/http_relay_client.dart';
@@ -72,6 +73,62 @@ class AppServices {
   /// Links to adults with their own phones (P7). Travels over the same
   /// relay as sharing, so it exists exactly when sharing does.
   FamilyLinkService? links;
+
+  // ---- identity (DigiLocker) ----------------------------------------------
+
+  /// When true, a profile is created only from a DigiLocker verification:
+  /// Aadhaar for everyone, a birth certificate for a newborn (user decision,
+  /// 1 Oct 2026). Sample profiles are exempt; they are not people.
+  bool identityRequired = false;
+
+  /// Runs DigiLocker checks through the LifeTrack service; null without it.
+  IdentityVerifier? verifier;
+
+  /// Opens DigiLocker and returns its signed confirmation. [purpose] is
+  /// `self` (their own Aadhaar) or `newborn` (the owner's DigiLocker birth
+  /// certificate; needs the owner to be verified).
+  Future<IdentityAttestation> verifyWithDigiLocker({required String purpose, required Future<void> Function(Uri url) openUrl}) async {
+    final v = verifier ?? (throw const VerificationFailed('DigiLocker checks are not set up in this build.'));
+    IdentityAttestation? parent;
+    if (purpose == 'newborn') {
+      parent = selfPatient?.verification;
+      if (parent == null || parent.method != IdentityMethod.aadhaarDigiLocker) {
+        throw const VerificationFailed('Verify your own profile with Aadhaar first. A newborn is added from your DigiLocker.');
+      }
+    }
+    return runVerification(verifier: v, trust: sharing!.trust, purpose: purpose, parent: parent, openUrl: openUrl);
+  }
+
+  /// Registers the new profile's LifeTrack ID with its verification; if the
+  /// person already has one, the new profile is removed again.
+  Future<void> _registerVerified(String patientId, {required bool isOwner}) async {
+    if (ids == null) return;
+    try {
+      await ids!.ensure(patientId);
+    } on PersonExists {
+      await repository.eraseFor(patientId);
+      if (isOwner) {
+        settings
+          ..remove('currentPatientId')
+          ..remove('selfPatientId');
+        await _saveSettings();
+      } else {
+        settings['currentPatientId'] = selfPatientId;
+        await _saveSettings();
+      }
+      rethrow;
+    } on Object {
+      // Offline: registered on the next start or "Check for updates".
+    }
+  }
+
+  /// Marks a profile made before verification as verified. Name, date of
+  /// birth and sex become what DigiLocker confirmed.
+  Future<void> applyVerification(String patientId, IdentityAttestation v) async {
+    final p = repository.patient(patientId)!;
+    await repository.savePatient(p.withVerification(v));
+    await audit.append(AuditEntry(at: clock(), actorId: 'patient:$patientId', patientId: patientId, action: AuditAction.edit, detail: 'Identity verified: ${v.method.label}'));
+  }
 
   /// Each profile's 12-digit LifeTrack ID, when the service is configured.
   LifeTrackIds? ids;
@@ -117,6 +174,8 @@ class AppServices {
     RelayClient Function(WithdrawTokenStore tokens)? relayOverride,
     bool backupEnabled = true,
     IdDirectory Function()? idDirectoryOverride,
+    IdentityVerifier Function()? verifierOverride,
+    bool identityRequired = false,
   }) async {
     final now = clock ?? DateTime.now;
     final sealed = SealedStore(bytes, deviceKey);
@@ -142,6 +201,7 @@ class AppServices {
       attachments: AttachmentStore(bytes, deviceKey),
     );
     services.backupEnabled = backupEnabled;
+    services.identityRequired = identityRequired;
     services._backup = ((await sealed.read(_backupBlob) as Map?) ?? {}).cast<String, Object?>();
     consent.evictFinished(now());
     await services._settleOwner();
@@ -163,7 +223,9 @@ class AppServices {
         sealed: sealed,
         directory: idDirectoryOverride?.call() ?? HttpIdDirectory(baseUrl: Uri.parse(share.relayUrl!)),
         replyIdentity: services._replyIdentity,
+        attestationOf: (pid) => repository.patient(pid)?.verification,
       );
+      services.verifier = verifierOverride?.call() ?? HttpIdentityVerifier(baseUrl: Uri.parse(share.relayUrl!));
       await services.ids!.load();
       services.requests = AccessRequestInbox(sealed: sealed, audit: audit, relay: services.sharing!.relay, trust: services.sharing!.trust);
       unawaited(services.assignLifeTrackIds());
@@ -317,9 +379,12 @@ class AppServices {
   String? get currentPatientId => settings['currentPatientId'] as String?;
   Patient? get currentPatient => currentPatientId == null ? null : repository.patient(currentPatientId!);
 
-  Future<Patient> createProfile({required String name, required DateTime dob, required Sex sex, bool demo = false}) async {
+  Future<Patient> createProfile({required String name, required DateTime dob, required Sex sex, bool demo = false, IdentityAttestation? verification}) async {
+    if (identityRequired && !demo && verification == null) throw const CustodyRefused('Verify with DigiLocker (Aadhaar) to create a profile.');
+    if (verification != null && verification.method != IdentityMethod.aadhaarDigiLocker) throw const CustodyRefused('Your own profile is verified with your Aadhaar.');
     final id = 'p-${_randomId()}';
-    final patient = demo ? DemoData.patient(id) : Patient(id: id, name: name, dateOfBirth: dob, sex: sex);
+    final base = demo ? DemoData.patient(id) : Patient(id: id, name: name, dateOfBirth: dob, sex: sex);
+    final patient = verification == null ? base : base.withVerification(verification);
     await repository.savePatient(patient);
     if (demo && repository.recordsOf(id).isEmpty) {
       await repository.addAll(DemoData.records(id));
@@ -331,7 +396,12 @@ class AppServices {
     settings['demo'] = demo;
     await _saveSettings();
     await repository.saveCustody(Custody(patientId: id, kind: CustodyKind.self, custodianId: id, relation: 'self'));
-    await assignLifeTrackIds();
+    if (verification != null) {
+      await audit.append(AuditEntry(at: clock(), actorId: 'patient:$id', patientId: id, action: AuditAction.edit, detail: 'Identity verified: ${verification.method.label}'));
+      await _registerVerified(id, isOwner: true);
+    } else {
+      await assignLifeTrackIds();
+    }
     return patient;
   }
 
@@ -385,11 +455,19 @@ class AppServices {
   /// A child's profile, kept on this phone. The phone owner declares they
   /// are the parent; verification (DigiLocker) is not connected yet, and the
   /// app says so wherever the custody is shown.
-  Future<Patient> addChild({required String name, required DateTime dob, required Sex sex, required String relation}) async {
+  Future<Patient> addChild({required String name, required DateTime dob, required Sex sex, required String relation, IdentityAttestation? verification}) async {
     await _settleOwner();
     final self = selfPatient ?? (throw const CustodyRefused('Set up your own profile first.'));
+    if (identityRequired && verification == null) {
+      throw const CustodyRefused('Verify the child with DigiLocker: their own Aadhaar, or your DigiLocker birth certificate for a newborn.');
+    }
+    final byCertificate = verification?.method == IdentityMethod.birthCertificateDigiLocker;
+    if (byCertificate && verification!.parentSubjectHash != self.verification?.subjectHash) {
+      throw const CustodyRefused('That birth certificate came from someone else\'s DigiLocker.');
+    }
     final at = clock();
-    final child = Patient(id: 'p-${_randomId()}', name: name, dateOfBirth: dob, sex: sex);
+    final base = Patient(id: 'p-${_randomId()}', name: name, dateOfBirth: dob, sex: sex);
+    final child = verification == null ? base : base.withVerification(verification);
     if (child.ageAt(at) >= 18) throw const CustodyRefused('An adult keeps their own profile. Use "An adult who wants me to manage" if they ask you to.');
     await repository.savePatient(child);
     await repository.saveCustody(Custody(
@@ -397,12 +475,18 @@ class AppServices {
       kind: CustodyKind.childOfParent,
       custodianId: self.id,
       relation: relation,
-      method: ConsentMethod.parentDeclaration,
+      method: byCertificate ? ConsentMethod.birthCertificateDigiLocker : ConsentMethod.parentDeclaration,
       consentedAt: at,
-      statement: '${self.name} declared they are ${child.name}\'s parent.',
+      statement: byCertificate
+          ? '${child.name}\'s birth certificate, shared from ${self.name}\'s DigiLocker, names ${self.name} as a parent.'
+          : '${self.name} declared they are ${child.name}\'s parent.',
     ));
-    await audit.append(AuditEntry(at: at, actorId: Actors.patient(self.id), patientId: child.id, action: AuditAction.edit, tokenId: 'family-custody-${child.id}', detail: 'Profile created by ${self.name} (parent)'));
-    await assignLifeTrackIds();
+    await audit.append(AuditEntry(at: at, actorId: Actors.patient(self.id), patientId: child.id, action: AuditAction.edit, tokenId: 'family-custody-${child.id}', detail: 'Profile created by ${self.name} (parent)${verification == null ? '' : ' · ${verification.method.label}'}'));
+    if (verification != null) {
+      await _registerVerified(child.id, isOwner: false);
+    } else {
+      await assignLifeTrackIds();
+    }
     return child;
   }
 
@@ -414,13 +498,22 @@ class AppServices {
     required Sex sex,
     required String relation,
     required String typedName,
+    IdentityAttestation? verification,
   }) async {
     await _settleOwner();
     final self = selfPatient ?? (throw const CustodyRefused('Set up your own profile first.'));
+    if (identityRequired && verification?.method != IdentityMethod.aadhaarDigiLocker) {
+      throw const CustodyRefused('They verify with their own Aadhaar through DigiLocker, on this phone.');
+    }
+    if (verification != null) {
+      name = verification.name;
+      dob = verification.dateOfBirth;
+      sex = Patient.sexFromGender(verification.gender);
+    }
     String norm(String x) => x.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
     if (norm(typedName) != norm(name)) throw const CustodyRefused('They must type their own name exactly as it is on the profile.');
     final at = clock();
-    final adult = Patient(id: 'p-${_randomId()}', name: name, dateOfBirth: dob, sex: sex);
+    final adult = Patient(id: 'p-${_randomId()}', name: name, dateOfBirth: dob, sex: sex, verification: verification);
     if (adult.ageAt(at) < 18) throw const CustodyRefused('Under 18: add them as a child instead.');
     await repository.savePatient(adult);
     await repository.saveCustody(Custody(
@@ -434,7 +527,11 @@ class AppServices {
       signedName: typedName.trim(),
     ));
     await audit.append(AuditEntry(at: at, actorId: Actors.patient(adult.id), patientId: adult.id, action: AuditAction.grantIssued, tokenId: 'family-custody-${adult.id}', detail: 'Asked ${self.name} to manage their records (confirmed in person)'));
-    await assignLifeTrackIds();
+    if (verification != null) {
+      await _registerVerified(adult.id, isOwner: false);
+    } else {
+      await assignLifeTrackIds();
+    }
     return adult;
   }
 

@@ -21,6 +21,8 @@ void main() {
           ? InMemoryRemoteVaultStore()
           : HttpRemoteVaultStore(baseUrl: Uri.parse(const String.fromEnvironment('LT_RELAY_URL'))),
       backupEnabled: const String.fromEnvironment('LT_RELAY_URL').isNotEmpty,
+      // Every profile verified through DigiLocker (user decision, 1 Oct 2026).
+      identityRequired: const String.fromEnvironment('LT_IDENTITY') == 'required',
       kdf: KdfParams.production,
       cloudFactory: defaultCloud,
       share: const ShareConfig(

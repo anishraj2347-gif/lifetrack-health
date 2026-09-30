@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 
 import '../crypto/vault_codec.dart' show VaultAuthenticationFailed, VaultLockedOut;
+import '../identity/identity_verifier.dart';
 import '../identity/lifetrack_ids.dart';
 import '../vault/backup_vault.dart';
 import 'relay.dart';
@@ -158,10 +159,14 @@ class HttpIdDirectory implements IdDirectory {
   final http.Client _http;
 
   @override
-  Future<bool> register({required String id, required String mailbox, required List<int> key, required String tokenHash}) async {
+  Future<bool> register({required String id, required String mailbox, required List<int> key, required String tokenHash, IdentityAttestation? attestation}) async {
     final r = await _http.post(baseUrl.resolve('/v1/ids'),
-        headers: {'content-type': 'application/json'}, body: jsonEncode({'id': id, 'mailbox': mailbox, 'key': base64Encode(key), 'tokenHash': tokenHash}));
-    if (r.statusCode == 409) return false;
+        headers: {'content-type': 'application/json'},
+        body: jsonEncode({'id': id, 'mailbox': mailbox, 'key': base64Encode(key), 'tokenHash': tokenHash, 'attestation': ?attestation?.toJson()}));
+    if (r.statusCode == 409) {
+      if ((jsonDecode(r.body) as Map)['reason'] == 'person_exists') throw const PersonExists();
+      return false;
+    }
     if (r.statusCode != 201) throw RelayUnavailable('LifeTrack ID not registered (${r.statusCode}).');
     return true;
   }
@@ -177,5 +182,49 @@ class HttpIdDirectory implements IdDirectory {
   Future<void> delete({required String id, required String token}) async {
     final r = await _http.delete(baseUrl.resolve('/v1/ids/$id'), headers: {RelayApi.hIdToken: token});
     if (r.statusCode != 200) throw RelayUnavailable('LifeTrack ID not deleted (${r.statusCode}).');
+  }
+}
+
+/// The DigiLocker check, run by the LifeTrack server (which holds the
+/// DigiLocker partner secret). The phone only starts it and collects the
+/// signed result.
+class HttpIdentityVerifier implements IdentityVerifier {
+  HttpIdentityVerifier({required this.baseUrl, http.Client? client}) : _http = client ?? http.Client();
+
+  final Uri baseUrl;
+  final http.Client _http;
+
+  /// Whether the server offers identity checks at all.
+  Future<bool> available() async {
+    try {
+      final r = await _http.get(baseUrl.resolve('/v1/verify/config'));
+      return r.statusCode == 200 && (jsonDecode(r.body) as Map)['enabled'] == true;
+    } on Object {
+      return false;
+    }
+  }
+
+  @override
+  Future<VerifySession> start({required String purpose, IdentityAttestation? parent}) async {
+    final http.Response r;
+    try {
+      r = await _http.post(baseUrl.resolve('/v1/verify/start'),
+          headers: {'content-type': 'application/json'}, body: jsonEncode({'purpose': purpose, 'parent': ?parent?.toJson()}));
+    } on Object {
+      throw const VerificationFailed('Could not reach LifeTrack to start the DigiLocker check.');
+    }
+    final j = jsonDecode(r.body) as Map;
+    if (r.statusCode != 200) throw VerificationFailed('${j['error'] ?? 'The DigiLocker check could not start.'}');
+    return VerifySession(id: j['session']! as String, secret: j['secret']! as String, authorizeUrl: Uri.parse(j['authorizeUrl']! as String));
+  }
+
+  @override
+  Future<Map<String, Object?>> poll(VerifySession s) async {
+    try {
+      final r = await _http.get(baseUrl.resolve('/v1/verify/${s.id}'), headers: {RelayApi.hSessionSecret: s.secret});
+      return (jsonDecode(r.body) as Map).cast();
+    } on Object {
+      return {'status': 'pending'};
+    }
   }
 }

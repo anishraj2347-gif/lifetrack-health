@@ -158,6 +158,19 @@ copy predate the claim fixes; the app's wording is authoritative).
       doctor is told. Requests last ≤ 48 h.
     - 17b. The Emergency QR is **plain text** (any camera, no internet): the card's own fields,
       name, LifeTrack ID and masked ABHA. The card is not stored on the server.
+18. **Identity policy** (user decision, 1 Oct 2026): with `LT_IDENTITY=required`, a profile is made
+    only from a DigiLocker verification — **Aadhaar for everyone**; the one exception is a
+    **newborn** (< 1 year) added by a verified parent from the birth certificate in that parent's
+    own DigiLocker (the only route that marks parenthood *verified*). DigiLocker is used only to
+    create/add profiles — not as login, not as the ID. The server runs the OAuth (it holds the
+    partner secret) and returns an `IdentityAttestation` signed with the registry key; the phone
+    refuses any other signature. No Aadhaar number, DigiLocker id or document is stored anywhere —
+    only name, DOB, gender, method, date and an HMAC subject hash that gives one person one
+    LifeTrack ID. Sample profiles are exempt. **Legal note:** I advised that mandatory Aadhaar for
+    a private service conflicts with *Puttaswamy* (2018) and the 2019 Aadhaar amendment; the user
+    chose it anyway — confirm with legal counsel before pilot. Other DigiLocker documents (DL,
+    PAN, passport) can be enabled in `IdentityService` without app changes. Until partner
+    registration, the server's `--practice-digilocker` stand-in drives the flow (sample people).
 
 ### Rules for working here
 

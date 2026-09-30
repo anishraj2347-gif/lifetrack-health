@@ -6,6 +6,10 @@ import '../../model/patient.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
+import 'package:lifetrack_protocol/lifetrack_protocol.dart' show IdentityAttestation;
+
+import '../../identity/identity_verifier.dart';
+import '../widgets/digilocker_step.dart';
 import 'backup_screens.dart';
 import 'emergency_screen.dart';
 
@@ -26,14 +30,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String? _patientId;
   bool _busy = false;
 
+  IdentityAttestation? _verified;
+  String? _error;
+
   Future<void> _createProfile({required bool demo}) async {
-    setState(() => _busy = true);
-    final p = await AppScope.of(context).createProfile(
-      name: _name.text.trim(),
-      dob: _dob ?? DateTime(1990),
-      sex: _sex,
-      demo: demo,
-    );
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final Patient p;
+    try {
+      p = await AppScope.of(context).createProfile(
+        name: _name.text.trim(),
+        dob: _dob ?? DateTime(1990),
+        sex: _sex,
+        demo: demo,
+        verification: demo ? null : _verified,
+      );
+    } on PersonExists catch (e) {
+      setState(() {
+        _busy = false;
+        _error = e.message;
+      });
+      return;
+    }
     if (!mounted) return;
     setState(() {
       _patientId = p.id;
@@ -69,7 +89,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ]),
       );
 
+  /// Real builds: the profile comes from DigiLocker (Aadhaar), not a form.
+  Widget _verifiedStart() => ListView(
+        children: [
+          _intro('Verify who you are', 'Your profile is made from DigiLocker with your Aadhaar: your name, date of birth and gender, exactly as confirmed. LifeTrack keeps no Aadhaar number.'),
+          DigiLockerStep(purpose: 'self', buttonLabel: 'Verify with DigiLocker (Aadhaar)', onVerified: (v) => setState(() => _verified = v)),
+          if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 10, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
+          if (_verified != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+              child: SlabButton('Continue', onPressed: _busy ? null : () => _createProfile(demo: false)),
+            ),
+          const Note('Everyone needs Aadhaar to create a profile. A newborn without Aadhaar is added later by a verified parent, from the parent\'s DigiLocker birth certificate.', icon: LucideIcons.info),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 6),
+            child: SlabButton('Explore with sample records', variant: ButtonVariant.outline, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true)),
+          ),
+          if (AppScope.of(context).backupEnabled)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+              child: SlabButton('Restore from backup', variant: ButtonVariant.ghost, icon: LucideIcons.cloudDownload, onPressed: _busy
+                  ? null
+                  : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RestoreScreen(onRestored: widget.onDone)))),
+            ),
+        ],
+      );
+
   Widget _profile() {
+    if (AppScope.of(context).identityRequired) return _verifiedStart();
     final ready = _name.text.trim().isNotEmpty && _dob != null;
     return ListView(
       children: [

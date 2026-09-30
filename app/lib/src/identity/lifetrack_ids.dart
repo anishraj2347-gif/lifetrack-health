@@ -1,13 +1,15 @@
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 
 import '../share/reply_identity.dart';
+import 'identity_verifier.dart';
 import '../storage/sealed_store.dart';
 
 /// Where LifeTrack IDs are registered: the LifeTrack server in the app
 /// (`HttpIdDirectory`), a map in tests.
 abstract interface class IdDirectory {
-  /// False when [id] is already taken.
-  Future<bool> register({required String id, required String mailbox, required List<int> key, required String tokenHash});
+  /// False when [id] is already taken. Throws [PersonExists] when the
+  /// verified person in [attestation] already has a LifeTrack ID.
+  Future<bool> register({required String id, required String mailbox, required List<int> key, required String tokenHash, IdentityAttestation? attestation});
   Future<void> move({required String id, required String token, required String mailbox, required List<int> key});
   Future<void> delete({required String id, required String token});
 }
@@ -16,9 +18,11 @@ class InMemoryIdDirectory implements IdDirectory {
   final Map<String, Map<String, Object?>> entries = {};
 
   @override
-  Future<bool> register({required String id, required String mailbox, required List<int> key, required String tokenHash}) async {
+  Future<bool> register({required String id, required String mailbox, required List<int> key, required String tokenHash, IdentityAttestation? attestation}) async {
     if (entries.containsKey(id)) return false;
-    entries[id] = {'mailbox': mailbox, 'key': key, 'tokenHash': tokenHash};
+    final subject = attestation?.subjectHash;
+    if (subject != null && entries.values.any((e) => e['subject'] == subject)) throw const PersonExists();
+    entries[id] = {'mailbox': mailbox, 'key': key, 'tokenHash': tokenHash, 'subject': ?subject};
     return true;
   }
 
@@ -42,13 +46,17 @@ class InMemoryIdDirectory implements IdDirectory {
 /// profile's reply mailbox. The ID's token — the only way to move or delete
 /// it — is kept sealed here and in the encrypted backup.
 class LifeTrackIds {
-  LifeTrackIds({required this.sealed, required this.directory, required this.replyIdentity});
+  LifeTrackIds({required this.sealed, required this.directory, required this.replyIdentity, this.attestationOf});
 
   static const _blob = 'lifetrack_ids';
 
   final SealedStore sealed;
   final IdDirectory directory;
   final Future<ReplyIdentity> Function(String patientId) replyIdentity;
+
+  /// The profile's DigiLocker verification, sent at registration so the
+  /// service can give one person one ID.
+  final IdentityAttestation? Function(String patientId)? attestationOf;
 
   Map<String, Object?> _ids = {};
   bool _loaded = false;
@@ -93,7 +101,8 @@ class LifeTrackIds {
     final token = RelayApi.newToken();
     for (var attempt = 0; attempt < 8; attempt++) {
       final id = LifeTrackId.generate();
-      if (await directory.register(id: id, mailbox: me.mailbox, key: me.publicKey, tokenHash: await RelayApi.sha256Hex(token))) {
+      if (await directory.register(
+          id: id, mailbox: me.mailbox, key: me.publicKey, tokenHash: await RelayApi.sha256Hex(token), attestation: attestationOf?.call(patientId))) {
         _ids[patientId] = {'id': id, 'token': token, 'registered': true};
         await _save();
         return id;

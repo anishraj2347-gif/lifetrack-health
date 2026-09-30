@@ -25,6 +25,10 @@ enum ConsentMethod {
   /// The adult read the statement on the custodian's phone and typed their
   /// name. OTP to their own number is not connected yet.
   inPersonOnCustodianPhone,
+
+  /// The newborn's birth certificate, from the verified parent's own
+  /// DigiLocker, names that parent. The one route that proves parenthood.
+  birthCertificateDigiLocker,
 }
 
 class Custody {
@@ -63,7 +67,9 @@ class Custody {
 
   bool get isActive => endedAt == null;
 
-  bool get isVerified => false; // No verification service is connected yet.
+  /// Parenthood is proven only by a birth certificate from the parent's own
+  /// DigiLocker; every other custody is declared or agreed in person.
+  bool get isVerified => method == ConsentMethod.birthCertificateDigiLocker;
 
   Custody ended(DateTime at) => Custody(
         patientId: patientId,

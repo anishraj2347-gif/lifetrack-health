@@ -9,6 +9,7 @@ import '../app_lock.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../../model/custody.dart';
+import '../widgets/digilocker_step.dart';
 import '../widgets/family_bar.dart';
 import '../widgets/parts.dart';
 import 'data_rights_screen.dart';
@@ -41,7 +42,12 @@ class MeScreen extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(p.name, style: LT.title.copyWith(fontSize: 22)),
               const SizedBox(height: 8),
-              if (s.isDemo) const Badge2('Sample records', tone: BadgeTone.caution) else const Badge2('On this phone', tone: BadgeTone.trace),
+              if (s.isDemo)
+                const Badge2('Sample records', tone: BadgeTone.caution)
+              else if (p.verification case final v?)
+                Badge2('Verified · ${v.method.label}', tone: BadgeTone.trace)
+              else
+                const Badge2('Not verified', tone: BadgeTone.outline),
               if (s.lifeTrackIdOf(p.id) case final id?) ...[
                 const SizedBox(height: 8),
                 GestureDetector(
@@ -59,6 +65,23 @@ class MeScreen extends StatelessWidget {
           ),
         ]),
       ),
+      if (!p.isVerified && !s.isDemo && s.verifier != null && p.id == s.selfPatientId)
+        ShadCard(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Verify your profile', style: LT.label),
+            const SizedBox(height: 4),
+            const Text('This profile was made before DigiLocker verification. Verify with your Aadhaar; your name, date of birth and gender become what DigiLocker confirms.', style: LT.small),
+            const SizedBox(height: 8),
+            DigiLockerStep(
+              purpose: 'self',
+              buttonLabel: 'Verify with DigiLocker (Aadhaar)',
+              onVerified: (v) async {
+                await s.applyVerification(p.id, v);
+                if (context.mounted) AppScope.changed(context);
+              },
+            ),
+          ]),
+        ),
       ShadCard(
         padding: EdgeInsets.zero,
         child: Column(children: [
