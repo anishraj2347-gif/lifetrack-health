@@ -1,3 +1,5 @@
+import 'package:lifetrack_protocol/lifetrack_protocol.dart';
+
 import '../audit/audit_log.dart';
 import '../consent/consent_store.dart';
 import '../consent/consent_token.dart';
@@ -6,11 +8,8 @@ import '../consent/record_access.dart';
 import '../model/clinical_profile.dart';
 import '../model/health_record.dart';
 import '../storage/record_repository.dart';
-import 'doctor_certificate.dart';
 import 'relay.dart';
 import 'share_bundle.dart';
-import 'share_envelope.dart';
-import 'signed_prescription.dart';
 
 class ShareReceipt {
   const ShareReceipt({required this.grant, required this.doctor, required this.withheld});

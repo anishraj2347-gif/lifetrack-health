@@ -1,0 +1,13 @@
+name: lifetrack_protocol
+description: Wire formats shared by the LifeTrack patient app, doctor app and relay server — doctor certificates, sealed shares and signed prescriptions. Pure Dart; no Flutter.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  cryptography: ^2.9.0
+
+dev_dependencies:
+  test: ^1.25.0

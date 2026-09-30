@@ -1,0 +1,17 @@
+name: lifetrack_server
+description: Local phase 2 server for LifeTrack — doctor registry and encrypted relay. Holds no key that opens a share.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  cryptography: ^2.9.0
+  lifetrack_protocol:
+    path: ../packages/lifetrack_protocol
+  shelf: ^1.4.0
+  shelf_router: ^1.1.4
+
+dev_dependencies:
+  test: ^1.25.0

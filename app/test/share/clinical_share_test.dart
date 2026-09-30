@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lifetrack/src/app/demo_data.dart';
 import 'package:lifetrack/src/audit/audit_log.dart';
@@ -11,10 +12,7 @@ import 'package:lifetrack/src/consent/record_access.dart';
 import 'package:lifetrack/src/model/clinical_profile.dart';
 import 'package:lifetrack/src/model/health_record.dart';
 import 'package:lifetrack/src/share/clinical_share_service.dart';
-import 'package:lifetrack/src/share/doctor_certificate.dart';
 import 'package:lifetrack/src/share/relay.dart';
-import 'package:lifetrack/src/share/share_envelope.dart';
-import 'package:lifetrack/src/share/signed_prescription.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
 import 'package:lifetrack/src/storage/record_repository.dart';
 import 'package:lifetrack/src/storage/sealed_store.dart';
