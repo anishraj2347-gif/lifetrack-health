@@ -15,6 +15,7 @@ String describeActor(String actorId) {
   if (actorId.startsWith('doctor:')) return 'Doctor · ${actorId.substring(7)}';
   if (actorId.startsWith('patient:')) return 'You';
   if (actorId.startsWith('unauthenticated:')) return 'Someone without your PIN';
+  if (actorId.startsWith('family:')) return actorId.substring(7);
   return actorId;
 }
 
@@ -35,6 +36,7 @@ IconData iconForActor(String actorId) {
   if (actorId == Actors.cloud) return LucideIcons.cloud;
   if (actorId.startsWith('doctor:')) return LucideIcons.stethoscope;
   if (actorId.startsWith('unauthenticated:')) return LucideIcons.lockOpen;
+  if (actorId.startsWith('family:')) return LucideIcons.users;
   return LucideIcons.userRound;
 }
 

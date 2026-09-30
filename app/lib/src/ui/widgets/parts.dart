@@ -299,5 +299,6 @@ const _monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 String shortMonth(DateTime d) => _monthNames[d.month - 1].substring(0, 3);
 String monthYear(DateTime d) => '${_monthNames[d.month - 1]} ${d.year}';
 String fullDate(DateTime d) => '${d.day} ${_monthNames[d.month - 1].substring(0, 3)} ${d.year}';
-String dateTime(DateTime d) =>
-    '${fullDate(d)}, ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+String dateTime(DateTime d) => '${fullDate(d)}, ${time(d)}';
+
+String time(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';

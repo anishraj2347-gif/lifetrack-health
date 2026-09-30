@@ -200,7 +200,7 @@ class FamilyLinkService {
       ..._mine(link, emergency, activeMedicines),
     }, at);
     await _save([...(await links()).where((l) => l.id != link.id), link]);
-    await audit.append(AuditEntry(at: at, actorId: 'patient:$ownerId', patientId: ownerId, action: AuditAction.grantIssued, detail: 'Linked with ${invite.fromName}; shares ${_whatLine(link)}'));
+    await audit.append(AuditEntry(at: at, actorId: 'patient:$ownerId', patientId: ownerId, action: AuditAction.grantIssued, tokenId: 'family-link-${link.id}', detail: 'Linked with ${invite.fromName}; shares ${_whatLine(link)}'));
     return link;
   }
 
@@ -222,7 +222,7 @@ class FamilyLinkService {
     final next = link.sharing(emergency: shareEmergency, medicines: shareMedicines);
     await sendUpdate(ownerId: ownerId, link: next, emergency: emergency, activeMedicines: activeMedicines, at: at);
     await _save([for (final l in await links()) l.id == next.id ? next : l]);
-    await audit.append(AuditEntry(at: at, actorId: 'patient:$ownerId', patientId: ownerId, action: AuditAction.edit, detail: 'Now sharing ${_whatLine(next)} with ${link.name}'));
+    await audit.append(AuditEntry(at: at, actorId: 'patient:$ownerId', patientId: ownerId, action: AuditAction.edit, tokenId: 'family-link-${link.id}', detail: 'Now sharing ${_whatLine(next)} with ${link.name}'));
     return next;
   }
 
@@ -232,7 +232,7 @@ class FamilyLinkService {
       await _send(link, {'type': 'family_unlink', 'linkId': link.id}, at);
     } finally {
       await _save([...(await links()).where((l) => l.id != link.id)]);
-      await audit.append(AuditEntry(at: at, actorId: 'patient:$ownerId', patientId: ownerId, action: AuditAction.grantRevoked, detail: 'Unlinked from ${link.name}'));
+      await audit.append(AuditEntry(at: at, actorId: 'patient:$ownerId', patientId: ownerId, action: AuditAction.grantRevoked, tokenId: 'family-link-${link.id}', detail: 'Unlinked from ${link.name}'));
     }
   }
 
@@ -253,7 +253,7 @@ class FamilyLinkService {
           ).withTheirs(emergency: (p['emergency'] as Map?)?.cast(), medicines: p['medicines'] as List?, at: at);
           await _save([...(await links()).where((l) => l.id != inviteId), link]);
           await sealed.write(_invitesBlob, open..remove(inviteId));
-          await audit.append(AuditEntry(at: at, actorId: 'relay', patientId: ownerId, action: AuditAction.edit, detail: '${link.name} accepted your family invite'));
+          await audit.append(AuditEntry(at: at, actorId: 'family:${link.name}', patientId: ownerId, action: AuditAction.edit, tokenId: 'family-link-$inviteId', detail: '${link.name} accepted your family invite'));
         },
         'family_link_update': (p) async {
           final all = await links();
@@ -267,7 +267,7 @@ class FamilyLinkService {
           final gone = all.where((l) => l.id == p['linkId']).toList();
           await _save([...all.where((l) => l.id != p['linkId'])]);
           for (final l in gone) {
-            await audit.append(AuditEntry(at: at, actorId: 'relay', patientId: ownerId, action: AuditAction.grantRevoked, detail: '${l.name} unlinked; what they shared was deleted'));
+            await audit.append(AuditEntry(at: at, actorId: 'family:${l.name}', patientId: ownerId, action: AuditAction.grantRevoked, tokenId: 'family-link-${l.id}', detail: '${l.name} unlinked; what they shared was deleted'));
           }
         },
       };

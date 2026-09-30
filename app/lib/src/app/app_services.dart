@@ -366,7 +366,7 @@ class AppServices {
       consentedAt: at,
       statement: '${self.name} declared they are ${child.name}\'s parent.',
     ));
-    await audit.append(AuditEntry(at: at, actorId: Actors.patient(self.id), patientId: child.id, action: AuditAction.edit, detail: 'Profile created by ${self.name} (parent)'));
+    await audit.append(AuditEntry(at: at, actorId: Actors.patient(self.id), patientId: child.id, action: AuditAction.edit, tokenId: 'family-custody-${child.id}', detail: 'Profile created by ${self.name} (parent)'));
     return child;
   }
 
@@ -397,7 +397,7 @@ class AppServices {
       statement: Custody.delegationStatement(adultName: name, custodianName: self.name),
       signedName: typedName.trim(),
     ));
-    await audit.append(AuditEntry(at: at, actorId: Actors.patient(adult.id), patientId: adult.id, action: AuditAction.grantIssued, detail: 'Asked ${self.name} to manage their records (confirmed in person)'));
+    await audit.append(AuditEntry(at: at, actorId: Actors.patient(adult.id), patientId: adult.id, action: AuditAction.grantIssued, tokenId: 'family-custody-${adult.id}', detail: 'Asked ${self.name} to manage their records (confirmed in person)'));
     return adult;
   }
 
@@ -415,7 +415,7 @@ class AppServices {
       }
     }
     await repository.saveCustody(c.ended(at));
-    await audit.append(AuditEntry(at: at, actorId: Actors.patient(c.custodianId), patientId: patientId, action: AuditAction.grantRevoked, detail: 'Management ended; nothing more is shared on their behalf'));
+    await audit.append(AuditEntry(at: at, actorId: Actors.patient(c.custodianId), patientId: patientId, action: AuditAction.grantRevoked, tokenId: 'family-custody-$patientId', detail: 'Management ended; nothing more is shared on their behalf'));
     if (currentPatientId == patientId) await switchTo(selfPatientId!);
   }
 

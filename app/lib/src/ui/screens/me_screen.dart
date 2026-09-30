@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../audit/audit_log.dart';
+import '../../audit/log_view.dart';
 import '../app_lock.dart';
 import '../app_scope.dart';
 import '../theme.dart';
@@ -142,8 +143,14 @@ class MeScreen extends StatelessWidget {
 /// removal is erasing the whole profile, which leaves the erasure as the
 /// first entry. That is the claim, and it is the whole claim — the copy does
 /// not promise more than the code does.
-class AuditScreen extends StatelessWidget {
+class AuditScreen extends StatefulWidget {
   const AuditScreen({super.key});
+  @override
+  State<AuditScreen> createState() => _AuditScreenState();
+}
+
+class _AuditScreenState extends State<AuditScreen> {
+  LogView _view = LogView.all;
 
   static String _verb(AuditAction a) => switch (a) {
         AuditAction.view => 'read',
@@ -161,51 +168,111 @@ class AuditScreen extends StatelessWidget {
         AuditAction.export => 'exported an unencrypted copy of the records',
       };
 
+  static const _views = [
+    (LogView.all, 'All', 'Everything, newest first.'),
+    (LogView.doctors, 'Doctors', 'What you shared with doctors, what they read, and prescriptions they sent.'),
+    (LogView.insights, 'Insights', 'Reads by on-device insights while you had them turned on.'),
+    (LogView.family, 'Family', 'Family added to this phone, and adults linked from their own phones.'),
+    (LogView.emergency, 'Emergency ID', 'Every time the Emergency ID was opened, including from the lock screen.'),
+    (LogView.you, 'Your changes', 'Records you added or changed, settings, exports and erasure.'),
+    (LogView.refused, 'Refused', 'Attempts that were turned away, from any source.'),
+  ];
+
+  /// Reads and refusals record a code (the grant's purpose, or why it was
+  /// refused); everything else records a sentence.
+  static const _codes = {
+    'clinicalConsult': 'for a consultation',
+    'onDeviceInsights': 'for on-device insights',
+    'cloudAnalysis': 'for cloud analysis',
+    'unknown': 'there was no such permission',
+    'revoked': 'the permission had been withdrawn',
+    'notYetValid': 'the permission had not started yet',
+    'expired': 'the permission had ended',
+    'spent': 'the one-time permission was already used',
+    'wrongPatient': 'the permission was for someone else',
+    'wrongActor': 'the permission was for someone else',
+    'wrongPurpose': 'the permission was for another purpose',
+    'outOfScope': 'not part of what you shared',
+  };
+
+  static bool _alert(AuditEntry e) => e.action == AuditAction.denied || e.action == AuditAction.emergencyRead;
+
+  static String _day(DateTime d, DateTime now) {
+    final a = DateTime(d.year, d.month, d.day), b = DateTime(now.year, now.month, now.day);
+    final diff = b.difference(a).inDays;
+    return diff == 0 ? 'Today' : diff == 1 ? 'Yesterday' : fullDate(d);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final entries = AppScope.of(context).auditEntries();
+    final s = AppScope.of(context);
+    final all = s.auditEntries();
+    final entries = [for (final e in all) if (e.shownIn(_view)) e];
+    final about = _views.firstWhere((v) => v.$1 == _view).$3;
+    final rows = <Widget>[];
+    String? day;
+    for (final (i, e) in entries.indexed) {
+      final d = _day(e.at, s.clock());
+      if (d != day) {
+        day = d;
+        rows.add(Eyebrow(d, padding: const EdgeInsets.fromLTRB(20, 18, 20, 6)));
+      }
+      final lastOfDay = i == entries.length - 1 || _day(entries[i + 1].at, s.clock()) != d;
+      final firstOfDay = rows.last is Eyebrow;
+      rows.add(IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          SizedBox(
+            width: 56,
+            child: Column(children: [
+              Container(width: 1, height: 8, color: firstOfDay ? Colors.transparent : LT.rule),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(color: _alert(e) ? const Color(0xFFFFF7ED) : LT.band, shape: BoxShape.circle),
+                child: Icon(iconForActor(e.actorId), size: 15, color: _alert(e) ? LT.signal : LT.ink2),
+              ),
+              Expanded(child: Container(width: 1, color: lastOfDay ? Colors.transparent : LT.rule)),
+            ]),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 12, 20, 14),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(
+                  '${describeActor(e.actorId)} ${_verb(e.action)}${e.dataClass == null || e.action == AuditAction.emergencyRead ? '' : ' · ${dataClassNames[e.dataClass]}'}',
+                  style: LT.label.copyWith(fontSize: 14.5, color: _alert(e) ? LT.signal : LT.ink),
+                ),
+                if (e.detail != null) ...[const SizedBox(height: 4), Text(_codes[e.detail] ?? e.detail!, style: LT.small)],
+                const SizedBox(height: 4),
+                Text(time(e.at), style: LT.small.copyWith(fontSize: 12, color: LT.inactive)),
+              ]),
+            ),
+          ),
+        ]),
+      ));
+    }
     return Scaffold(
       appBar: AppBar(),
       body: ListView(children: [
         const Masthead(eyebrow: 'Access log', title: 'Who opened what'),
         const Note('Every read, change and permission is recorded here, on this phone. LifeTrack has no way to edit or remove an entry; erasing your profile is the only thing that clears it.', icon: LucideIcons.history),
-        const SizedBox(height: 14),
-        if (entries.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Text('Nothing yet.', style: LT.lede)),
-        for (final (i, e) in entries.indexed)
-          IntrinsicHeight(
-            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              SizedBox(
-                width: 56,
-                child: Column(children: [
-                  Container(width: 1, height: 8, color: i == 0 ? Colors.transparent : LT.rule),
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: e.action == AuditAction.denied || e.action == AuditAction.emergencyRead ? const Color(0xFFFFF7ED) : LT.band,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(iconForActor(e.actorId), size: 15, color: e.action == AuditAction.denied || e.action == AuditAction.emergencyRead ? LT.signal : LT.ink2),
-                  ),
-                  Expanded(child: Container(width: 1, color: i == entries.length - 1 ? Colors.transparent : LT.rule)),
-                ]),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 12, 20, 14),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(
-                      '${describeActor(e.actorId)} ${_verb(e.action)}${e.dataClass == null ? '' : ' · ${dataClassNames[e.dataClass]}'}',
-                      style: LT.label.copyWith(fontSize: 14.5, color: e.action == AuditAction.denied || e.action == AuditAction.emergencyRead ? LT.signal : LT.ink),
-                    ),
-                    if (e.detail != null) ...[const SizedBox(height: 2), Text(e.detail!, style: LT.small)],
-                    const SizedBox(height: 2),
-                    Text(dateTime(e.at), style: LT.small.copyWith(fontSize: 12, color: LT.inactive)),
-                  ]),
+        SizedBox(
+          height: 64,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            children: [
+              for (final (v, label, _) in _views)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Chip2('$label · ${all.where((e) => e.shownIn(v)).length}', selected: _view == v, onTap: () => setState(() => _view = v)),
                 ),
-              ),
-            ]),
+            ],
           ),
+        ),
+        Padding(padding: const EdgeInsets.fromLTRB(20, 4, 20, 0), child: Text(about, style: LT.small)),
+        if (entries.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Text('Nothing here yet.', style: LT.lede)),
+        ...rows,
         const SizedBox(height: 28),
       ]),
     );
