@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -122,4 +123,44 @@ void main() {
     await anjali.checkInbox();
     expect(await anjali.links!.links(), isEmpty);
   });
+
+  test('a new medicine or Emergency ID change reaches linked family on its own', () async {
+    final anjali = await phone('Anjali Sharma', 1);
+    final vikram = await phone('Vikram Sharma', 2);
+    await vikram.joinFamily(code: (await anjali.createFamilyInvite()).encode(), shareEmergency: true, shareMedicines: true);
+    await anjali.checkInbox();
+    expect((await anjali.links!.links()).single.theirMedicines, isEmpty);
+
+    await vikram.addRecord(HealthRecord(
+      id: 'rx2',
+      patientId: vikram.selfPatientId!,
+      kind: RecordKind.prescription,
+      title: 'Telmisartan 40 mg',
+      date: now,
+      source: RecordSource.smartCapture,
+    ));
+    await vikram.saveEmergencyCard(vikram.selfPatientId!, const EmergencyCard(bloodType: 'O+'));
+    await anjali.checkInbox();
+    final l = (await anjali.links!.links()).single;
+    expect((l.theirMedicines!.single as Map)['title'], 'Telmisartan 40 mg');
+    expect(l.theirEmergency!['blood'], 'O+');
+  });
+
+  test('saving still works when the relay is unreachable', () async {
+    final flaky = _FlakyRelay();
+    relay = flaky;
+    final anjali = await phone('Anjali Sharma', 1);
+    final vikram = await phone('Vikram Sharma', 2);
+    await vikram.joinFamily(code: (await anjali.createFamilyInvite()).encode(), shareEmergency: true, shareMedicines: false);
+    flaky.down = true;
+    await vikram.saveEmergencyCard(vikram.selfPatientId!, const EmergencyCard(bloodType: 'A+'));
+    expect((await vikram.emergency.load(vikram.selfPatientId!)).bloodType, 'A+');
+  });
+}
+
+class _FlakyRelay extends InMemoryRelay {
+  bool down = false;
+  @override
+  Future<void> deposit({required String mailbox, required String grantId, required Uint8List envelope, required DateTime expiresAt}) =>
+      down ? Future.error(StateError('relay down')) : super.deposit(mailbox: mailbox, grantId: grantId, envelope: envelope, expiresAt: expiresAt);
 }

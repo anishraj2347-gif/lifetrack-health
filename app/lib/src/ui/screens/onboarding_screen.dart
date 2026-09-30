@@ -127,7 +127,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             icon: LucideIcons.smartphone,
             tone: BadgeTone.trace,
             title: 'Stays on this phone',
-            body: 'Records, notes, your access log and the permissions you give. This version of the app has no internet permission at all.',
+            body: 'Records, notes, your access log and the permissions you give. Nothing leaves this phone unless you share it with a doctor or a linked family member.',
           ),
           const _Row(
             icon: LucideIcons.cloudOff,

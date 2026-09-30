@@ -140,7 +140,7 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
       setState(() => _problems = problems);
       return;
     }
-    await AppScope.of(context).emergency.save(widget.patientId, card);
+    await AppScope.of(context).saveEmergencyCard(widget.patientId, card);
     widget.onSaved();
   }
 

@@ -453,6 +453,25 @@ class AppServices {
       dataClass: r.dataClass,
       detail: 'added "${r.title}"',
     ));
+    if (r.kind == RecordKind.prescription) await _tellLinkedFamily(r.patientId);
+  }
+
+  /// Saves the Emergency ID, and sends the new card to linked family who
+  /// were chosen to see it.
+  Future<void> saveEmergencyCard(String patientId, EmergencyCard card) async {
+    await emergency.save(patientId, card);
+    await _tellLinkedFamily(patientId);
+  }
+
+  /// Best effort: a save never fails because the relay is unreachable. The
+  /// next change, or "Check for updates", tries again.
+  Future<void> _tellLinkedFamily(String patientId) async {
+    if (patientId != selfPatientId) return;
+    try {
+      await refreshFamilyLinks();
+    } on Object {
+      // Offline. The linked copy stays as it was until the next send.
+    }
   }
 
   // ---- insights (Plane A) -----------------------------------------------
@@ -566,6 +585,7 @@ class AppServices {
     if (selfPatientId != null) {
       final (a, h, r) = await sharing!.collectInbox(selfPatientId!, at, handlers: links!.handlers(ownerId: selfPatientId!, at: at));
       (added, handled, refused) = (a.length, h, r);
+      if (a.isNotEmpty) await _tellLinkedFamily(selfPatientId!);
     }
     if (currentPatientId != null && currentPatientId != selfPatientId) {
       final (a, _, r) = await sharing!.collectInbox(currentPatientId!, at);
