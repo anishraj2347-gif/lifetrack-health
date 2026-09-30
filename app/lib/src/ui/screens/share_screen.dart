@@ -88,14 +88,18 @@ class ShareScreen extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-          child: SlabButton('Check for prescriptions', variant: ButtonVariant.outline, icon: LucideIcons.inbox, onPressed: () async {
+          child: SlabButton('Check for updates', variant: ButtonVariant.outline, icon: LucideIcons.inbox, onPressed: () async {
             final msg = ScaffoldMessenger.of(context);
             try {
-              final (added, refused) = await sharing.collectPrescriptions(s.currentPatientId!, s.clock());
+              final (added, family, refused) = await s.checkInbox();
               msg.showSnackBar(SnackBar(
-                content: Text(added.isEmpty && refused == 0
-                    ? 'No new prescriptions.'
-                    : '${added.length} added${refused > 0 ? ', $refused refused — see your access log' : ''}.'),
+                content: Text(added == 0 && family == 0 && refused == 0
+                    ? 'Nothing new.'
+                    : [
+                        if (added > 0) '$added prescription${added == 1 ? '' : 's'} added',
+                        if (family > 0) '$family family update${family == 1 ? '' : 's'}',
+                        if (refused > 0) '$refused refused — see your access log',
+                      ].join(', ')),
               ));
               if (context.mounted) AppScope.changed(context);
             } on Object catch (e) {

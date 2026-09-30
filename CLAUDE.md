@@ -77,6 +77,10 @@ copy predate the claim fixes; the app's wording is authoritative).
    - 1c. The `clinicalShare` audit entry is written before the bundle leaves (#13).
    - 1d. No screen promises the doctor "keeps no copy": the doctor keeps their own consult note
      and prescription; the app cannot stop a photo. Say "shared records close when access ends".
+   - 1e. A **family link** (P7, approved 30 Sep 2026) may carry only the adult's Emergency ID
+     and/or current medicine names and doses — each off by default, ticked by that adult on
+     their own phone — sealed to the linked phone's reply key via the relay. Never reports,
+     prescriptions or history. Unlink tells the other phone to delete its copy.
 2. No UI string may assert unreconstructibility (that LifeTrack/the server/anyone cannot read,
    open or access the patient's data) until the offline-guessing oracle is closed by a PAKE or a
    system-generated passphrase. Enforced on claim *subject* by `ui_claims_test.dart`, not by a

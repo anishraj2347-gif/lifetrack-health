@@ -25,6 +25,7 @@ import '../storage/attachment_store.dart';
 import '../storage/byte_store.dart';
 import '../storage/record_repository.dart';
 import '../share/clinical_share_service.dart';
+import '../family/family_link.dart';
 import '../share/http_relay_client.dart';
 import '../share/relay.dart';
 import '../share/share_bundle.dart';
@@ -60,6 +61,10 @@ class AppServices {
   /// Phase 2 sharing, or null when this build has no relay or registry
   /// configured — the Share screen then says so instead of pretending.
   ClinicalShareService? sharing;
+
+  /// Links to adults with their own phones (P7). Travels over the same
+  /// relay as sharing, so it exists exactly when sharing does.
+  FamilyLinkService? links;
 
   static const _grantsBlob = 'grants';
   static const _settingsBlob = 'settings';
@@ -126,6 +131,7 @@ class AppServices {
         originals: services.originals,
         shrink: ReportImage.forShare,
       );
+      services.links = FamilyLinkService(sealed: sealed, relay: services.sharing!.relay, audit: audit, replyIdentity: services._replyIdentity);
     }
     return services;
   }
@@ -501,6 +507,74 @@ class AppServices {
 
   List<AuditEntry> auditEntries() => currentPatientId == null ? const [] : audit.entriesFor(currentPatientId!);
 
+  // ---- linked adults (P7) -------------------------------------------------
+
+  Future<FamilyInvite> createFamilyInvite() {
+    final self = selfPatient ?? (throw const CustodyRefused('Set up your own profile first.'));
+    return links!.createInvite(ownerId: self.id, ownerName: self.name, at: clock());
+  }
+
+  List<HealthRecord> _activeMedicines(String patientId) =>
+      [for (final r in repository.recordsOf(patientId)) if (r.kind == RecordKind.prescription && r.isActiveAt(clock())) r];
+
+  /// On the invited adult's own phone. They choose what the inviter sees.
+  Future<FamilyLink> joinFamily({required String code, required bool shareEmergency, required bool shareMedicines}) async {
+    final self = selfPatient ?? (throw const CustodyRefused('Set up your own profile first.'));
+    return links!.accept(
+      ownerId: self.id,
+      ownerName: self.name,
+      code: code,
+      shareEmergency: shareEmergency,
+      shareMedicines: shareMedicines,
+      emergency: shareEmergency ? await emergency.load(self.id) : null,
+      activeMedicines: shareMedicines ? _activeMedicines(self.id) : const [],
+      at: clock(),
+    );
+  }
+
+  /// Sends a fresh copy of what this phone shares to everyone linked.
+  Future<void> refreshFamilyLinks() async {
+    final self = selfPatient;
+    if (links == null || self == null) return;
+    final card = await emergency.load(self.id);
+    for (final l in await links!.links()) {
+      if (!l.iShareEmergency && !l.iShareMedicines) continue;
+      await links!.sendUpdate(ownerId: self.id, link: l, emergency: card, activeMedicines: _activeMedicines(self.id), at: clock());
+    }
+  }
+
+  Future<FamilyLink> changeFamilySharing(FamilyLink link, {required bool emergency, required bool medicines}) async {
+    final id = selfPatientId!;
+    return links!.changeSharing(
+      ownerId: id,
+      link: link,
+      shareEmergency: emergency,
+      shareMedicines: medicines,
+      emergency: emergency ? await this.emergency.load(id) : null,
+      activeMedicines: medicines ? _activeMedicines(id) : const [],
+      at: clock(),
+    );
+  }
+
+  Future<void> unlinkFamily(FamilyLink link) => links!.unlink(ownerId: selfPatientId!, link: link, at: clock());
+
+  /// Prescriptions for whoever is on screen; family-link messages for the
+  /// owner. Returns (prescriptions added, link messages handled, refused).
+  Future<(int, int, int)> checkInbox() async {
+    final at = clock();
+    var (added, handled, refused) = (0, 0, 0);
+    if (selfPatientId != null) {
+      final (a, h, r) = await sharing!.collectInbox(selfPatientId!, at, handlers: links!.handlers(ownerId: selfPatientId!, at: at));
+      (added, handled, refused) = (a.length, h, r);
+    }
+    if (currentPatientId != null && currentPatientId != selfPatientId) {
+      final (a, _, r) = await sharing!.collectInbox(currentPatientId!, at);
+      added += a.length;
+      refused += r;
+    }
+    return (added, handled, refused);
+  }
+
   // ---- erasure (DPDP §12) -------------------------------------------------
 
   /// Deletes this profile's records, grants, Emergency ID and backup. The
@@ -515,6 +589,14 @@ class AppServices {
     final at = clock();
     for (final r in repository.recordsOf(id)) {
       if (r.attachmentId != null) await attachments.delete(r.attachmentId!);
+    }
+    // Linked adults are told, so they delete what this phone shared.
+    for (final l in id == selfPatientId ? await links?.links() ?? const <FamilyLink>[] : const <FamilyLink>[]) {
+      try {
+        await links!.unlink(ownerId: id, link: l, at: at);
+      } on Object {
+        // Offline: the link is removed here, but their copy stays until they unlink.
+      }
     }
     await repository.eraseFor(id);
     consent.eraseFor(id);

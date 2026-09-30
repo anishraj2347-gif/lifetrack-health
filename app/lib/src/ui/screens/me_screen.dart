@@ -10,6 +10,7 @@ import '../widgets/parts.dart';
 import 'data_rights_screen.dart';
 import 'add_family_screen.dart';
 import 'emergency_screen.dart';
+import 'family_link_screens.dart';
 import 'share_screen.dart' show describeActor, dataClassNames, iconForActor;
 
 class MeScreen extends StatelessWidget {
@@ -80,6 +81,7 @@ class MeScreen extends StatelessWidget {
           if (context.mounted) AppScope.changed(context);
         }),
       ),
+      const LinkedAdultsSection(),
       const Eyebrow('Where your records are'),
       const Note(
         'On this phone only, encrypted under a key in its secure hardware. The encrypted backup service is not live in this version, so there is no copy anywhere else — if this phone is lost or reset, these records are gone.',

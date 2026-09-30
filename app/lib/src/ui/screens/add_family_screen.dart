@@ -6,6 +6,7 @@ import '../../model/patient.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
+import 'family_link_screens.dart';
 
 enum _Who { child, delegating }
 
@@ -58,19 +59,12 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
         _option(LucideIcons.baby, 'A child under 18', 'You are their parent. You add their records and can show them to a doctor.', () => setState(() => _who = _Who.child)),
         _option(LucideIcons.handHeart, 'An adult who wants me to manage', 'For example a parent without a smartphone. They agree in person, and can stop it at any time.',
             () => setState(() => _who = _Who.delegating)),
-        const ShadCard(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            IconTile(LucideIcons.link, color: LT.inactive),
-            SizedBox(width: 14),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Wrap(spacing: 8, children: [Text('An adult with their own phone', style: LT.label), Badge2('Next step', tone: BadgeTone.outline)]),
-                SizedBox(height: 4),
-                Text('They keep their own records and you are linked by invite. Linking never gives you their records.', style: LT.small),
-              ]),
-            ),
-          ]),
-        ),
+        if (AppScope.of(context).links != null)
+          _option(LucideIcons.link, 'An adult with their own phone', 'They keep their own records and you are linked by invite. Linking never gives you their records.', () async {
+            await Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => const FamilyInviteScreen()));
+          })
+        else
+          const Note('Linking an adult with their own phone needs the relay, which is not set up in this build.', icon: LucideIcons.cloudOff),
       ]);
 
   Widget _option(IconData icon, String title, String body, VoidCallback onTap) => ShadCard(

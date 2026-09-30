@@ -97,7 +97,7 @@ class Field extends StatelessWidget {
         const SizedBox(height: 6),
         TextField(
           controller: controller,
-          decoration: InputDecoration(hintText: hint),
+          decoration: InputDecoration(hintText: hint == null ? null : 'e.g. $hint', hintStyle: TextStyle(color: DT.ink3.withValues(alpha: 0.6))),
         ),
       ],
     ),

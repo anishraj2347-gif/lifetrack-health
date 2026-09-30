@@ -226,22 +226,37 @@ class ClinicalShareService {
     ));
   }
 
-  /// Checks this patient's reply mailbox and adds every prescription that
-  /// verifies. Returns (added, refused): a refused one is audited, never
-  /// silently dropped.
-  Future<(List<HealthRecord>, int)> collectPrescriptions(String patientId, DateTime at) async {
+/// A non-prescription message arriving in a reply mailbox (e.g. a family
+  /// link). Returns a short line for the log, or throws to refuse it.
+  /// Checks this patient's reply mailbox once and routes every message:
+  /// prescriptions are verified and added; other kinds go to [handlers] by
+  /// their `type`. Anything that cannot be opened or handled is refused and
+  /// logged, never silently dropped. Returns (prescriptions added, handled
+  /// other messages, refused).
+  Future<(List<HealthRecord>, int, int)> collectInbox(
+    String patientId,
+    DateTime at, {
+    Map<String, Future<void> Function(Map<String, Object?> payload)> handlers = const {},
+  }) async {
     final me = await replyIdentity(patientId);
     final added = <HealthRecord>[];
-    var refused = 0;
+    var handled = 0, refused = 0;
     for (final env in await relay.collect(mailbox: me.mailbox, secret: me.secret)) {
       try {
         final payload = await ShareEnvelope.open(env, me.keyPair, at);
-        added.add(await acceptPrescription(
-          patientId: patientId,
-          rx: SignedPrescription.fromJson((payload['prescription']! as Map).cast()),
-          doctorCertificateQr: payload['certificate']! as String,
-          at: at,
-        ));
+        if (payload['prescription'] != null) {
+          added.add(await acceptPrescription(
+            patientId: patientId,
+            rx: SignedPrescription.fromJson((payload['prescription']! as Map).cast()),
+            doctorCertificateQr: payload['certificate']! as String,
+            at: at,
+          ));
+        } else if (handlers[payload['type']] case final h?) {
+          await h(payload);
+          handled++;
+        } else {
+          throw const PrescriptionRejected('an unknown kind of message');
+        }
       } on Object catch (e) {
         refused++;
         await audit.append(AuditEntry(
@@ -249,11 +264,16 @@ class ClinicalShareService {
           actorId: 'relay',
           patientId: patientId,
           action: AuditAction.denied,
-          dataClass: DataClass.prescriptions,
-          detail: 'A prescription was refused: ${e is PrescriptionRejected ? e.reason : e is CertificateRejected ? e.patientMessage : 'it could not be opened'}',
+          detail: 'A message was refused: ${e is PrescriptionRejected ? e.reason : e is CertificateRejected ? e.patientMessage : 'it could not be opened'}',
         ));
       }
     }
+    return (added, handled, refused);
+  }
+
+  /// Prescriptions only; kept for callers that have no other message kinds.
+  Future<(List<HealthRecord>, int)> collectPrescriptions(String patientId, DateTime at) async {
+    final (added, _, refused) = await collectInbox(patientId, at);
     return (added, refused);
   }
 

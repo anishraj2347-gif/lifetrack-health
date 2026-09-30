@@ -68,7 +68,18 @@ class SummaryPanel extends StatelessWidget {
             ),
           );
 
+    final nothing = ((b['allergies'] as List?) ?? const []).isEmpty &&
+        ((b['conditions'] as List?) ?? const []).isEmpty &&
+        (((meds['active'] as List?) ?? const []).isEmpty) &&
+        (((meds['endedRecently'] as List?) ?? const []).isEmpty) &&
+        ((b['latestTests'] as List?) ?? const []).isEmpty &&
+        (family == null || family.isEmpty) &&
+        (docs == null || docs.isEmpty);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (nothing)
+        Card0(
+          child: Text('No records in what was shared. The patient may not have added any yet — ask them, or order what you need.', style: DT.body),
+        ),
       if (withheld.isNotEmpty) _note('Patient shared selected items. Not shared: ${withheld.join(', ')}.'),
       if (omitted > 0) _note('$omitted original report${omitted == 1 ? ' was' : 's were'} too large to send. Ask the patient to show it on their phone.'),
       for (final a in (b['allergies'] as List?) ?? const [])
