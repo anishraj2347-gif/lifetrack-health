@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../app/app_services.dart';
@@ -149,7 +150,7 @@ class _BootError extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('LifeTrack could not open your records', style: LT.title),
+            Text(t('LifeTrack could not open your records'), style: LT.title),
             const SizedBox(height: 16),
             Text(
               'Nothing has been deleted. Do not reinstall the app — that would remove the key your records need.\n\n$error',

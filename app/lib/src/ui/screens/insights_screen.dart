@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../ai/insight.dart';
@@ -34,20 +35,20 @@ class _InsightsScreenState extends State<InsightsScreen> {
         if (run == null) return const Center(child: CircularProgressIndicator());
         final flagged = run.insights.where((i) => i.severity != Severity.note).length;
         return ListView(children: [
-          const Masthead(eyebrow: 'Insights · runs on this phone', title: 'What your numbers show'),
+          Masthead(eyebrow: t('Insights · runs on this phone'), title: t('What your numbers show')),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
             child: Row(children: [
-              Expanded(child: _Stat(value: '$flagged', label: 'To discuss with your doctor', dark: true)),
+              Expanded(child: _Stat(value: '$flagged', label: t('To discuss with your doctor'), dark: true)),
               const SizedBox(width: 10),
-              Expanded(child: _Stat(value: '${run.unresolved.length}', label: 'Could not be checked')),
+              Expanded(child: _Stat(value: '${run.unresolved.length}', label: t('Could not be checked'))),
             ]),
           ),
           const Note(Insight.disclaimer, margin: EdgeInsets.fromLTRB(16, 6, 16, 4)),
-          if (run.insights.isNotEmpty) const Eyebrow('Findings'),
+          if (run.insights.isNotEmpty) Eyebrow(t('Findings')),
           for (final i in run.insights) InsightCard(insight: i),
           if (run.unresolved.isNotEmpty) ...[
-            const Eyebrow('Not checked'),
+            Eyebrow(t('Not checked')),
             CautionPanel(
               title: '${run.unresolved.length} result${run.unresolved.length == 1 ? '' : 's'} could not be compared',
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -57,30 +58,30 @@ class _InsightsScreenState extends State<InsightsScreen> {
                     child: Text('${analyteName(u.analyte)} ${u.value} ${u.unit} — ${u.explanation}', style: LT.small.copyWith(color: LT.cautionInk)),
                   ),
                 const SizedBox(height: 8),
-                Text('Not being able to check a result says nothing about whether it is fine. Ask your doctor about these.', style: LT.small.copyWith(color: LT.cautionInk, fontWeight: FontWeight.w600)),
+                Text(t('Not being able to check a result says nothing about whether it is fine. Ask your doctor about these.'), style: LT.small.copyWith(color: LT.cautionInk, fontWeight: FontWeight.w600)),
               ]),
             ),
           ],
           if (run.insights.isEmpty && run.allChecked)
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(20, 8, 20, 0),
-              child: Text('Every result LifeTrack could compare was inside its published range. Your doctor may still want to discuss them.', style: LT.lede),
+              child: Text(t('Every result LifeTrack could compare was inside its published range. Your doctor may still want to discuss them.'), style: LT.lede),
             ),
-          const Eyebrow('Deeper analysis'),
+          Eyebrow(t('Deeper analysis')),
           ShadCard(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+            margin: EdgeInsets.fromLTRB(16, 0, 16, 28),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const IconTile(LucideIcons.lock, color: LT.ink3),
-              const SizedBox(width: 14),
+              IconTile(LucideIcons.lock, color: LT.ink3),
+              SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                    const Text('Long-term patterns', style: LT.label),
-                    Badge2(s.cloud.isAvailable(s.clock()) ? 'Available' : 'Not available yet', tone: BadgeTone.outline),
+                    Text(t('Long-term patterns'), style: LT.label),
+                    Badge2(s.cloud.isAvailable(s.clock()) ? t('Available') : t('Not available yet'), tone: BadgeTone.outline),
                   ]),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Needs regulatory certification first. It would send a de-identified summary off this phone — only after you read exactly what leaves and tap to confirm.',
+                  SizedBox(height: 4),
+                  Text(
+                    t('Needs regulatory certification first. It would send a de-identified summary off this phone — only after you read exactly what leaves and tap to confirm.'),
                     style: LT.small,
                   ),
                 ]),
@@ -93,12 +94,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
   }
 
   Widget _off(BuildContext context) => ListView(children: [
-        const Masthead(eyebrow: 'Insights', title: 'Compare with published ranges'),
-        const SizedBox(height: 8),
-        for (final (icon, title, body) in const [
-          (LucideIcons.chartColumn, 'Out-of-range values', 'Each report value compared with a published reference range for your age and sex.'),
-          (LucideIcons.trendingUp, 'Changes between reports', 'Notices when a value moves meaningfully from one report to the next.'),
-          (LucideIcons.pill, 'Duplicate medicines', 'Spots two prescriptions for the same ingredient under different brand names.'),
+        Masthead(eyebrow: t('Insights'), title: t('Compare with published ranges')),
+        SizedBox(height: 8),
+        for (final (icon, title, body) in [
+          (LucideIcons.chartColumn, t('Out-of-range values'), t('Each report value compared with a published reference range for your age and sex.')),
+          (LucideIcons.trendingUp, t('Changes between reports'), t('Notices when a value moves meaningfully from one report to the next.')),
+          (LucideIcons.pill, t('Duplicate medicines'), t('Spots two prescriptions for the same ingredient under different brand names.')),
         ])
           ShadCard(
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -114,10 +115,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
               ),
             ]),
           ),
-        const Note('Turning this on lets the on-device insights feature read your reports and prescriptions for 24 hours. Every read appears in your access log, and you can turn it off from Share at any time.', icon: LucideIcons.shieldCheck, margin: EdgeInsets.fromLTRB(16, 16, 16, 0)),
+        Note(t('Turning this on lets the on-device insights feature read your reports and prescriptions for 24 hours. Every read appears in your access log, and you can turn it off from Share at any time.'), icon: LucideIcons.shieldCheck, margin: EdgeInsets.fromLTRB(16, 16, 16, 0)),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
-          child: SlabButton('Turn on for 24 hours', icon: LucideIcons.activity, onPressed: () async {
+          child: SlabButton(t('Turn on for 24 hours'), icon: LucideIcons.activity, onPressed: () async {
             await AppScope.of(context).enableInsights();
             if (!context.mounted) return;
             final next = AppScope.of(context).runInsights();

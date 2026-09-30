@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../emergency/emergency_card.dart';
@@ -47,9 +48,9 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
       body: c == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(children: [
-              Masthead(eyebrow: 'Emergency ID', title: (widget.fromLockScreen ? s.selfPatient : s.currentPatient)?.name ?? '', trailing: const Icon(LucideIcons.heartPulse, color: LT.signal)),
+              Masthead(eyebrow: t('Emergency ID'), title: (widget.fromLockScreen ? s.selfPatient : s.currentPatient)?.name ?? '', trailing: const Icon(LucideIcons.heartPulse, color: LT.signal)),
               const SizedBox(height: 14),
-              if (c.isEmpty) const Note('This card is empty. Anyone treating you would see nothing here.', margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
+              if (c.isEmpty) Note(t('This card is empty. Anyone treating you would see nothing here.'), margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
               if (c.allergies.isNotEmpty)
                 ShadCard(
                   color: LT.signal,
@@ -59,7 +60,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('Allergies', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xE6FFFFFF))),
+                        Text(t('Allergies'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xE6FFFFFF))),
                         const SizedBox(height: 4),
                         Text(c.allergies, style: const TextStyle(fontFamily: LT.body, fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
                       ]),
@@ -69,17 +70,17 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
               ShadCard(
                 padding: EdgeInsets.zero,
                 child: Column(children: [
-                  _field(LucideIcons.droplet, 'Blood type', c.bloodType),
-                  _field(LucideIcons.activity, 'Ongoing conditions', c.conditions),
-                  _field(LucideIcons.pill, 'Current medicines', c.medications),
-                  _field(LucideIcons.phone, 'Emergency contact', [c.contactName, c.contactRelation, c.contactPhone].where((x) => x.isNotEmpty).join(' · '), last: abha == null),
-                  if (abha != null) _field(LucideIcons.idCard, 'ABHA (last four digits)', abha.masked, last: true),
+                  _field(LucideIcons.droplet, t('Blood type'), c.bloodType),
+                  _field(LucideIcons.activity, t('Ongoing conditions'), c.conditions),
+                  _field(LucideIcons.pill, t('Current medicines'), c.medications),
+                  _field(LucideIcons.phone, t('Emergency contact'), [c.contactName, c.contactRelation, c.contactPhone].where((x) => x.isNotEmpty).join(' · '), last: abha == null),
+                  if (abha != null) _field(LucideIcons.idCard, t('ABHA (last four digits)'), abha.masked, last: true),
                 ]),
               ),
               if (!widget.fromLockScreen)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-                child: SlabButton('Edit card', icon: LucideIcons.pencil, variant: ButtonVariant.outline, onPressed: () async {
+                child: SlabButton(t('Edit card'), icon: LucideIcons.pencil, variant: ButtonVariant.outline, onPressed: () async {
                   await Navigator.of(context).push(MaterialPageRoute<void>(
                     builder: (_) => Scaffold(
                       appBar: AppBar(),
@@ -167,9 +168,9 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (widget.onboarding) ...[const StepIndicator(step: 2), const SizedBox(height: 24)],
-            const Text('If you cannot speak for yourself', style: LT.hero),
+            Text(t('If you cannot speak for yourself'), style: LT.hero),
             const SizedBox(height: 8),
-            const Text('This one card is kept outside your encrypted records so it can be shown to whoever is treating you.', style: LT.lede),
+            Text(t('This one card is kept outside your encrypted records so it can be shown to whoever is treating you.'), style: LT.lede),
           ]),
         ),
         ShadCard(
@@ -177,38 +178,38 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
           borderColor: const Color(0xFFFED7AA),
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
           padding: const EdgeInsets.all(14),
-          child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Icon(LucideIcons.eye, size: 16, color: LT.signal),
             SizedBox(width: 10),
             Expanded(
               child: Text.rich(TextSpan(style: TextStyle(fontSize: 13, height: 1.5, color: LT.ink2), children: [
-                TextSpan(text: 'A stranger can read this. ', style: TextStyle(fontWeight: FontWeight.w600, color: LT.ink)),
-                TextSpan(text: 'Put in what a paramedic needs and nothing more — no address, no ID numbers.'),
+                TextSpan(text: t('A stranger can read this. '), style: TextStyle(fontWeight: FontWeight.w600, color: LT.ink)),
+                TextSpan(text: t('Put in what a paramedic needs and nothing more — no address, no ID numbers.')),
               ])),
             ),
           ]),
         ),
         LabeledField(
-          label: 'Blood type',
+          label: t('Blood type'),
           child: Wrap(spacing: 8, runSpacing: 8, children: [
             for (final b in EmergencyCard.bloodTypes)
-              Chip2(b.isEmpty ? 'Unknown' : b, selected: _blood == b, onTap: () => setState(() => _blood = b)),
+              Chip2(b.isEmpty ? t('Unknown') : b, selected: _blood == b, onTap: () => setState(() => _blood = b)),
           ]),
         ),
-        _text('Allergies', _allergies),
-        _text('Ongoing conditions', _conditions),
-        _text('Current medicines', _meds),
-        _text('Emergency contact', _contact),
-        _text('Relation', _relation),
-        _text('Contact phone', _phone, type: TextInputType.phone),
+        _text(t('Allergies'), _allergies),
+        _text(t('Ongoing conditions'), _conditions),
+        _text(t('Current medicines'), _meds),
+        _text(t('Emergency contact'), _contact),
+        _text(t('Relation'), _relation),
+        _text(t('Contact phone'), _phone, type: TextInputType.phone),
         for (final p in _problems) Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 6), child: Text(p, style: LT.small.copyWith(color: LT.signal))),
-        const Padding(
+        Padding(
           padding: EdgeInsets.fromLTRB(20, 0, 20, 0),
-          child: Text('You can leave any of these blank. Only you can edit this card — LifeTrack\'s insights never write to it.', style: LT.small),
+          child: Text(t('You can leave any of these blank. Only you can edit this card — LifeTrack\'s insights never write to it.'), style: LT.small),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
-          child: SlabButton(widget.onboarding ? 'Finish setup' : 'Save card', onPressed: _save),
+          child: SlabButton(widget.onboarding ? t('Finish setup') : t('Save card'), onPressed: _save),
         ),
       ]);
 }

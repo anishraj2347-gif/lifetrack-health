@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/l10n.dart';
 
 import '../../ai/plane_a/reference_ranges.dart' show analyteName;
 import '../theme.dart';
@@ -23,9 +24,9 @@ class SummaryView extends StatelessWidget {
               : '${(days / 365).round()} years ago';
 
   static (String, BadgeTone) sourceBadge(String s) => switch (s) {
-        'signed' => ('Lab / doctor signed', BadgeTone.trace),
-        'photoOfReport' => ('Photo of report', BadgeTone.neutral),
-        _ => ('Patient-typed', BadgeTone.outline),
+        'signed' => (t('Lab / doctor signed'), BadgeTone.trace),
+        'photoOfReport' => (t('Photo of report'), BadgeTone.neutral),
+        _ => (t('Patient-typed'), BadgeTone.outline),
       };
 
   static String fmt(Object? v) {
@@ -68,20 +69,20 @@ class SummaryView extends StatelessWidget {
           child: Text('Allergy: ${(a as Map)['substance']}${a['reaction'] == null ? '' : ' — ${a['reaction']}'}',
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
         ),
-      _block('Active medicines', [
+      _block(t('Active medicines'), [
         for (final m in (meds['active'] as List?) ?? const [])
           _line('${(m as Map)['title']}${m['dose'] == null ? '' : ' · ${m['dose']}'}',
-              m['patientConfirmedAt'] != null ? 'Patient confirmed still taking' : 'Not confirmed by patient'),
+              m['patientConfirmedAt'] != null ? t('Patient confirmed still taking') : t('Not confirmed by patient')),
         for (final m in (meds['endedRecently'] as List?) ?? const [])
           _line('${(m as Map)['title']}', 'Course ended ${(m['endsOn'] as String?)?.substring(0, 10) ?? ''}', quiet: true),
       ]),
-      _block('Conditions', [
-        for (final c in conditions) _line('${(c as Map)['name']}', c['since'] == null ? '' : 'since ${c['since']}'),
+      _block(t('Conditions'), [
+        for (final c in conditions) _line('${(c as Map)['name']}t(', c[')since'] == null ? '' : 'since ${c['since']}'),
       ]),
-      _block('Latest tests', [
-        for (final t in tests)
+      _block(t('Latest tests'), [
+        for (final test in tests)
           () {
-            final m = t as Map;
+            final m = test as Map;
             final (label, tone) = sourceBadge(m['source'] as String);
             final prev = m['previous'] as Map?;
             final range = m['printedRange'] as Map?;
@@ -104,7 +105,7 @@ class SummaryView extends StatelessWidget {
                         onTap: () => onOpenOriginal!(m['recordId'] as String),
                         child: Padding(
                           padding: const EdgeInsets.only(top: 4),
-                          child: Text('View original report', style: LT.small.copyWith(color: LT.ink, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
+                          child: Text(t('View original report'), style: LT.small.copyWith(color: LT.ink, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
                         ),
                       ),
                   ]),
@@ -115,9 +116,9 @@ class SummaryView extends StatelessWidget {
           }(),
       ]),
       if (family != null)
-        _block('Family illnesses · patient-reported', [
+        _block(t('Family illnesses · patient-reported'), [
           for (final f in family)
-            _line('${(f as Map)['relation']}: ${f['condition']}', f['onset'] == null ? '' : 'at ${f['onset']}'),
+            _line('${(f as Map)['relation']}: ${f['condition']}t(', f[')onset'] == null ? '' : 'at ${f['onset']}'),
         ]),
     ]);
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../model/health_record.dart';
@@ -18,10 +19,10 @@ IconData iconForKind(RecordKind k) => switch (k) {
     };
 
 String kindLabel(RecordKind k) => switch (k) {
-      RecordKind.prescription => 'Prescription',
-      RecordKind.report => 'Report',
-      RecordKind.scan => 'Scan',
-      RecordKind.note => 'Note',
+      RecordKind.prescription => t('Prescription'),
+      RecordKind.report => t('Report'),
+      RecordKind.scan => t('Scan'),
+      RecordKind.note => t('Note'),
     };
 
 class RecordsScreen extends StatefulWidget {
@@ -62,13 +63,13 @@ class _RecordsScreenState extends State<RecordsScreen> {
     final trend = _query.isEmpty && _filter == null ? TrendCard.pick(all) : null;
     return Column(children: [
       const FamilyBar(),
-      Masthead(eyebrow: 'Records', title: name),
+      Masthead(eyebrow: t('Records'), title: name),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
         child: TextField(
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             prefixIcon: Icon(LucideIcons.search, size: 18, color: LT.ink3),
-            hintText: 'Search records, doctors, hospitals',
+            hintText: t('Search records, doctors, hospitals'),
           ),
           onChanged: (v) => setState(() => _query = v.trim()),
         ),
@@ -77,7 +78,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
         child: Row(children: [
-          for (final (label, kind) in [('All', null), ('Prescriptions', RecordKind.prescription), ('Reports', RecordKind.report), ('Scans', RecordKind.scan), ('Notes', RecordKind.note)])
+          for (final (label, kind) in [(t('All'), null), (t('Prescriptions'), RecordKind.prescription), (t('Reports'), RecordKind.report), (t('Scans'), RecordKind.scan), (t('Notes'), RecordKind.note)])
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Chip2(label, selected: _filter == kind, onTap: () => setState(() => _filter = kind)),
@@ -92,9 +93,9 @@ class _RecordsScreenState extends State<RecordsScreen> {
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     const IconTile(LucideIcons.fileText, color: LT.ink3),
                     const SizedBox(height: 14),
-                    Text(all.isEmpty ? 'No records yet' : 'Nothing matches', style: LT.label),
+                    Text(all.isEmpty ? t('No records yet') : t('Nothing matches'), style: LT.label),
                     const SizedBox(height: 4),
-                    Text(all.isEmpty ? 'Add your first prescription or report.' : 'Try another search or filter.', style: LT.small, textAlign: TextAlign.center),
+                    Text(all.isEmpty ? t('Add your first prescription or report.') : t('Try another search or filter.'), style: LT.small, textAlign: TextAlign.center),
                   ]),
                 ),
               )
@@ -105,7 +106,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
       ),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-        child: SlabButton('Add record', icon: LucideIcons.plus, onPressed: () async {
+        child: SlabButton(t('Add record'), icon: LucideIcons.plus, onPressed: () async {
           await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AddRecordScreen()));
           if (context.mounted) AppScope.changed(context);
         }),
@@ -124,7 +125,7 @@ class _RecordCard extends StatelessWidget {
     final meta = switch (r.kind) {
       RecordKind.prescription => r.dose == null ? null : 'Dose ${r.dose!.display}',
       RecordKind.report => r.results.isEmpty ? null : '${r.results.length} value${r.results.length == 1 ? '' : 's'}',
-      RecordKind.note => 'This phone only',
+      RecordKind.note => t('This phone only'),
       RecordKind.scan => null,
     };
     return ShadCard(

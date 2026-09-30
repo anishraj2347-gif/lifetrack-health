@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import '../l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../model/health_record.dart';
@@ -64,7 +65,7 @@ class OriginalsStrip extends StatelessWidget {
         if (pages.isEmpty) {
           return Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-            child: Text(record.attachmentId == null ? 'No original attached.' : 'The original is not on this phone.', style: LT.small),
+            child: Text(record.attachmentId == null ? t('No original attached.') : t('The original is not on this phone.'), style: LT.small),
           );
         }
         return Padding(

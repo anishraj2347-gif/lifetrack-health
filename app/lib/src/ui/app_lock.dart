@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../security/unlocker.dart';
@@ -70,7 +71,7 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
   Future<void> _ask() async {
     if (_asking) return;
     setState(() => _asking = true);
-    final ok = await widget.unlocker.unlock('Unlock LifeTrack to see your health records');
+    final ok = await widget.unlocker.unlock(t('Unlock LifeTrack to see your health records'));
     if (!mounted) return;
     setState(() {
       _asking = false;
@@ -102,17 +103,17 @@ class _LockScreen extends StatelessWidget {
               const Spacer(),
               const IconTile(LucideIcons.lock, color: LT.ink, background: LT.accent),
               const SizedBox(height: 20),
-              const Text('LifeTrack is locked', style: TextStyle(fontFamily: LT.body, fontSize: 24, fontWeight: FontWeight.w600, color: LT.ink)),
+              Text(t('LifeTrack is locked'), style: TextStyle(fontFamily: LT.body, fontSize: 24, fontWeight: FontWeight.w600, color: LT.ink)),
               const SizedBox(height: 8),
-              const Text('Use your fingerprint, face or phone PIN.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: LT.ink3)),
+              Text(t('Use your fingerprint, face or phone PIN.'), textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: LT.ink3)),
               const Spacer(),
-              SlabButton('Unlock', icon: LucideIcons.lockOpen, onPressed: asking ? null : onUnlock),
+              SlabButton(t('Unlock'), icon: LucideIcons.lockOpen, onPressed: asking ? null : onUnlock),
               const SizedBox(height: 12),
-              SlabButton('Emergency ID', icon: LucideIcons.heartPulse, variant: ButtonVariant.outline, onPressed: () {
+              SlabButton(t('Emergency ID'), icon: LucideIcons.heartPulse, variant: ButtonVariant.outline, onPressed: () {
                 Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const EmergencyScreen(fromLockScreen: true)));
               }),
               const SizedBox(height: 8),
-              const Text('Anyone holding the phone can open the Emergency ID. Each time is written to your access log.',
+              Text(t('Anyone holding the phone can open the Emergency ID. Each time is written to your access log.'),
                   textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: LT.ink3)),
             ]),
           ),
@@ -131,7 +132,7 @@ class AppLockControl {
   /// an unlocked phone cannot switch it off.
   Future<bool> setEnabled(bool on) async {
     final s = AppScope.of(_gate.context);
-    if (!on && !await _gate.widget.unlocker.unlock('Confirm it is you to turn off the app lock')) return false;
+    if (!on && !await _gate.widget.unlocker.unlock(t('Confirm it is you to turn off the app lock'))) return false;
     await s.setAppLock(on);
     _gate._locked = false;
     return true;

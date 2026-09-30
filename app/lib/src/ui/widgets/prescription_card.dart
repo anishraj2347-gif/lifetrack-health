@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../model/health_record.dart';
@@ -13,11 +14,11 @@ class PrescriptionCard extends StatelessWidget {
   final HealthRecord record;
   final DateTime now;
 
-  static String timingLabel(String? t) => switch (t) {
-        'before_food' => 'Before food',
-        'after_food' => 'After food',
-        'with_food' => 'With food',
-        _ => 'Any time',
+  static String timingLabel(String? timing) => switch (timing) {
+        'before_food' => t('Before food'),
+        'after_food' => t('After food'),
+        'with_food' => t('With food'),
+        _ => t('Any time'),
       };
 
   @override
@@ -42,10 +43,10 @@ class PrescriptionCard extends StatelessWidget {
               const SizedBox(height: 8),
               Badge2(
                 r.endDate == null
-                    ? 'No end date given'
+                    ? t('No end date given')
                     : active
                         ? '$left day${left == 1 ? '' : 's'} left'
-                        : 'Course finished',
+                        : t('Course finished'),
                 tone: active ? BadgeTone.trace : BadgeTone.outline,
               ),
             ]),
@@ -57,14 +58,14 @@ class PrescriptionCard extends StatelessWidget {
       if (d != null)
         ShadCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('How much, and when', style: LT.small.copyWith(fontWeight: FontWeight.w600, color: LT.ink2)),
+            Text(t('How much, and when'), style: LT.small.copyWith(fontWeight: FontWeight.w600, color: LT.ink2)),
             const SizedBox(height: 12),
             Row(children: [
-              _slot(LucideIcons.sunrise, 'Morning', d.morning),
+              _slot(LucideIcons.sunrise, t('Morning'), d.morning),
               const SizedBox(width: 8),
-              _slot(LucideIcons.sun, 'Afternoon', d.afternoon),
+              _slot(LucideIcons.sun, t('Afternoon'), d.afternoon),
               const SizedBox(width: 8),
-              _slot(LucideIcons.moon, 'Night', d.night),
+              _slot(LucideIcons.moon, t('Night'), d.night),
             ]),
             const SizedBox(height: 16),
             Row(children: [
@@ -81,9 +82,9 @@ class PrescriptionCard extends StatelessWidget {
       ShadCard(
         padding: EdgeInsets.zero,
         child: Column(children: [
-          _row(LucideIcons.calendar, 'Started', fullDate(r.date)),
-          if (r.endDate != null) _row(LucideIcons.calendarCheck, 'Ends', fullDate(r.endDate!)),
-          if (days != null) _row(LucideIcons.clock, 'Course', '$days days', last: true),
+          _row(LucideIcons.calendar, t('Started'), fullDate(r.date)),
+          if (r.endDate != null) _row(LucideIcons.calendarCheck, t('Ends'), fullDate(r.endDate!)),
+          if (days != null) _row(LucideIcons.clock, t('Course'), '$days days', last: true),
         ]),
       ),
 
@@ -96,7 +97,7 @@ class PrescriptionCard extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text("Doctor's instructions", style: LT.small.copyWith(fontWeight: FontWeight.w600, color: LT.ink2)),
+                Text(t('Doctor\'s instructions'), style: LT.small.copyWith(fontWeight: FontWeight.w600, color: LT.ink2)),
                 const SizedBox(height: 4),
                 Text(r.instructions!, style: LT.label.copyWith(fontSize: 15, height: 1.5)),
               ]),
@@ -108,18 +109,18 @@ class PrescriptionCard extends StatelessWidget {
       ShadCard(
         padding: EdgeInsets.zero,
         child: Column(children: [
-          if (r.doctor != null) _row(LucideIcons.stethoscope, 'Prescribed by', r.doctor!),
-          if (r.prescriberRegistration != null) _row(LucideIcons.badgeCheck, 'Registration', r.prescriberRegistration!),
-          if (r.facility != null) _row(LucideIcons.hospital, 'Clinic', r.facility!),
+          if (r.doctor != null) _row(LucideIcons.stethoscope, t('Prescribed by'), r.doctor!),
+          if (r.prescriberRegistration != null) _row(LucideIcons.badgeCheck, t('Registration'), r.prescriberRegistration!),
+          if (r.facility != null) _row(LucideIcons.hospital, t('Clinic'), r.facility!),
           _row(
             LucideIcons.fileCheck,
-            'Source',
+            t('Source'),
             switch (r.source) {
-              RecordSource.doctorIssued => 'Signed by a verified doctor',
-              RecordSource.smartCapture => 'Photo of the prescription',
-              RecordSource.labSigned => 'Delivered by the lab',
-              RecordSource.restoredFromBackup => 'Restored from your backup',
-              RecordSource.typedByPatient => 'Typed in by you',
+              RecordSource.doctorIssued => t('Signed by a verified doctor'),
+              RecordSource.smartCapture => t('Photo of the prescription'),
+              RecordSource.labSigned => t('Delivered by the lab'),
+              RecordSource.restoredFromBackup => t('Restored from your backup'),
+              RecordSource.typedByPatient => t('Typed in by you'),
             },
             last: true,
           ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../emergency/emergency_card.dart';
@@ -72,21 +73,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final ready = _name.text.trim().isNotEmpty && _dob != null;
     return ListView(
       children: [
-        _intro('Who are these records for?', 'This profile lives on this phone. Other family members create their own.'),
+        _intro(t('Who are these records for?'), t('This profile lives on this phone. Other family members create their own.')),
         LabeledField(
-          label: 'Full name',
+          label: t('Full name'),
           child: TextField(
             controller: _name,
             onChanged: (_) => setState(() {}),
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(hintText: 'e.g. Anjali Sharma'),
+            decoration: InputDecoration(hintText: t('e.g. Anjali Sharma')),
           ),
         ),
         LabeledField(
-          label: 'Date of birth',
-          hint: 'Reference ranges depend on age. Adult ranges are never applied to a child.',
+          label: t('Date of birth'),
+          hint: t('Reference ranges depend on age. Adult ranges are never applied to a child.'),
           child: FieldButton(
-            text: _dob == null ? 'Pick a date' : fullDate(_dob!),
+            text: _dob == null ? t('Pick a date') : fullDate(_dob!),
             placeholder: _dob == null,
             onTap: () async {
               final d = await showDatePicker(
@@ -100,21 +101,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
         ),
         LabeledField(
-          label: 'Sex',
-          hint: 'Some ranges differ by sex. If you leave this unset, those results are shown as not checked.',
+          label: t('Sex'),
+          hint: t('Some ranges differ by sex. If you leave this unset, those results are shown as not checked.'),
           child: Wrap(spacing: 8, runSpacing: 8, children: [
             for (final s in Sex.values)
-              Chip2(s == Sex.unspecified ? 'Prefer not to say' : s.name, selected: _sex == s, onTap: () => setState(() => _sex = s)),
+              Chip2(s == Sex.unspecified ? t('Prefer not to say') : s.name, selected: _sex == s, onTap: () => setState(() => _sex = s)),
           ]),
         ),
-        const Note('We ask for as little as we can. Nothing here is shared with a doctor until you grant access.', icon: LucideIcons.shieldCheck),
+        Note(t('We ask for as little as we can. Nothing here is shared with a doctor until you grant access.'), icon: LucideIcons.shieldCheck),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
-          child: SlabButton('Continue', onPressed: ready && !_busy ? () => _createProfile(demo: false) : null),
+          child: SlabButton(t('Continue'), onPressed: ready && !_busy ? () => _createProfile(demo: false) : null),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
-          child: SlabButton('Explore with sample records', variant: ButtonVariant.outline, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true)),
+          child: SlabButton(t('Explore with sample records'), variant: ButtonVariant.outline, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true)),
         ),
       ],
     );
@@ -122,18 +123,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Widget _custody() => ListView(
         children: [
-          _intro('Where your records live', 'On this phone, encrypted with a key held in the phone\'s secure hardware.'),
-          const _Row(
+          _intro(t('Where your records live'), t('On this phone, encrypted with a key held in the phone\'s secure hardware.')),
+          _Row(
             icon: LucideIcons.smartphone,
             tone: BadgeTone.trace,
-            title: 'Stays on this phone',
-            body: 'Records, notes, your access log and the permissions you give. Nothing leaves this phone unless you share it with a doctor or a linked family member.',
+            title: t('Stays on this phone'),
+            body: t('Records, notes, your access log and the permissions you give. Nothing leaves this phone unless you share it with a doctor or a linked family member.'),
           ),
-          const _Row(
+          _Row(
             icon: LucideIcons.cloudOff,
             tone: BadgeTone.caution,
-            title: 'No backup yet',
-            body: 'The encrypted backup service is not live in this version. Until it is, your records exist only here — if this phone is lost or reset, they are gone.',
+            title: t('No backup yet'),
+            body: t('The encrypted backup service is not live in this version. Until it is, your records exist only here — if this phone is lost or reset, they are gone.'),
           ),
           ShadCard(
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -141,12 +142,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             onTap: () => setState(() => _understood = !_understood),
             child: Row(children: [
               Checkbox(value: _understood, onChanged: (v) => setState(() => _understood = v ?? false)),
-              const Expanded(child: Text('I understand my records are on this phone only, with no backup yet.', style: TextStyle(fontSize: 14, color: LT.ink))),
+              Expanded(child: Text(t('I understand my records are on this phone only, with no backup yet.'), style: TextStyle(fontSize: 14, color: LT.ink))),
             ]),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-            child: SlabButton('Continue', onPressed: _understood ? () => setState(() => _step = 2) : null),
+            child: SlabButton(t('Continue'), onPressed: _understood ? () => setState(() => _step = 2) : null),
           ),
         ],
       );

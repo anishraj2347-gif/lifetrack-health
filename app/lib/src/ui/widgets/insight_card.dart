@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../ai/insight.dart';
@@ -16,10 +17,10 @@ class InsightCard extends StatelessWidget {
     final i = insight;
     final flood = i.severity == Severity.contactDoctorToday || i.severity == Severity.urgentCare;
     final (label, icon) = switch (i.severity) {
-      Severity.note => ('For your next visit', LucideIcons.info),
-      Severity.discussSoon => ('Discuss at your next visit', LucideIcons.stethoscope),
-      Severity.contactDoctorToday => ('Contact your doctor today', LucideIcons.phone),
-      Severity.urgentCare => ('Seek care now', LucideIcons.siren),
+      Severity.note => (t('For your next visit'), LucideIcons.info),
+      Severity.discussSoon => (t('Discuss at your next visit'), LucideIcons.stethoscope),
+      Severity.contactDoctorToday => (t('Contact your doctor today'), LucideIcons.phone),
+      Severity.urgentCare => (t('Seek care now'), LucideIcons.siren),
     };
     final fg = flood ? Colors.white : LT.ink;
     return ShadCard(

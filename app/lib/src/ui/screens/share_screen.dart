@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../consent/consent_token.dart';
@@ -10,11 +11,11 @@ import 'doctor_share_screen.dart';
 import 'show_on_phone_screen.dart';
 
 String describeActor(String actorId) {
-  if (actorId == Actors.planeA) return 'On-device insights';
-  if (actorId == Actors.cloud) return 'Cloud analysis';
+  if (actorId == Actors.planeA) return t('On-device insights');
+  if (actorId == Actors.cloud) return t('Cloud analysis');
   if (actorId.startsWith('doctor:')) return 'Doctor · ${actorId.substring(7)}';
-  if (actorId.startsWith('patient:')) return 'You';
-  if (actorId.startsWith('unauthenticated:')) return 'Someone without your PIN';
+  if (actorId.startsWith('patient:')) return t('You');
+  if (actorId.startsWith('unauthenticated:')) return t('Someone without your PIN');
   if (actorId.startsWith('family:')) return actorId.substring(7);
   return actorId;
 }
@@ -50,22 +51,22 @@ class ShareScreen extends StatelessWidget {
     final sharing = s.sharing;
     return ListView(children: [
       Masthead(
-        eyebrow: 'Share',
-        title: 'Show a doctor your records',
-        trailing: Badge2(grants.isEmpty ? 'No access' : '${grants.length} active', tone: grants.isEmpty ? BadgeTone.outline : BadgeTone.trace),
+        eyebrow: t('Share'),
+        title: t('Show a doctor your records'),
+        trailing: Badge2(grants.isEmpty ? t('No access') : '${grants.length} active', tone: grants.isEmpty ? BadgeTone.outline : BadgeTone.trace),
       ),
       const SizedBox(height: 12),
       ShadCard(
         color: LT.primary,
         onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ShowOnPhoneScreen())),
-        child: const Row(children: [
+        child: Row(children: [
           IconTile(LucideIcons.smartphone, color: LT.ink, background: LT.accent),
           SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Show on my phone', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
+              Text(t('Show on my phone'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
               SizedBox(height: 4),
-              Text('Hand the phone to the doctor. Nothing is sent.', style: TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
+              Text(t('Hand the phone to the doctor. Nothing is sent.'), style: TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
             ]),
           ),
           Icon(LucideIcons.chevronRight, color: LT.onDarkMuted),
@@ -77,14 +78,14 @@ class ShareScreen extends StatelessWidget {
             await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DoctorShareScreen()));
             if (context.mounted) AppScope.changed(context);
           },
-          child: const Row(children: [
+          child: Row(children: [
             IconTile(LucideIcons.qrCode),
             SizedBox(width: 14),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Share with a doctor', style: LT.label),
+                Text(t('Share with a doctor'), style: LT.label),
                 SizedBox(height: 4),
-                Text("Scan their verified code; it's encrypted to their device", style: LT.small),
+                Text(t('Scan their verified code; it\'s encrypted to their device'), style: LT.small),
               ]),
             ),
             Icon(LucideIcons.chevronRight, color: LT.inactive),
@@ -92,13 +93,13 @@ class ShareScreen extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-          child: SlabButton('Check for updates', variant: ButtonVariant.outline, icon: LucideIcons.inbox, onPressed: () async {
+          child: SlabButton(t('Check for updates'), variant: ButtonVariant.outline, icon: LucideIcons.inbox, onPressed: () async {
             final msg = ScaffoldMessenger.of(context);
             try {
               final (added, family, refused) = await s.checkInbox();
               msg.showSnackBar(SnackBar(
                 content: Text(added == 0 && family == 0 && refused == 0
-                    ? 'Nothing new.'
+                    ? t('Nothing new.')
                     : [
                         if (added > 0) '$added prescription${added == 1 ? '' : 's'} added',
                         if (family > 0) '$family family update${family == 1 ? '' : 's'}',
@@ -112,14 +113,14 @@ class ShareScreen extends StatelessWidget {
           }),
         ),
       ] else
-        const Note('Sharing with a doctor\'s device is not set up in this build. "Show on my phone" works without it.', icon: LucideIcons.cloudOff),
-      const Eyebrow('Who has access now'),
+        Note(t('Sharing with a doctor\'s device is not set up in this build. "Show on my phone" works without it.'), icon: LucideIcons.cloudOff),
+      Eyebrow(t('Who has access now')),
       if (grants.isEmpty)
-        const ShadCard(
+        ShadCard(
           child: Row(children: [
             IconTile(LucideIcons.shieldCheck, color: LT.trace, background: Color(0xFFECFDF5)),
             SizedBox(width: 14),
-            Expanded(child: Text('Nobody has access right now.', style: LT.label)),
+            Expanded(child: Text(t('Nobody has access right now.'), style: LT.label)),
           ]),
         ),
       for (final g in grants)
@@ -139,7 +140,7 @@ class ShareScreen extends StatelessWidget {
             const SizedBox(width: 8),
             SizedBox(
               width: 92,
-              child: SlabButton('End', variant: ButtonVariant.outline, onPressed: () async {
+              child: SlabButton(t('End'), variant: ButtonVariant.outline, onPressed: () async {
                 if (isClinicalShare(g) && sharing != null) {
                   await sharing.endAccess(g, s.clock());
                 } else {

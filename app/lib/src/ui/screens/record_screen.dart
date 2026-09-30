@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/l10n.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../ai/insight.dart';
@@ -45,7 +46,7 @@ class _RecordScreenState extends State<RecordScreen> {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final r = s.records().where((x) => x.id == widget.recordId).firstOrNull;
-    if (r == null) return const Scaffold(body: Center(child: Text('This record no longer exists.')));
+    if (r == null) return Scaffold(body: Center(child: Text(t('This record no longer exists.'))));
     final cited = _run?.insights.where((i) => i.evidence.contains(r.id)).toList() ?? const <Insight>[];
     final unchecked = _run?.unresolved.where((u) => u.recordId == r.id).toList() ?? const <NotChecked>[];
 
@@ -88,21 +89,21 @@ class _RecordScreenState extends State<RecordScreen> {
               padding: EdgeInsets.zero,
               child: Column(
                 children: [
-                  if (r.doctor != null) _meta(LucideIcons.stethoscope, 'Doctor', r.doctor!),
-                  if (r.facility != null) _meta(LucideIcons.hospital, 'Clinic or hospital', r.facility!),
-                  if (r.dose != null) _meta(LucideIcons.pill, 'Dose (morning–afternoon–night)', r.dose!.display),
-                  _meta(LucideIcons.fileCheck, 'Source', switch (r.source) {
-                    RecordSource.typedByPatient => 'Typed in by you, no original attached',
-                    RecordSource.smartCapture => 'Photo of the original, values confirmed by you',
-                    RecordSource.doctorIssued => 'Signed by a verified doctor',
-                    RecordSource.labSigned => 'Delivered by the lab',
-                    RecordSource.restoredFromBackup => 'Restored from your backup',
+                  if (r.doctor != null) _meta(LucideIcons.stethoscope, t('Doctor'), r.doctor!),
+                  if (r.facility != null) _meta(LucideIcons.hospital, t('Clinic or hospital'), r.facility!),
+                  if (r.dose != null) _meta(LucideIcons.pill, t('Dose (morning–afternoon–night)'), r.dose!.display),
+                  _meta(LucideIcons.fileCheck, t('Source'), switch (r.source) {
+                    RecordSource.typedByPatient => t('Typed in by you, no original attached'),
+                    RecordSource.smartCapture => t('Photo of the original, values confirmed by you'),
+                    RecordSource.doctorIssued => t('Signed by a verified doctor'),
+                    RecordSource.labSigned => t('Delivered by the lab'),
+                    RecordSource.restoredFromBackup => t('Restored from your backup'),
                   }, last: true),
                 ],
               ),
             ),
           if (r.results.isNotEmpty) ...[
-            const Eyebrow('Values as reported'),
+            Eyebrow(t('Values as reported')),
             ShadCard(
               padding: EdgeInsets.zero,
               child: Column(
@@ -124,13 +125,13 @@ class _RecordScreenState extends State<RecordScreen> {
               ),
             ),
             if (_run == null && s.insightsEnabled() == false)
-              const Note(
-                'Turn on Insights to have these values compared with published reference ranges.',
+              Note(
+                t('Turn on Insights to have these values compared with published reference ranges.'),
                 icon: LucideIcons.activity,
                 margin: EdgeInsets.fromLTRB(16, 4, 16, 0),
               )
             else ...[
-              if (cited.isNotEmpty || unchecked.isNotEmpty) const Eyebrow('From Insights'),
+              if (cited.isNotEmpty || unchecked.isNotEmpty) Eyebrow(t('From Insights')),
               for (final i in cited) InsightCard(insight: i),
               for (final u in unchecked)
                 CautionPanel(

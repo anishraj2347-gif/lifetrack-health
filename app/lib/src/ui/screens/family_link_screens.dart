@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/l10n.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_zxing/flutter_zxing.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -37,10 +38,10 @@ class _FamilyInviteScreenState extends State<FamilyInviteScreen> {
             if (invite == null) return const Center(child: CircularProgressIndicator());
             final code = invite.encode();
             return ListView(children: [
-              const Masthead(
-                eyebrow: 'Invite an adult',
-                title: 'Ask them to scan this',
-                description: 'On their own phone, in LifeTrack: Me → Join a family.',
+              Masthead(
+                eyebrow: t('Invite an adult'),
+                title: t('Ask them to scan this'),
+                description: t('On their own phone, in LifeTrack: Me → Join a family.'),
               ),
               ShadCard(
                 margin: const EdgeInsets.fromLTRB(16, 16, 16, 10),
@@ -50,22 +51,21 @@ class _FamilyInviteScreenState extends State<FamilyInviteScreen> {
                 child: Row(children: [
                   Expanded(child: Text(code, maxLines: 2, overflow: TextOverflow.ellipsis, style: LT.small.copyWith(fontFamily: 'monospace'))),
                   IconButton(
-                    tooltip: 'Copy code',
+                    tooltip: t('Copy code'),
                     icon: const Icon(LucideIcons.copy),
                     onPressed: () async {
                       await Clipboard.setData(ClipboardData(text: code));
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invite code copied.')));
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t('Invite code copied.'))));
                     },
                   ),
                 ]),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-                child: Wrap(spacing: 8, runSpacing: 8, children: [Badge2('Works once', tone: BadgeTone.outline), Badge2('Until ${fullDate(invite.expiresAt.toLocal())}', tone: BadgeTone.outline)]),
+                child: Wrap(spacing: 8, runSpacing: 8, children: [Badge2(t('Works once'), tone: BadgeTone.outline), Badge2('Until ${fullDate(invite.expiresAt.toLocal())}', tone: BadgeTone.outline)]),
               ),
-              const Note(
-                'Linking never gives you their records. They choose whether to share their Emergency ID or current medicines with you, and can stop at any time. '
-                'When they have joined, tap "Check for updates" on the Share tab.',
+              Note(
+                t('Linking never gives you their records. They choose whether to share their Emergency ID or current medicines with you, and can stop at any time. When they have joined, tap "Check for updates" on the Share tab.'),
                 icon: LucideIcons.shieldCheck,
                 margin: EdgeInsets.fromLTRB(16, 16, 16, 28),
               ),
@@ -127,7 +127,7 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(), body: _invite == null ? _scan() : _choose());
 
   Widget _scan() => ListView(children: [
-        const Masthead(eyebrow: 'Join a family', title: 'Scan their invite', description: 'The family member who invited you shows a code on their phone.'),
+        Masthead(eyebrow: t('Join a family'), title: t('Scan their invite'), description: t('The family member who invited you shows a code on their phone.')),
         Container(
           height: 300,
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -135,8 +135,8 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(LT.radiusLg), color: LT.primary),
           child: ReaderWidget(
             onScan: (c) {
-              final t = c.text;
-              if (t != null && t.isNotEmpty) _read(t);
+              final text = c.text;
+              if (text != null && text.isNotEmpty) _read(text);
             },
             showGallery: false,
             showToggleCamera: false,
@@ -144,10 +144,10 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
           ),
         ),
         if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
-        LabeledField(label: 'Or paste the code', child: TextField(controller: _paste, onChanged: (_) => setState(() {}))),
+        LabeledField(label: t('Or paste the code'), child: TextField(controller: _paste, onChanged: (_) => setState(() {}))),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-          child: SlabButton('Continue', onPressed: _paste.text.trim().isEmpty ? null : () => _read(_paste.text)),
+          child: SlabButton(t('Continue'), onPressed: _paste.text.trim().isEmpty ? null : () => _read(_paste.text)),
         ),
       ]);
 
@@ -155,14 +155,14 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
     final from = _invite!.fromName;
     final me = AppScope.of(context).selfPatient!.name;
     return ListView(children: [
-      Masthead(eyebrow: 'Join a family', title: 'Link with $from?', description: 'You keep your own records on this phone, as $me.'),
+      Masthead(eyebrow: t('Join a family'), title: 'Link with $from?', description: 'You keep your own records on this phone, as $me.'),
       Eyebrow('What $from can see'),
-      _tick('My Emergency ID', 'Blood group, allergies, emergency contact', _emergency, (v) => setState(() => _emergency = v)),
-      _tick('My current medicines', 'Names and doses of what I am taking now', _medicines, (v) => setState(() => _medicines = v)),
+      _tick(t('My Emergency ID'), t('Blood group, allergies, emergency contact'), _emergency, (v) => setState(() => _emergency = v)),
+      _tick(t('My current medicines'), t('Names and doses of what I am taking now'), _medicines, (v) => setState(() => _medicines = v)),
       Note(
         _emergency || _medicines
             ? 'Only this is sent, encrypted to $from\'s phone. Your reports, prescriptions and history stay here. You can change this or unlink at any time.'
-            : 'Nothing will be shared — you will just be linked. You can choose later.',
+            : t('Nothing will be shared — you will just be linked. You can choose later.'),
         icon: LucideIcons.shieldCheck,
       ),
       if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
@@ -172,7 +172,7 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
       ),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
-        child: SlabButton('Not now', variant: ButtonVariant.outline, onPressed: () => Navigator.of(context).pop()),
+        child: SlabButton(t('Not now'), variant: ButtonVariant.outline, onPressed: () => Navigator.of(context).pop()),
       ),
     ]);
   }
@@ -206,9 +206,9 @@ class LinkedAdultsSection extends StatelessWidget {
       builder: (context, snap) {
         final links = snap.data ?? const <FamilyLink>[];
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Eyebrow('Linked, on their own phones'),
+          Eyebrow(t('Linked, on their own phones')),
           if (links.isEmpty)
-            const Note('Nobody yet. Invite an adult from "Add a family member", or join someone else\'s family below.', icon: LucideIcons.link, margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
+            Note(t('Nobody yet. Invite an adult from "Add a family member", or join someone else\'s family below.'), icon: LucideIcons.link, margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
           for (final l in links)
             ShadCard(
               onTap: () async {
@@ -225,13 +225,13 @@ class LinkedAdultsSection extends StatelessWidget {
                     Text(theirLine(l), style: LT.small),
                   ]),
                 ),
-                const Icon(LucideIcons.chevronRight, color: LT.inactive),
+                Icon(LucideIcons.chevronRight, color: LT.inactive),
               ]),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-            child: SlabButton('Join a family', variant: ButtonVariant.outline, icon: LucideIcons.scanLine, onPressed: () async {
-              await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const JoinFamilyScreen()));
+            padding: EdgeInsets.fromLTRB(16, 6, 16, 6),
+            child: SlabButton(t('Join a family'), variant: ButtonVariant.outline, icon: LucideIcons.scanLine, onPressed: () async {
+              await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => JoinFamilyScreen()));
               if (context.mounted) AppScope.changed(context);
             }),
           ),
@@ -241,8 +241,8 @@ class LinkedAdultsSection extends StatelessWidget {
   }
 
   static String theirLine(FamilyLink l) {
-    final what = [if (l.theirEmergency != null) 'Emergency ID', if (l.theirMedicines != null) 'medicines'];
-    return what.isEmpty ? 'Shares nothing with you' : 'Shares ${what.join(' and ')} with you';
+    final what = [if (l.theirEmergency != null) t('Emergency ID'), if (l.theirMedicines != null) t('medicines')];
+    return what.isEmpty ? t('Shares nothing with you') : t('Shares {0} with you', [what.join(t(' and '))]);
   }
 }
 
@@ -279,18 +279,18 @@ class _LinkedAdultScreenState extends State<LinkedAdultScreen> {
       appBar: AppBar(),
       body: ListView(children: [
         Masthead(
-          eyebrow: 'Linked family',
+          eyebrow: t('Linked family'),
           title: _l.name,
-          description: _l.theirUpdateAt == null ? 'Nothing received from their phone yet.' : 'As last sent from their phone, ${dateTime(_l.theirUpdateAt!)}.',
+          description: _l.theirUpdateAt == null ? t('Nothing received from their phone yet.') : 'As last sent from their phone, ${dateTime(_l.theirUpdateAt!)}.',
         ),
-        const Eyebrow('What they share with you'),
-        if (em == null && meds == null) const Note('Nothing. That is their choice.', icon: LucideIcons.eyeOff, margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
+        Eyebrow(t('What they share with you')),
+        if (em == null && meds == null) Note(t('Nothing. That is their choice.'), icon: LucideIcons.eyeOff, margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
         if (em != null)
           ShadCard(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Emergency ID', style: LT.small),
-              const SizedBox(height: 6),
-              for (final (k, label) in const [('blood', 'Blood group'), ('allergies', 'Allergies'), ('conditions', 'Conditions'), ('meds', 'Medicines'), ('contactName', 'Emergency contact')])
+              Text(t('Emergency ID'), style: LT.small),
+              SizedBox(height: 6),
+              for (final (k, label) in [('blood', t('Blood group')), ('allergies', t('Allergies')), ('conditions', t('Conditions')), ('meds', t('Medicines')), ('contactName', t('Emergency contact'))])
                 if (f(k).isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 4),
@@ -301,21 +301,21 @@ class _LinkedAdultScreenState extends State<LinkedAdultScreen> {
         if (meds != null)
           ShadCard(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Current medicines', style: LT.small),
+              Text(t('Current medicines'), style: LT.small),
               const SizedBox(height: 6),
-              if (meds.isEmpty) const Text('None right now.', style: LT.label),
+              if (meds.isEmpty) Text(t('None right now.'), style: LT.label),
               for (final m in meds.cast<Map>()) Text('${m['title']}${m['dose'] == null ? '' : ' · ${m['dose']}'}', style: LT.label),
             ]),
           ),
         Eyebrow('What you share with ${_l.name.split(' ').first}'),
-        _tick('My Emergency ID', 'Blood group, allergies, emergency contact', _l.iShareEmergency,
+        _tick(t('My Emergency ID'), t('Blood group, allergies, emergency contact'), _l.iShareEmergency,
             (v) => _busy ? null : _run(() async => _l = await s.changeFamilySharing(_l, emergency: v, medicines: _l.iShareMedicines))),
-        _tick('My current medicines', 'Names and doses of what I am taking now', _l.iShareMedicines,
+        _tick(t('My current medicines'), t('Names and doses of what I am taking now'), _l.iShareMedicines,
             (v) => _busy ? null : _run(() async => _l = await s.changeFamilySharing(_l, emergency: _l.iShareEmergency, medicines: v))),
-        const Note('Your reports, prescriptions and history are never shared by linking.', icon: LucideIcons.shieldCheck),
+        Note(t('Your reports, prescriptions and history are never shared by linking.'), icon: LucideIcons.shieldCheck),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
-          child: SlabButton('Unlink', variant: ButtonVariant.outline, icon: LucideIcons.unlink, onPressed: _busy
+          child: SlabButton(t('Unlink'), variant: ButtonVariant.outline, icon: LucideIcons.unlink, onPressed: _busy
               ? null
               : () => _run(() async {
                     await s.unlinkFamily(_l);

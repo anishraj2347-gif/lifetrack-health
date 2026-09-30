@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/l10n.dart';
 
 import '../app_scope.dart';
 import '../theme.dart';
@@ -19,7 +20,7 @@ class ShowOnPhoneScreen extends StatelessWidget {
     final updated = bundle['profileUpdatedAt'] as String?;
     return Scaffold(
       backgroundColor: LT.raised,
-      appBar: AppBar(backgroundColor: LT.raised, title: const Text('For the doctor', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
+      appBar: AppBar(backgroundColor: LT.raised, title: Text(t('For the doctor'), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
       body: ListView(children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
