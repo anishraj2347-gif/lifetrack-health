@@ -48,11 +48,12 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
                   ? () async {
                       setState(() => _erasing = true);
                       final s = AppScope.of(context);
+                      final messenger = ScaffoldMessenger.of(context);
                       try {
                         await s.eraseProfile(account: s.currentPatientId!);
                       } on CustodyRefused catch (e) {
                         setState(() => _erasing = false);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+                        messenger.showSnackBar(SnackBar(content: Text(e.message)));
                         return;
                       }
                       if (!context.mounted) return;
