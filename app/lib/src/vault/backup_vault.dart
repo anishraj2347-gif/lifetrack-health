@@ -7,22 +7,28 @@ import '../audit/audit_log.dart';
 import '../crypto/key_derivation.dart';
 import '../crypto/shamir.dart';
 import '../crypto/vault_codec.dart';
-import '../model/health_record.dart';
 
 /// Server side of the backup. Holds ciphertext, the wrapped data key, the
 /// salt and the login verifier — together an offline guessing oracle for the
-/// passphrase (Mechanisms fig. 2). That is why no screen may claim LifeTrack
-/// is unable to open a backup.
-///
-/// No implementation talks to a network yet: the release build has no
-/// INTERNET permission and there is no server.
+/// password (Mechanisms fig. 2). That is why the app generates the password
+/// and no screen may claim LifeTrack is unable to open a backup.
 abstract interface class RemoteVaultStore {
-  Future<void> put(String account, RemoteVaultEntry entry);
-  Future<RemoteVaultEntry?> fetch(String account, List<int> loginVerifier);
-  Future<RemoteVaultEntry?> fetchForShareRecovery(String account);
+  /// Creates the backup, or replaces it when [currentVerifier] proves the
+  /// password it was made with.
+  Future<void> put(String account, RemoteVaultEntry entry, {List<int>? currentVerifier});
 
-  /// Erasure (DPDP §12). Deletes everything held for [account].
-  Future<void> delete(String account);
+  /// Served before any proof; null when there is no backup.
+  Future<List<int>?> salt(String account);
+
+  /// The wrapped key and blob, for the right verifier. Throws
+  /// [VaultAuthenticationFailed] or [VaultLockedOut].
+  Future<(Uint8List wrappedDataKey, Uint8List blob)> open(String account, List<int> verifier);
+
+  /// The sealed blob only, for recovery with shares; null when none.
+  Future<Uint8List?> blob(String account);
+
+  /// Erasure (DPDP §12).
+  Future<void> delete(String account, List<int> verifier);
 }
 
 class RemoteVaultEntry {
@@ -36,25 +42,37 @@ class RemoteVaultEntry {
 class InMemoryRemoteVaultStore implements RemoteVaultStore {
   final Map<String, RemoteVaultEntry> _entries = {};
 
-  @override
-  Future<void> put(String account, RemoteVaultEntry entry) async => _entries[account] = entry;
+  bool get isEmpty => _entries.isEmpty;
 
   @override
-  Future<RemoteVaultEntry?> fetch(String account, List<int> loginVerifier) async {
+  Future<void> put(String account, RemoteVaultEntry entry, {List<int>? currentVerifier}) async {
     final e = _entries[account];
-    if (e == null || !_constantTimeEquals(e.verifier, loginVerifier)) return null;
-    return e;
+    if (e != null && (currentVerifier == null || !constantTimeEquals(e.verifier, currentVerifier))) throw const VaultAuthenticationFailed();
+    _entries[account] = entry;
   }
 
   @override
-  Future<RemoteVaultEntry?> fetchForShareRecovery(String account) async => _entries[account];
+  Future<List<int>?> salt(String account) async => _entries[account]?.salt;
 
   @override
-  Future<void> delete(String account) async => _entries.remove(account);
+  Future<(Uint8List, Uint8List)> open(String account, List<int> verifier) async {
+    final e = _entries[account];
+    if (e == null || !constantTimeEquals(e.verifier, verifier)) throw const VaultAuthenticationFailed();
+    return (e.wrappedDataKey, e.blob);
+  }
 
-  bool get isEmpty => _entries.isEmpty;
+  @override
+  Future<Uint8List?> blob(String account) async => _entries[account]?.blob;
 
-  static bool _constantTimeEquals(List<int> a, List<int> b) {
+  @override
+  Future<void> delete(String account, List<int> verifier) async {
+    final e = _entries[account];
+    if (e == null) return;
+    if (!constantTimeEquals(e.verifier, verifier)) throw const VaultAuthenticationFailed();
+    _entries.remove(account);
+  }
+
+  static bool constantTimeEquals(List<int> a, List<int> b) {
     if (a.length != b.length) return false;
     var d = 0;
     for (var i = 0; i < a.length; i++) {
@@ -64,8 +82,36 @@ class InMemoryRemoteVaultStore implements RemoteVaultStore {
   }
 }
 
+/// Everything a phone needs to keep backing up to the same account without
+/// the password: kept sealed under the device key, never shown.
+class VaultKeys {
+  const VaultKeys({required this.dataKey, required this.salt, required this.verifier, required this.wrappedDataKey});
+  final List<int> dataKey;
+  final List<int> salt;
+  final List<int> verifier;
+  final Uint8List wrappedDataKey;
+
+  Map<String, Object?> toJson() => {
+        'dataKey': _b64(dataKey),
+        'salt': _b64(salt),
+        'verifier': _b64(verifier),
+        'wrapped': _b64(wrappedDataKey),
+      };
+
+  static VaultKeys fromJson(Map<String, Object?> j) => VaultKeys(
+        dataKey: _unb64(j['dataKey']! as String),
+        salt: _unb64(j['salt']! as String),
+        verifier: _unb64(j['verifier']! as String),
+        wrappedDataKey: Uint8List.fromList(_unb64(j['wrapped']! as String)),
+      );
+
+  static String _b64(List<int> b) => b.map((x) => x.toRadixString(16).padLeft(2, '0')).join();
+  static List<int> _unb64(String h) => [for (var i = 0; i < h.length; i += 2) int.parse(h.substring(i, i + 2), radix: 16)];
+}
+
 class VaultSetup {
-  const VaultSetup({required this.shares});
+  const VaultSetup({required this.keys, required this.shares});
+  final VaultKeys keys;
 
   /// Three shares of the data key, any two of which open the backup. One
   /// stays on this phone, one is printed, one goes to a trusted contact.
@@ -73,7 +119,16 @@ class VaultSetup {
   final List<Share> shares;
 }
 
-/// Encrypted, patient-keyed backup of doctor-issued documents (blueprint §5.2).
+/// What a restore returns: the backed-up snapshot, and the keys to keep
+/// backing up to the same account from this phone.
+class VaultRestore {
+  const VaultRestore({required this.body, required this.keys});
+  final Map<String, Object?> body;
+  final VaultKeys keys;
+}
+
+/// Encrypted, patient-keyed backup (blueprint §5.2). The body is whatever the
+/// app snapshots; this class only seals, stores and opens it.
 class BackupVault {
   BackupVault({required this.remote, required this.audit, required this.params});
 
@@ -83,90 +138,77 @@ class BackupVault {
 
   static final _aead = AesGcm.with256bits();
 
-  /// Creates the vault and backs up [records]. Personal notes are included
-  /// only if [includeNotes].
+  /// A new backup under [password]. The keys go inside the sealed body too,
+  /// so a phone restored with shares can keep backing up without it.
   Future<VaultSetup> create({
     required String account,
-    required String patientId,
-    required String passphrase,
-    required List<HealthRecord> records,
+    required String password,
+    required Map<String, Object?> body,
+    required String auditPatientId,
+    required String detail,
     required DateTime at,
-    bool includeNotes = false,
   }) async {
     final rng = Random.secure();
     final salt = List<int>.generate(16, (_) => rng.nextInt(256));
-    final dataKeyBytes = List<int>.generate(32, (_) => rng.nextInt(256));
-    final keys = await VaultKeyDerivation.derive(passphrase, salt, params);
-    final wrapped = await _aead.encrypt(dataKeyBytes, secretKey: keys.vaultKey);
-    final blob = await VaultCodec.seal(
-      [for (final r in records) if (r.backedUpByDefault || includeNotes) r.toJson()],
-      SecretKey(dataKeyBytes),
-    );
-    await remote.put(
-      account,
-      RemoteVaultEntry(salt: salt, verifier: keys.loginVerifier, wrappedDataKey: Uint8List.fromList(wrapped.concatenation()), blob: blob),
-    );
-    await audit.append(AuditEntry(
-      at: at,
-      actorId: 'patient:$patientId',
-      patientId: patientId,
-      action: AuditAction.vaultBackup,
-      detail: '${records.where((r) => r.backedUpByDefault || includeNotes).length} documents',
-    ));
-    return VaultSetup(shares: Shamir.split(dataKeyBytes, threshold: 2, count: 3));
+    final dataKey = List<int>.generate(32, (_) => rng.nextInt(256));
+    final derived = await VaultKeyDerivation.derive(password, salt, params);
+    final wrapped = await _aead.encrypt(dataKey, secretKey: derived.vaultKey);
+    final keys = VaultKeys(dataKey: dataKey, salt: salt, verifier: derived.loginVerifier, wrappedDataKey: Uint8List.fromList(wrapped.concatenation()));
+    await remote.put(account, await _entry(keys, body));
+    await _log(auditPatientId, AuditAction.vaultBackup, 'backup made: $detail', at);
+    return VaultSetup(keys: keys, shares: Shamir.split(dataKey, threshold: 2, count: 3));
   }
 
-  Future<List<HealthRecord>> restoreWithPassphrase({
+  /// Replaces the backup's contents; the password and shares stay valid.
+  Future<void> update({
     required String account,
-    required String patientId,
-    required String passphrase,
-    required List<int> salt,
+    required VaultKeys keys,
+    required Map<String, Object?> body,
+    required String auditPatientId,
+    required String detail,
     required DateTime at,
   }) async {
-    final keys = await VaultKeyDerivation.derive(passphrase, salt, params);
-    final entry = await remote.fetch(account, keys.loginVerifier);
-    if (entry == null) throw const VaultAuthenticationFailed();
-    final box = SecretBox.fromConcatenation(entry.wrappedDataKey, nonceLength: 12, macLength: 16);
+    await remote.put(account, await _entry(keys, body), currentVerifier: keys.verifier);
+    await _log(auditPatientId, AuditAction.vaultBackup, 'backed up: $detail', at);
+  }
+
+  Future<VaultRestore> restoreWithPassword({required String account, required String password, required String auditPatientId, required DateTime at}) async {
+    final salt = await remote.salt(account);
+    if (salt == null) throw const VaultAuthenticationFailed();
+    final derived = await VaultKeyDerivation.derive(password, salt, params);
+    final (wrappedBytes, blob) = await remote.open(account, derived.loginVerifier);
     final List<int> dataKey;
     try {
-      dataKey = await _aead.decrypt(box, secretKey: keys.vaultKey);
+      dataKey = await _aead.decrypt(SecretBox.fromConcatenation(wrappedBytes, nonceLength: 12, macLength: 16), secretKey: derived.vaultKey);
     } on SecretBoxAuthenticationError {
       throw const VaultAuthenticationFailed();
     }
-    return _open(entry.blob, dataKey, patientId, at, 'passphrase');
+    return _open(blob, dataKey, auditPatientId, at, 'password');
   }
 
-  Future<List<HealthRecord>> restoreWithShares({
-    required String account,
-    required String patientId,
-    required List<Share> shares,
-    required DateTime at,
-  }) async {
-    final entry = await remote.fetchForShareRecovery(account);
-    if (entry == null) throw const VaultAuthenticationFailed();
-    return _open(entry.blob, Shamir.combine(shares), patientId, at, 'recovery shares');
+  Future<VaultRestore> restoreWithShares({required String account, required List<Share> shares, required String auditPatientId, required DateTime at}) async {
+    final blob = await remote.blob(account);
+    if (blob == null) throw const VaultAuthenticationFailed();
+    return _open(blob, Shamir.combine(shares), auditPatientId, at, 'recovery codes');
   }
 
-  /// Salt lookup for the passphrase path. Served before authentication, which
-  /// is part of the oracle described above.
-  Future<List<int>?> saltFor(String account) async => (await remote.fetchForShareRecovery(account))?.salt;
+  Future<void> erase(String account, VaultKeys keys) => remote.delete(account, keys.verifier);
 
-  Future<List<HealthRecord>> _open(Uint8List blob, List<int> dataKey, String patientId, DateTime at, String how) async {
-    final body = await VaultCodec.open(blob, SecretKey(dataKey)) as List;
-    final records = [
-      for (final r in body)
-        HealthRecord.fromJson((r as Map).cast<String, Object?>()).copyWith(source: RecordSource.restoredFromBackup),
-    ];
+  Future<RemoteVaultEntry> _entry(VaultKeys keys, Map<String, Object?> body) async => RemoteVaultEntry(
+        salt: keys.salt,
+        verifier: keys.verifier,
+        wrappedDataKey: keys.wrappedDataKey,
+        blob: await VaultCodec.seal({...body, '_keys': keys.toJson()}, SecretKey(keys.dataKey)),
+      );
+
+  Future<VaultRestore> _open(Uint8List blob, List<int> dataKey, String auditPatientId, DateTime at, String how) async {
+    final body = ((await VaultCodec.open(blob, SecretKey(dataKey))) as Map).cast<String, Object?>();
+    final keys = VaultKeys.fromJson((body.remove('_keys')! as Map).cast());
     // A restore reads the entire record set; it belongs in "who opened what".
-    await audit.append(AuditEntry(
-      at: at,
-      actorId: 'patient:$patientId',
-      patientId: patientId,
-      action: AuditAction.vaultRestore,
-      detail: '${records.length} documents, via $how',
-    ));
-    return records;
+    await _log(auditPatientId, AuditAction.vaultRestore, 'restored with $how', at);
+    return VaultRestore(body: body, keys: keys);
   }
 
-  Future<void> erase(String account) => remote.delete(account);
+  Future<void> _log(String patientId, AuditAction action, String detail, DateTime at) =>
+      audit.append(AuditEntry(at: at, actorId: 'patient:$patientId', patientId: patientId, action: action, detail: detail));
 }

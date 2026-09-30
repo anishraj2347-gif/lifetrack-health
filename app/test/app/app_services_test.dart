@@ -4,10 +4,7 @@ import 'package:lifetrack/src/app/app_services.dart';
 import 'package:lifetrack/src/audit/audit_log.dart';
 import 'package:lifetrack/src/consent/consent_token.dart';
 import 'package:lifetrack/src/crypto/key_derivation.dart';
-import 'package:lifetrack/src/crypto/shamir.dart';
-import 'package:lifetrack/src/crypto/vault_codec.dart';
 import 'package:lifetrack/src/emergency/emergency_card.dart';
-import 'package:lifetrack/src/model/health_record.dart';
 import 'package:lifetrack/src/model/patient.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
 import 'package:lifetrack/src/vault/backup_vault.dart';
@@ -94,54 +91,15 @@ void main() {
     expect(s.activeGrants().where((g) => g.grantedToActorId == Actors.cloud), isEmpty, reason: 'the unused cloud grant is revoked');
   });
 
-  group('backup vault', () {
-    test('restores with the passphrase or any two shares; notes stay local', () async {
-      final s = await open();
-      final p = await s.createProfile(name: '', dob: DateTime(1984), sex: Sex.female, demo: true);
-      await s.addRecord(HealthRecord(id: 'note1', patientId: p.id, kind: RecordKind.note, title: 'Felt dizzy', date: now, source: RecordSource.typedByPatient));
-      final setup = await s.vault.create(account: '+919800000047', patientId: p.id, passphrase: 'six unrelated words go here ok', records: s.records(), at: now);
-      final salt = (await s.vault.saltFor('+919800000047'))!;
-
-      final viaPhrase = await s.vault.restoreWithPassphrase(account: '+919800000047', patientId: p.id, passphrase: 'six unrelated words go here ok', salt: salt, at: now);
-      expect(viaPhrase.where((r) => r.kind == RecordKind.note), isEmpty);
-      expect(viaPhrase, hasLength(s.records().length - 1));
-      expect(viaPhrase.every((r) => r.source == RecordSource.restoredFromBackup), isTrue);
-
-      final viaShares = await s.vault.restoreWithShares(account: '+919800000047', patientId: p.id, shares: [setup.shares[1], setup.shares[2]], at: now);
-      expect(viaShares.length, viaPhrase.length);
-      expect(() => s.vault.restoreWithShares(account: '+919800000047', patientId: p.id, shares: [setup.shares[0]], at: now), throwsArgumentError);
-
-      expect(s.auditEntries().where((e) => e.action == AuditAction.vaultRestore), hasLength(2));
-    });
-
-    test('a wrong passphrase is refused', () async {
-      final s = await open();
-      final p = await s.createProfile(name: '', dob: DateTime(1984), sex: Sex.female, demo: true);
-      await s.vault.create(account: 'acct', patientId: p.id, passphrase: 'right', records: s.records(), at: now);
-      final salt = (await s.vault.saltFor('acct'))!;
-      await expectLater(
-        s.vault.restoreWithPassphrase(account: 'acct', patientId: p.id, passphrase: 'wrong', salt: salt, at: now),
-        throwsA(isA<VaultAuthenticationFailed>()),
-      );
-    });
-
-    test('shares are printable and LifeTrack keeps none', () async {
-      final s = await open();
-      final p = await s.createProfile(name: '', dob: DateTime(1984), sex: Sex.female, demo: true);
-      final setup = await s.vault.create(account: 'acct', patientId: p.id, passphrase: 'x', records: s.records(), at: now);
-      expect(setup.shares, hasLength(3));
-      expect(Share.decode(setup.shares.first.encode()).index, 1);
-    });
-  });
-
   test('erasure removes records, grants, the Emergency ID and the backup', () async {
     final s = await open();
     final p = await s.createProfile(name: '', dob: DateTime(1984), sex: Sex.female, demo: true);
     await s.emergency.save(p.id, const EmergencyCard(bloodType: 'B+', allergies: 'Penicillin'));
     await s.enableInsights();
-    await s.vault.create(account: 'acct', patientId: p.id, passphrase: 'x', records: s.records(), at: now);
+    await s.setUpBackup();
+    expect(remote.isEmpty, isFalse);
 
-    await s.eraseProfile(account: 'acct');
+    await s.eraseProfile();
 
     expect(s.currentPatient, isNull);
     expect(s.repository.recordsOf(p.id), isEmpty);

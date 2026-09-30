@@ -82,3 +82,9 @@ class VaultAuthenticationFailed extends VaultError {
   @override
   String get patientMessage => 'The key does not match these records, or the file was altered.';
 }
+
+class VaultLockedOut extends VaultError {
+  const VaultLockedOut();
+  @override
+  String get patientMessage => 'Too many wrong passwords. Try again in an hour.';
+}

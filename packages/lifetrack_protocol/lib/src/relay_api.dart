@@ -26,6 +26,10 @@ abstract final class RelayApi {
   static const hMailboxSecret = 'x-lt-mailbox-secret';
   static const hAdmin = 'x-lt-admin';
 
+  /// Proves the backup password (its login verifier) to update, open or
+  /// delete a backup.
+  static const hVerifier = 'x-lt-verifier';
+
   static String mailboxPath(String mailbox) => '/$version/relay/$mailbox';
   static String itemPath(String mailbox, String grantId) => '/$version/relay/$mailbox/${Uri.encodeComponent(grantId)}';
 

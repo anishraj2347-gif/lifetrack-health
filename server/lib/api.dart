@@ -8,15 +8,17 @@ import 'package:shelf_router/shelf_router.dart';
 
 import 'registry.dart';
 import 'relay_store.dart';
+import 'vault_store.dart';
 
 /// HTTP routes. Every response is JSON; no response ever contains a
 /// decrypted record, because the server never holds a key that makes one.
 class LifeTrackApi {
-  LifeTrackApi({required this.registry, required this.relay, required this.adminToken, DateTime Function()? clock})
+  LifeTrackApi({required this.registry, required this.relay, required this.vault, required this.adminToken, DateTime Function()? clock})
       : clock = clock ?? DateTime.now;
 
   final DoctorRegistry registry;
   final RelayStore relay;
+  final VaultStore vault;
   final String adminToken;
   final DateTime Function() clock;
 
@@ -32,7 +34,12 @@ class LifeTrackApi {
       ..post('/v1/admin/doctors/<reg>/revoke', _adminRevoke)
       ..put('/v1/relay/<mailbox>/<grant>', _deposit)
       ..delete('/v1/relay/<mailbox>/<grant>', _withdraw)
-      ..get('/v1/relay/<mailbox>', _pickup);
+      ..get('/v1/relay/<mailbox>', _pickup)
+      ..put('/v1/vault/<account>', _vaultPut)
+      ..get('/v1/vault/<account>/salt', _vaultSalt)
+      ..post('/v1/vault/<account>/open', _vaultOpen)
+      ..get('/v1/vault/<account>/blob', _vaultBlob)
+      ..delete('/v1/vault/<account>', _vaultDelete);
     return const Pipeline().addMiddleware(_cors()).addHandler(r.call);
   }
 
@@ -160,6 +167,90 @@ class LifeTrackApi {
   }
 
   static bool _validMailbox(String m) => RegExp(r'^(d|p)-[0-9a-f]{16,64}$').hasMatch(m);
+
+  // ---- backup vault --------------------------------------------------------
+
+  static const _maxBackup = 60 * 1024 * 1024;
+
+  /// Same comparison time whatever the input, so a guesser learns nothing
+  /// from how long a refusal takes.
+  static bool _same(String? a, String? b) {
+    if (a == null || b == null || a.length != b.length) return false;
+    var d = 0;
+    for (var i = 0; i < a.length; i++) {
+      d |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+    }
+    return d == 0;
+  }
+
+  /// Creates a backup, or replaces it when the caller proves the current
+  /// password with its verifier.
+  Future<Response> _vaultPut(Request req, String account) async {
+    if (!VaultStore.validAccount(account)) return _error(400, 'Unknown account format.');
+    final existing = await vault.get(account);
+    if (existing != null && !_same(req.headers[RelayApi.hVerifier], existing['verifier'] as String?)) {
+      return _error(403, 'This backup belongs to someone else, or the password is wrong.');
+    }
+    final raw = await req.read().expand((c) => c).take(_maxBackup + 1).toList();
+    if (raw.length > _maxBackup) return _error(413, 'Backup too large.');
+    final Map<String, Object?> b;
+    try {
+      b = (jsonDecode(utf8.decode(raw)) as Map).cast();
+      for (final k in ['salt', 'verifier', 'wrappedDataKey', 'blob']) {
+        base64Decode(b[k]! as String);
+      }
+    } on Object {
+      return _error(400, 'Invalid backup.');
+    }
+    await vault.put(account, {
+      'salt': b['salt'],
+      'verifier': b['verifier'],
+      'wrappedDataKey': b['wrappedDataKey'],
+      'blob': b['blob'],
+      'updatedAt': clock().toIso8601String(),
+    });
+    return _json({'ok': true}, status: existing == null ? 201 : 200);
+  }
+
+  /// Served before any proof — the salt is needed to derive the proof.
+  Future<Response> _vaultSalt(Request _, String account) async {
+    final e = VaultStore.validAccount(account) ? await vault.get(account) : null;
+    return e == null ? _error(404, 'No backup for this account code.') : _json({'salt': e['salt']});
+  }
+
+  Future<Response> _vaultOpen(Request req, String account) async {
+    final now = clock();
+    if (!VaultStore.validAccount(account)) return _error(400, 'Unknown account format.');
+    if (vault.lockedOut(account, now)) return _error(429, 'Too many wrong passwords. Try again in an hour.');
+    final e = await vault.get(account);
+    String? given;
+    try {
+      given = ((jsonDecode(await req.readAsString()) as Map)['verifier']) as String?;
+    } on Object {
+      given = null;
+    }
+    if (e == null || !_same(given, e['verifier'] as String?)) {
+      vault.failed(account, now);
+      return _error(403, 'Wrong account code or password.');
+    }
+    vault.succeeded(account);
+    return _json({'wrappedDataKey': e['wrappedDataKey'], 'blob': e['blob'], 'updatedAt': e['updatedAt']});
+  }
+
+  /// For recovery with two recovery codes: the sealed blob only — no
+  /// verifier, no wrapped key.
+  Future<Response> _vaultBlob(Request _, String account) async {
+    final e = VaultStore.validAccount(account) ? await vault.get(account) : null;
+    return e == null ? _error(404, 'No backup for this account code.') : _json({'blob': e['blob'], 'updatedAt': e['updatedAt']});
+  }
+
+  Future<Response> _vaultDelete(Request req, String account) async {
+    final e = VaultStore.validAccount(account) ? await vault.get(account) : null;
+    if (e == null) return _json({'deleted': false});
+    if (!_same(req.headers[RelayApi.hVerifier], e['verifier'] as String?)) return _error(403, 'Wrong password.');
+    await vault.delete(account);
+    return _json({'deleted': true});
+  }
 
   // ---- helpers -------------------------------------------------------------
 

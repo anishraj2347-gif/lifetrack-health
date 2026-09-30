@@ -112,12 +112,12 @@ void main() {
   test('the owner cannot erase themselves while family profiles are on the phone', () async {
     final s = await withOwner();
     final child = await s.addChild(name: 'Aarav', dob: DateTime(2019), sex: Sex.male, relation: 'son');
-    await expectLater(s.eraseProfile(account: 'a'), throwsA(isA<CustodyRefused>()));
+    await expectLater(s.eraseProfile(), throwsA(isA<CustodyRefused>()));
     await s.switchTo(child.id);
-    await s.eraseProfile(account: 'a');
+    await s.eraseProfile();
     expect(s.currentPatientId, s.selfPatientId);
     expect(s.familyOnPhone(), hasLength(1));
-    await s.eraseProfile(account: 'a');
+    await s.eraseProfile();
     expect(s.currentPatient, isNull);
   });
 

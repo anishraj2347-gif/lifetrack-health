@@ -6,6 +6,7 @@ import '../../model/patient.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
+import 'backup_screens.dart';
 import 'emergency_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -116,6 +117,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
           child: SlabButton('Explore with sample records', variant: ButtonVariant.outline, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true)),
         ),
+        if (AppScope.of(context).backupEnabled)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+            child: SlabButton('Restore from backup', variant: ButtonVariant.ghost, icon: LucideIcons.cloudDownload, onPressed: _busy
+                ? null
+                : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RestoreScreen(onRestored: widget.onDone)))),
+          ),
       ],
     );
   }
@@ -132,8 +140,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const _Row(
             icon: LucideIcons.cloudOff,
             tone: BadgeTone.caution,
-            title: 'No backup yet',
-            body: 'The encrypted backup service is not live in this version. Until it is, your records exist only here — if this phone is lost or reset, they are gone.',
+            title: 'No backup until you turn it on',
+            body: 'Until you turn on backup in Me → Backup, your records exist only here — if this phone is lost or reset, they are gone.',
           ),
           ShadCard(
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -141,7 +149,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             onTap: () => setState(() => _understood = !_understood),
             child: Row(children: [
               Checkbox(value: _understood, onChanged: (v) => setState(() => _understood = v ?? false)),
-              const Expanded(child: Text('I understand my records are on this phone only, with no backup yet.', style: TextStyle(fontSize: 14, color: LT.ink))),
+              const Expanded(child: Text('I understand my records are only on this phone until I turn on backup.', style: TextStyle(fontSize: 14, color: LT.ink))),
             ]),
           ),
           Padding(

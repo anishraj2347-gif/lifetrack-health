@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 
+import '../crypto/vault_codec.dart' show VaultAuthenticationFailed, VaultLockedOut;
+import '../vault/backup_vault.dart';
 import 'relay.dart';
 
 /// The ONLY file in the patient app that talks to a network (CLAUDE.md #3).
@@ -75,4 +77,74 @@ class RelayUnavailable implements Exception {
   final String message;
   @override
   String toString() => 'RelayUnavailable: $message';
+}
+
+/// The backup store on the same LifeTrack server as the relay. Everything it
+/// sends is already sealed on the phone; the password never leaves it — only
+/// the verifier derived from it.
+class HttpRemoteVaultStore implements RemoteVaultStore {
+  HttpRemoteVaultStore({required this.baseUrl, http.Client? client}) : _http = client ?? http.Client();
+
+  final Uri baseUrl;
+  final http.Client _http;
+
+  Uri _u(String account, [String rest = '']) => baseUrl.resolve('/v1/vault/${Uri.encodeComponent(account)}$rest');
+
+  Future<http.Response> _call(Future<http.Response> Function() f) async {
+    try {
+      return await f();
+    } on Object {
+      throw const RelayUnavailable('Could not reach the backup service.');
+    }
+  }
+
+  @override
+  Future<void> put(String account, RemoteVaultEntry entry, {List<int>? currentVerifier}) async {
+    final r = await _call(() => _http.put(
+          _u(account),
+          headers: {'content-type': 'application/json', if (currentVerifier != null) RelayApi.hVerifier: base64Encode(currentVerifier)},
+          body: jsonEncode({
+            'salt': base64Encode(entry.salt),
+            'verifier': base64Encode(entry.verifier),
+            'wrappedDataKey': base64Encode(entry.wrappedDataKey),
+            'blob': base64Encode(entry.blob),
+          }),
+        ));
+    if (r.statusCode == 403) throw const VaultAuthenticationFailed();
+    if (r.statusCode != 200 && r.statusCode != 201) throw RelayUnavailable('Backup not saved (${r.statusCode}).');
+  }
+
+  @override
+  Future<List<int>?> salt(String account) async {
+    final r = await _call(() => _http.get(_u(account, '/salt')));
+    if (r.statusCode == 404) return null;
+    if (r.statusCode != 200) throw RelayUnavailable('Backup service error (${r.statusCode}).');
+    return base64Decode((jsonDecode(r.body) as Map)['salt']! as String);
+  }
+
+  @override
+  Future<(Uint8List, Uint8List)> open(String account, List<int> verifier) async {
+    final r = await _call(() => _http.post(_u(account, '/open'),
+        headers: {'content-type': 'application/json'}, body: jsonEncode({'verifier': base64Encode(verifier)})));
+    if (r.statusCode == 429) throw const VaultLockedOut();
+    if (r.statusCode == 403 || r.statusCode == 404) throw const VaultAuthenticationFailed();
+    if (r.statusCode != 200) throw RelayUnavailable('Backup service error (${r.statusCode}).');
+    final j = jsonDecode(r.body) as Map;
+    return (base64Decode(j['wrappedDataKey']! as String), base64Decode(j['blob']! as String));
+  }
+
+  @override
+  Future<Uint8List?> blob(String account) async {
+    final r = await _call(() => _http.get(_u(account, '/blob')));
+    if (r.statusCode == 404) return null;
+    if (r.statusCode != 200) throw RelayUnavailable('Backup service error (${r.statusCode}).');
+    return base64Decode((jsonDecode(r.body) as Map)['blob']! as String);
+  }
+
+  @override
+  Future<void> delete(String account, List<int> verifier) async {
+    final r = await _call(() => _http.delete(_u(account), headers: {RelayApi.hVerifier: base64Encode(verifier)}));
+    if (r.statusCode == 403) throw const VaultAuthenticationFailed();
+    if (r.statusCode != 200) throw RelayUnavailable('Backup not deleted (${r.statusCode}).');
+  }
 }

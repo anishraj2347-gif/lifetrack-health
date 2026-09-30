@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
@@ -6,6 +7,7 @@ import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:lifetrack_server/api.dart';
 import 'package:lifetrack_server/registry.dart';
 import 'package:lifetrack_server/relay_store.dart';
+import 'package:lifetrack_server/vault_store.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
@@ -13,6 +15,7 @@ void main() {
   var now = DateTime.utc(2026, 9, 30, 12);
   late Handler h;
   late RelayStore relay;
+  late Directory vaultDir;
   late SimpleKeyPair enc, sign;
   const admin = 'admin-secret';
 
@@ -44,7 +47,8 @@ void main() {
     sign = await Ed25519().newKeyPair();
     relay = RelayStore();
     final registry = await DoctorRegistry.open(signingKey: await Ed25519().newKeyPair());
-    h = LifeTrackApi(registry: registry, relay: relay, adminToken: admin, clock: () => now).handler;
+    vaultDir = Directory.systemTemp.createTempSync('lt-vault-');
+    h = LifeTrackApi(registry: registry, relay: relay, vault: VaultStore(vaultDir), adminToken: admin, clock: () => now).handler;
   });
 
   group('registry', () {
@@ -149,6 +153,56 @@ void main() {
       await call('PUT', '/v1/relay/$mailbox/g2', body: Uint8List.fromList([1]), headers: {RelayApi.hExpires: now.add(const Duration(hours: 1)).toIso8601String()});
       expect(relay.purgeExpired(now.add(const Duration(hours: 2))), 1);
       expect(relay.total, 0);
+    });
+  });
+
+  group('backup vault', () {
+    const acct = 'LT-7KQM2-XPA9D';
+    final entry = {
+      'salt': base64Encode(List.filled(16, 1)),
+      'verifier': base64Encode(List.filled(32, 2)),
+      'wrappedDataKey': base64Encode(List.filled(60, 3)),
+      'blob': base64Encode(List.filled(100, 4)),
+    };
+
+    test('stores a backup on disk and gives the salt to anyone, the key only to the password', () async {
+      expect((await call('PUT', '/v1/vault/$acct', body: entry)).statusCode, 201);
+      expect(File('${vaultDir.path}/$acct.json').existsSync(), isTrue);
+      expect((await json(await call('GET', '/v1/vault/$acct/salt')))['salt'], entry['salt']);
+      expect((await call('POST', '/v1/vault/$acct/open', body: {'verifier': base64Encode(List.filled(32, 9))})).statusCode, 403);
+      final ok = await json(await call('POST', '/v1/vault/$acct/open', body: {'verifier': entry['verifier']}));
+      expect(ok['blob'], entry['blob']);
+      expect(ok.containsKey('verifier'), isFalse);
+    });
+
+    test('recovery-code path gets the sealed blob only', () async {
+      await call('PUT', '/v1/vault/$acct', body: entry);
+      final b = await json(await call('GET', '/v1/vault/$acct/blob'));
+      expect(b.keys.toSet(), {'blob', 'updatedAt'});
+    });
+
+    test('only the password holder can replace or delete a backup', () async {
+      await call('PUT', '/v1/vault/$acct', body: entry);
+      expect((await call('PUT', '/v1/vault/$acct', body: entry)).statusCode, 403);
+      expect((await call('PUT', '/v1/vault/$acct', body: entry, headers: {RelayApi.hVerifier: entry['verifier']!})).statusCode, 200);
+      expect((await call('DELETE', '/v1/vault/$acct')).statusCode, 403);
+      expect((await json(await call('DELETE', '/v1/vault/$acct', headers: {RelayApi.hVerifier: entry['verifier']!})))['deleted'], true);
+      expect((await call('GET', '/v1/vault/$acct/salt')).statusCode, 404);
+    });
+
+    test('ten wrong passwords lock the account for an hour', () async {
+      await call('PUT', '/v1/vault/$acct', body: entry);
+      for (var i = 0; i < 10; i++) {
+        expect((await call('POST', '/v1/vault/$acct/open', body: {'verifier': 'x'})).statusCode, 403);
+      }
+      expect((await call('POST', '/v1/vault/$acct/open', body: {'verifier': entry['verifier']})).statusCode, 429);
+      now = now.add(const Duration(hours: 1, minutes: 1));
+      expect((await call('POST', '/v1/vault/$acct/open', body: {'verifier': entry['verifier']})).statusCode, 200);
+    });
+
+    test('account codes are checked for shape', () async {
+      expect((await call('PUT', '/v1/vault/../etc', body: entry)).statusCode, isNot(201));
+      expect((await call('PUT', '/v1/vault/lt-abc', body: entry)).statusCode, 400);
     });
   });
 }

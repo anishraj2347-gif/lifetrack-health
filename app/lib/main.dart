@@ -5,6 +5,7 @@ import 'src/app/storage_wiring.dart';
 import 'src/crypto/device_key_store.dart';
 import 'src/crypto/key_derivation.dart';
 import 'src/security/unlocker.dart';
+import 'src/share/http_relay_client.dart';
 import 'src/ui/lifetrack_app.dart';
 import 'src/vault/backup_vault.dart';
 
@@ -15,9 +16,11 @@ void main() {
     boot: () async => AppServices.open(
       bytes: await openDeviceByteStore(),
       deviceKey: await SecureDeviceKeyStore().deviceKey(),
-      // No backup server exists yet; the vault logic is built and tested
-      // against this stand-in and is not reachable from the UI.
-      remote: InMemoryRemoteVaultStore(),
+      // Backups live on the same LifeTrack server as the relay.
+      remote: const String.fromEnvironment('LT_RELAY_URL').isEmpty
+          ? InMemoryRemoteVaultStore()
+          : HttpRemoteVaultStore(baseUrl: Uri.parse(const String.fromEnvironment('LT_RELAY_URL'))),
+      backupEnabled: const String.fromEnvironment('LT_RELAY_URL').isNotEmpty,
       kdf: KdfParams.production,
       cloudFactory: defaultCloud,
       share: const ShareConfig(

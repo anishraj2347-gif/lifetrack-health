@@ -62,7 +62,7 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
           const Masthead(eyebrow: 'Your data', title: 'What is held, where'),
           const SizedBox(height: 14),
           _section('On this phone', 'Your profile, records, notes, the permissions you have given and your access log — encrypted under a key in the phone\'s secure hardware. The Emergency ID card is kept separately and unencrypted so it can be shown in an emergency.'),
-          _section('With LifeTrack', 'No records are stored with LifeTrack. When you share with a doctor or a linked family member, it is encrypted on this phone to their device, passes through LifeTrack\'s relay, and is deleted there once collected or within 48 hours. When the backup service launches it will hold an encrypted copy of doctor-issued documents; a weak passphrase could be guessed from what that service stores, which is why we will ask for six unrelated words.'),
+          _section('With LifeTrack', 'No records are stored with LifeTrack. When you share with a doctor or a linked family member, it is encrypted on this phone to their device, passes through LifeTrack\'s relay, and is deleted there once collected or within 48 hours. If you turn on backup, LifeTrack also holds an encrypted copy of your records, encrypted on this phone with a key made from a password the app creates; whoever has that password or two of your recovery codes can open it. The app generates the password because a weak one could be guessed from what the service stores.'),
           _section('Why we process it', 'To keep your medical records for you, to compare values with published ranges when you turn Insights on, and to let a doctor see what you choose to share, for as long as you choose.'),
           _section('Your rights', 'You can see everything held (it is all in this app), correct any record, withdraw any permission from Share at any time, and erase everything below. Withdrawing consent does not affect access that already happened; it appears in your access log.'),
           _section('Complaints', 'Data Fiduciary: $kDataFiduciary\nGrievance Officer: $kGrievanceContact\nIf you are not satisfied with our response you may complain to the Data Protection Board of India.'),
@@ -78,7 +78,7 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
             child: SlabButton('Export my records', variant: ButtonVariant.outline, icon: LucideIcons.fileDown, onPressed: _exporting ? null : _export),
           ),
           const Eyebrow('Danger zone'),
-          const Note(icon: LucideIcons.trash2, 'Deletes this profile\'s records, notes, permissions and Emergency ID from this phone. It cannot be undone, and with no backup there is no way to get them back.', margin: EdgeInsets.fromLTRB(20, 0, 20, 12)),
+          const Note(icon: LucideIcons.trash2, 'Deletes this profile\'s records, notes, permissions and Emergency ID from this phone. Erasing your own profile also deletes your backup. It cannot be undone.', margin: EdgeInsets.fromLTRB(20, 0, 20, 12)),
           LabeledField(label: 'Type ERASE to confirm', child: TextField(controller: _confirm, onChanged: (_) => setState(() {}), decoration: const InputDecoration(hintText: 'ERASE'))),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
@@ -92,7 +92,7 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
                       final s = AppScope.of(context);
                       final messenger = ScaffoldMessenger.of(context);
                       try {
-                        await s.eraseProfile(account: s.currentPatientId!);
+                        await s.eraseProfile();
                       } on CustodyRefused catch (e) {
                         setState(() => _erasing = false);
                         messenger.showSnackBar(SnackBar(content: Text(e.message)));

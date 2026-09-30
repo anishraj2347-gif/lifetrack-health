@@ -12,6 +12,7 @@ import '../widgets/parts.dart';
 import 'data_rights_screen.dart';
 import 'abha_screen.dart';
 import 'add_family_screen.dart';
+import 'backup_screens.dart';
 import 'emergency_screen.dart';
 import 'family_link_screens.dart';
 import 'share_screen.dart' show describeActor, dataClassNames, iconForActor;
@@ -48,6 +49,7 @@ class MeScreen extends StatelessWidget {
         child: Column(children: [
           _link(context, LucideIcons.heartPulse, 'Emergency ID', 'What a paramedic sees', const EmergencyScreen()),
           _link(context, LucideIcons.idCard, 'ABHA health ID', p.abha == null ? 'Optional · not added' : '${p.abha!.display} · not verified', const AbhaScreen()),
+          _link(context, LucideIcons.cloudUpload, 'Backup', s.backupAccount == null ? 'Off · records are only on this phone' : s.lastBackupError != null ? 'On · last attempt failed' : 'On · ${s.lastBackupAt == null ? 'not yet run' : 'last ${dateTime(s.lastBackupAt!)}'}', const BackupScreen()),
           _link(context, LucideIcons.history, 'Access log', '${s.auditEntries().length} entries on this phone', const AuditScreen()),
           _link(context, LucideIcons.scale, 'Your data and your rights', 'What is held where, and how to erase it', const DataRightsScreen(), last: true),
         ]),
@@ -109,9 +111,11 @@ class MeScreen extends StatelessWidget {
       ),
       const LinkedAdultsSection(),
       const Eyebrow('Where your records are'),
-      const Note(
-        'On this phone only, encrypted under a key in its secure hardware. The encrypted backup service is not live in this version, so there is no copy anywhere else — if this phone is lost or reset, these records are gone.',
-        icon: LucideIcons.cloudOff,
+      Note(
+        s.backupAccount != null
+            ? 'On this phone, encrypted under a key in its secure hardware, and an encrypted backup with LifeTrack under account ${s.backupAccount}.'
+            : 'On this phone only, encrypted under a key in its secure hardware. Backup is off, so there is no copy anywhere else — if this phone is lost or reset, these records are gone.',
+        icon: s.backupAccount != null ? LucideIcons.cloudCheck : LucideIcons.cloudOff,
         margin: EdgeInsets.fromLTRB(16, 0, 16, 28),
       ),
     ]);

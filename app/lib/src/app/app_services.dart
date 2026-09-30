@@ -25,6 +25,8 @@ import '../storage/attachment_store.dart';
 import '../storage/byte_store.dart';
 import '../storage/record_repository.dart';
 import '../share/clinical_share_service.dart';
+import '../crypto/shamir.dart';
+import '../crypto/vault_codec.dart';
 import '../export/record_export.dart';
 import '../model/abha.dart';
 import '../family/family_link.dart';
@@ -94,6 +96,7 @@ class AppServices {
     DateTime Function()? clock,
     ShareConfig? share,
     RelayClient Function(WithdrawTokenStore tokens)? relayOverride,
+    bool backupEnabled = true,
   }) async {
     final now = clock ?? DateTime.now;
     final sealed = SealedStore(bytes, deviceKey);
@@ -118,6 +121,8 @@ class AppServices {
       settings: settings,
       attachments: AttachmentStore(bytes, deviceKey),
     );
+    services.backupEnabled = backupEnabled;
+    services._backup = ((await sealed.read(_backupBlob) as Map?) ?? {}).cast<String, Object?>();
     consent.evictFinished(now());
     await services._settleOwner();
     if (share != null && share.isComplete) {
@@ -471,6 +476,7 @@ class AppServices {
       detail: 'added "${r.title}"',
     ));
     if (r.kind == RecordKind.prescription) await _tellLinkedFamily(r.patientId);
+    await _backUpQuietly();
   }
 
   /// Saves the Emergency ID, and sends the new card to linked family who
@@ -478,6 +484,7 @@ class AppServices {
   Future<void> saveEmergencyCard(String patientId, EmergencyCard card) async {
     await emergency.save(patientId, card);
     await _tellLinkedFamily(patientId);
+    await _backUpQuietly();
   }
 
   /// Best effort: a save never fails because the relay is unreachable. The
@@ -602,7 +609,10 @@ class AppServices {
     if (selfPatientId != null) {
       final (a, h, r) = await sharing!.collectInbox(selfPatientId!, at, handlers: links!.handlers(ownerId: selfPatientId!, at: at));
       (added, handled, refused) = (a.length, h, r);
-      if (a.isNotEmpty) await _tellLinkedFamily(selfPatientId!);
+      if (a.isNotEmpty) {
+        await _tellLinkedFamily(selfPatientId!);
+        await _backUpQuietly();
+      }
     }
     if (currentPatientId != null && currentPatientId != selfPatientId) {
       final (a, _, r) = await sharing!.collectInbox(currentPatientId!, at);
@@ -664,11 +674,198 @@ class AppServices {
     );
   }
 
+  // ---- backup -------------------------------------------------------------
+
+  /// False when this build has no backup service configured; the UI then
+  /// says so instead of offering it.
+  bool backupEnabled = true;
+
+  static const _backupBlob = 'backup_state';
+  Map<String, Object?> _backup = {};
+
+  /// The account code, when this phone backs up; null otherwise.
+  String? get backupAccount => _backup['account'] as String?;
+  DateTime? get lastBackupAt => _backup['at'] == null ? null : DateTime.parse(_backup['at']! as String);
+  String? get lastBackupError => _backup['error'] as String?;
+  bool get backupIncludesNotes => (_backup['notes'] as bool?) ?? false;
+
+  /// The recovery code this phone keeps (one of three).
+  String? get phoneRecoveryCode => _backup['phoneShare'] as String?;
+
+  VaultKeys get _keys => VaultKeys.fromJson((_backup['keys']! as Map).cast());
+  Future<void> _saveBackup() => sealed.write(_backupBlob, _backup);
+
+  static const _alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford: no I, L, O, U
+
+  static String _code(int n) {
+    final r = Random.secure();
+    return List.generate(n, (_) => _alphabet[r.nextInt(32)]).join();
+  }
+
+  /// A generated password: 20 characters, 100 bits. Generated, not chosen,
+  /// because the server holds what an offline guess at a weak one needs.
+  static String newBackupPassword() => [for (var i = 0; i < 4; i++) _code(5)].join('-');
+
+  /// Accepts the password as typed: any case, spaces or dashes.
+  static String normalisePassword(String typed) {
+    final c = typed.toUpperCase().replaceAll(RegExp('[^0-9A-Z]'), '').replaceAll('O', '0').replaceAll(RegExp('[IL]'), '1');
+    return [for (var i = 0; i < c.length; i += 5) c.substring(i, min(i + 5, c.length))].join('-');
+  }
+
+  static String normaliseAccount(String typed) {
+    final c = typed.toUpperCase().replaceAll(RegExp('[^0-9A-Z]'), '');
+    final body = c.startsWith('LT') ? c.substring(2) : c;
+    return body.length == 10 ? 'LT-${body.substring(0, 5)}-${body.substring(5)}' : typed.trim().toUpperCase();
+  }
+
+  /// Everything on this phone that a backup carries. Personal notes only
+  /// when the patient chose them; grants, links and the access log never —
+  /// they belong to this phone's history.
+  Future<Map<String, Object?>> _snapshot() async {
+    final includeNotes = backupIncludesNotes;
+    final patients = repository.patients;
+    final records = [for (final p in patients) ...repository.recordsOf(p.id)].where((r) => r.backedUpByDefault || includeNotes).toList();
+    return {
+      'format': 1,
+      'selfPatientId': selfPatientId,
+      'patients': [for (final p in patients) p.toJson()],
+      'custody': [for (final c in repository.custodies) c.toJson()],
+      'profiles': {for (final p in patients) p.id: repository.profileOf(p.id).toJson()},
+      'emergency': {for (final p in patients) p.id: (await emergency.load(p.id)).toJson()},
+      'records': [for (final r in records) r.toJson()],
+      'originals': {
+        for (final r in records)
+          if (r.attachmentId != null)
+            if (await attachments.load(r.attachmentId!).then((p) => p, onError: (_) => const <Uint8List>[]) case final pages when pages.isNotEmpty)
+              r.attachmentId!: [for (final pg in pages) base64Encode(pg)],
+      },
+    };
+  }
+
+  String _describe(Map<String, Object?> snap) =>
+      '${(snap['records']! as List).length} records, ${(snap['originals']! as Map).length} originals, ${(snap['patients']! as List).length} profiles';
+
+  /// Turns backup on. Returns the recovery kit, shown once: the app keeps
+  /// neither the password nor the two codes it hands out.
+  Future<RecoveryKit> setUpBackup({bool includeNotes = false}) async {
+    final self = selfPatient ?? (throw const CustodyRefused('Set up your own profile first.'));
+    final account = 'LT-${_code(5)}-${_code(5)}';
+    final password = newBackupPassword();
+    _backup = {'notes': includeNotes};
+    final snap = await _snapshot();
+    final setup = await vault.create(account: account, password: password, body: snap, auditPatientId: self.id, detail: _describe(snap), at: clock());
+    _backup = {
+      'account': account,
+      'keys': setup.keys.toJson(),
+      'notes': includeNotes,
+      'phoneShare': setup.shares[0].encode(),
+      'at': clock().toIso8601String(),
+    };
+    await _saveBackup();
+    return RecoveryKit(account: account, password: password, printCode: setup.shares[1].encode(), contactCode: setup.shares[2].encode());
+  }
+
+  /// Sends the current records to the backup. Throws when the service is
+  /// unreachable; [_backUpQuietly] is the no-throw form used after changes.
+  Future<void> backUpNow() async {
+    final account = backupAccount;
+    if (account == null) return;
+    final snap = await _snapshot();
+    try {
+      await vault.update(account: account, keys: _keys, body: snap, auditPatientId: selfPatientId!, detail: _describe(snap), at: clock());
+      _backup['at'] = clock().toIso8601String();
+      _backup.remove('error');
+    } on Object catch (e) {
+      _backup['error'] = e is VaultError ? e.patientMessage : 'Could not reach the backup service.';
+      await _saveBackup();
+      rethrow;
+    }
+    await _saveBackup();
+  }
+
+  Future<void> _backUpQuietly() async {
+    if (backupAccount == null) return;
+    try {
+      await backUpNow();
+    } on Object {
+      // Recorded in lastBackupError; the next change or "Back up now" retries.
+    }
+  }
+
+  Future<void> setBackupIncludesNotes(bool on) async {
+    _backup['notes'] = on;
+    await _saveBackup();
+    await _backUpQuietly();
+  }
+
+  /// Deletes the backup from the server (DPDP §12) and stops backing up.
+  Future<void> turnOffBackup() async {
+    final account = backupAccount;
+    if (account == null) return;
+    await vault.erase(account, _keys);
+    _backup = {};
+    await _saveBackup();
+    await audit.append(AuditEntry(at: clock(), actorId: 'patient:$selfPatientId', patientId: selfPatientId ?? '', action: AuditAction.erasure, detail: 'backup deleted from the server'));
+  }
+
+  /// On a phone with no profile yet: brings back every profile, record,
+  /// original and Emergency ID, and keeps backing up to the same account.
+  /// Give either [password] or two [codes].
+  Future<int> restoreFromBackup({required String account, String? password, List<String>? codes}) async {
+    if (repository.patients.isNotEmpty) throw const CustodyRefused('Restore works only on a phone with no profile yet.');
+    final acct = normaliseAccount(account);
+    final at = clock();
+    final VaultRestore got;
+    if (password != null) {
+      got = await vault.restoreWithPassword(account: acct, password: normalisePassword(password), auditPatientId: 'restore', at: at);
+    } else {
+      got = await vault.restoreWithShares(account: acct, shares: [for (final c in codes!) Share.decode(c)], auditPatientId: 'restore', at: at);
+    }
+    final b = got.body;
+    for (final p in (b['patients']! as List).cast<Map>()) {
+      await repository.savePatient(Patient.fromJson(p.cast()));
+    }
+    for (final c in (b['custody']! as List).cast<Map>()) {
+      await repository.saveCustody(Custody.fromJson(c.cast()));
+    }
+    for (final MapEntry(:key, :value) in (b['profiles']! as Map).cast<String, Object?>().entries) {
+      await repository.saveProfile(key, ClinicalProfile.fromJson((value! as Map).cast()));
+    }
+    for (final MapEntry(:key, :value) in (b['emergency']! as Map).cast<String, Object?>().entries) {
+      final card = EmergencyCard.fromJson((value! as Map).cast());
+      if (!card.isEmpty) await emergency.save(key, card);
+    }
+    for (final MapEntry(:key, :value) in (b['originals']! as Map).cast<String, Object?>().entries) {
+      await attachments.save(key, [for (final pg in (value! as List).cast<String>()) base64Decode(pg)]);
+    }
+    final records = [for (final r in (b['records']! as List).cast<Map>()) HealthRecord.fromJson(r.cast())];
+    await repository.addAll(records);
+    final self = b['selfPatientId'] as String? ?? repository.patients.first.id;
+    settings['selfPatientId'] = self;
+    settings['currentPatientId'] = self;
+    await _saveSettings();
+    _backup = {
+      'account': acct,
+      'keys': got.keys.toJson(),
+      'notes': records.any((r) => r.kind == RecordKind.note),
+      'at': at.toIso8601String(),
+    };
+    await _saveBackup();
+    await audit.append(AuditEntry(
+      at: at,
+      actorId: Actors.patient(self),
+      patientId: self,
+      action: AuditAction.vaultRestore,
+      detail: '${records.length} records restored to this phone from backup $acct via ${password != null ? 'password' : 'recovery codes'}',
+    ));
+    return records.length;
+  }
+
   // ---- erasure (DPDP §12) -------------------------------------------------
 
   /// Deletes this profile's records, grants, Emergency ID and backup. The
   /// erasure itself stays as the only entry in the log.
-  Future<void> eraseProfile({required String account}) async {
+  Future<void> eraseProfile() async {
     final id = currentPatientId!;
     if (id == selfPatientId && familyOnPhone().length > 1) {
       // Erasing the owner would strand a child's or parent's records on a
@@ -690,7 +887,15 @@ class AppServices {
     await repository.eraseFor(id);
     consent.eraseFor(id);
     await emergency.erase(id);
-    await vault.erase(account);
+    if (id == selfPatientId) {
+      // The owner's erasure deletes the backup on the server too.
+      try {
+        await turnOffBackup();
+      } on Object {
+        _backup = {};
+        await _saveBackup();
+      }
+    }
     await audit.eraseFor(
       id,
       AuditEntry(at: at, actorId: 'patient:$id', patientId: id, action: AuditAction.erasure, detail: 'records, grants, Emergency ID and backup deleted'),
@@ -699,6 +904,7 @@ class AppServices {
       settings['currentPatientId'] = selfPatientId;
       await _saveSettings();
       await flush();
+      await _backUpQuietly();
       return;
     }
     settings.remove('currentPatientId');
@@ -712,6 +918,18 @@ class AppServices {
     final r = Random.secure();
     return List.generate(8, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
   }
+}
+
+/// Shown once when backup is turned on. LifeTrack keeps none of it.
+class RecoveryKit {
+  const RecoveryKit({required this.account, required this.password, required this.printCode, required this.contactCode});
+  final String account;
+  final String password;
+
+  /// Two of the three recovery codes; the third stays on the phone. Any two
+  /// open the backup without the password.
+  final String printCode;
+  final String contactCode;
 }
 
 /// Where phase 2 sharing connects. Both values come from the build

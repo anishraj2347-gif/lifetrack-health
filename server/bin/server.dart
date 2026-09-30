@@ -7,6 +7,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:lifetrack_server/api.dart';
 import 'package:lifetrack_server/registry.dart';
 import 'package:lifetrack_server/relay_store.dart';
+import 'package:lifetrack_server/vault_store.dart';
 import 'package:shelf/shelf_io.dart' as io;
 
 /// Local phase 2 server. Binds to 127.0.0.1 only — nothing on the Wi-Fi can
@@ -24,7 +25,7 @@ Future<void> main(List<String> args) async {
   final relay = RelayStore();
   Timer.periodic(const Duration(minutes: 1), (_) => relay.purgeExpired(DateTime.now()));
 
-  final api = LifeTrackApi(registry: registry, relay: relay, adminToken: adminToken);
+  final api = LifeTrackApi(registry: registry, relay: relay, vault: VaultStore(Directory('${dataDir.path}/vault')), adminToken: adminToken);
   final server = await io.serve(api.handler, InternetAddress.loopbackIPv4, port);
   final pub = base64Encode((await signingKey.extractPublicKey()).bytes);
   stdout

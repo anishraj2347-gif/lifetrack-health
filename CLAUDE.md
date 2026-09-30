@@ -63,8 +63,12 @@ copy predate the claim fixes; the app's wording is authoritative).
 - **Storage** — `FileByteStore` (atomic temp→flush→rename) → `SealedStore` (AES-256-GCM frame
   `'LT' ‖ version ‖ nonce ‖ mac ‖ ct`, `{schemaVersion, body}`) under a Keystore/Keychain device key.
 - **Vault** (`lib/src/vault/`) — Argon2id → HKDF vault key + login verifier; data key wrapped by
-  the vault key and split 2-of-3 (Shamir). Built and tested; **no server exists**, so it is not
-  reachable from the UI.
+  the vault key and split 2-of-3 (Shamir). Live since 1 Oct 2026: Me → Backup snapshots every
+  profile (records, originals, allergies/conditions, Emergency ID; notes only on opt-in) to the
+  local server's disk store (`server/lib/vault_store.dart`) via `HttpRemoteVaultStore` in the one
+  network file. The **password is app-generated** (20 chars, 100 bits) and shown once with an
+  account code and recovery codes; the server rate-limits failed opens (10/hour). Restore is on the
+  onboarding screen and only onto an empty phone.
 
 ### Invariants
 
