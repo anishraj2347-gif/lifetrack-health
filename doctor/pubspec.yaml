@@ -40,6 +40,8 @@ dependencies:
   http: ^1.6.0
   qr_flutter: ^4.1.0
   shared_preferences: ^2.5.5
+  pdf: ^3.13.1
+  printing: ^5.15.1
 
 dev_dependencies:
   flutter_test:

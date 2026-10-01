@@ -6,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import 'session.dart';
 import 'summary.dart';
+import 'print_rx.dart';
 import 'theme.dart';
 
 const _relay = String.fromEnvironment('LT_RELAY_URL', defaultValue: 'http://127.0.0.1:8787');
@@ -396,7 +397,19 @@ class _PatientScreenState extends State<PatientScreen> {
               style: DT.body,
             ),
             const SizedBox(height: 12),
-            Pill('Write another', dark: false, onTap: () => setState(() => _sent = null)),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              Pill('Print / save as PDF', onTap: () => printPrescription(
+                    rx: rx,
+                    patientName: sh.patientName,
+                    patientLine: [
+                      if (sh.patient['sex'] case final String sex) sex == 'female' ? 'F' : sex == 'male' ? 'M' : '',
+                      if (sh.patient['age'] != null) '${sh.patient['age']} y',
+                    ].where((x) => x.isNotEmpty).join(' · '),
+                    council: widget.session.profile['council'] ?? '',
+                    speciality: widget.session.profile['speciality'] ?? '',
+                  )),
+              Pill('Write another', dark: false, onTap: () => setState(() => _sent = null)),
+            ]),
           ],
         ),
       );
