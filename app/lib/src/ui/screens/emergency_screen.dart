@@ -9,6 +9,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../emergency/emergency_card.dart';
 import '../../emergency/emergency_qr.dart';
+import '../../security/plain_leftovers.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
@@ -149,6 +150,8 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
       await SharePlus.instance.share(ShareParams(files: [XFile(f.path, mimeType: 'image/png')], text: 'Emergency ID — $name. Scan with any phone camera.'));
     } on Object catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+    } finally {
+      await deleteQuietly('${(await getTemporaryDirectory()).path}/emergency-id.png');
     }
   }
 

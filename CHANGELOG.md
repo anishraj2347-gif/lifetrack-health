@@ -6,6 +6,18 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.13.0 (1 Oct 2026) — security
+- Hide from screenshots (Me): screenshots, screen recordings and the Recent apps preview come
+  out blank. On by default; demo builds start with it off so demos can be recorded.
+- Emergency ID is now encrypted on the phone like everything else (still readable from the
+  lock screen). Cards saved by older versions are encrypted the first time they are read.
+- Export can be password-protected (on by default): AES-256 zip, password made by the app and
+  shown once.
+- No plain copies left behind: the camera's photo file and a picked PDF are deleted once read,
+  the Emergency ID image after sharing, and leftovers are swept when the app opens.
+- Release builds are obfuscated (`scripts/build_apk.sh`).
+- Server: the data folder (ID map, doctor enrolments, backups, keys) is owner-only.
+
 ### 1.12.0 (1 Oct 2026)
 - Records: tapping a trend tile shows that test in the big black card (the latest is marked
   "Latest" among the tiles); tapping the big card opens every result.

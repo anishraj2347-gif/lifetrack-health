@@ -45,7 +45,8 @@ class RecordExport {
     return 'lifetrack-$slug-${at.toIso8601String().substring(0, 10)}.zip';
   }
 
-  Uint8List zip() {
+  /// With [password], every file in the zip is AES-256 encrypted (WinZip AE-2).
+  Uint8List zip({String? password}) {
     final a = Archive();
     void add(String name, List<int> bytes) => a.addFile(ArchiveFile(name, bytes.length, bytes));
     add('records.json', utf8.encode(const JsonEncoder.withIndent('  ').convert(json())));
@@ -55,7 +56,7 @@ class RecordExport {
         add('originals/${e.key}-page${i + 1}.jpg', e.value[i]);
       }
     }
-    return Uint8List.fromList(ZipEncoder().encode(a));
+    return Uint8List.fromList(ZipEncoder(password: password).encode(a));
   }
 
   Map<String, Object?> json() => {

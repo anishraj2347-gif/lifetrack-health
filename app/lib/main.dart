@@ -5,6 +5,8 @@ import 'src/app/storage_wiring.dart';
 import 'src/crypto/device_key_store.dart';
 import 'src/crypto/key_derivation.dart';
 import 'src/reminders/local_notification_scheduler.dart';
+import 'src/security/plain_leftovers.dart';
+import 'src/security/screen_privacy.dart';
 import 'src/security/unlocker.dart';
 import 'src/share/http_relay_client.dart';
 import 'src/ui/lifetrack_app.dart';
@@ -13,6 +15,8 @@ import 'src/vault/backup_vault.dart';
 /// Composition root. Wiring only — no domain decisions live here.
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  // Plain copies a crash or a closed share sheet left in the cache.
+  sweepPlainLeftovers();
   runApp(LifeTrackApp(
     boot: () async => AppServices.open(
       bytes: await openDeviceByteStore(),
@@ -26,6 +30,7 @@ void main() {
       identityRequired: const String.fromEnvironment('LT_IDENTITY') == 'required',
       demoTools: const bool.fromEnvironment('LT_DEMO_TOOLS'),
       reminderScheduler: LocalNotificationScheduler(),
+      screenPrivacy: PlatformScreenPrivacy(),
       kdf: KdfParams.production,
       cloudFactory: defaultCloud,
       share: const ShareConfig(

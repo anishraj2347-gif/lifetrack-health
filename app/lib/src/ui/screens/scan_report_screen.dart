@@ -9,6 +9,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../ai/plane_a/reference_ranges.dart' show analyteNames;
 import '../../model/health_record.dart';
+import '../../security/plain_leftovers.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
@@ -53,6 +54,9 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
     final x = await _picker.pickImage(source: ImageSource.camera);
     if (x != null) {
       final b = await x.readAsBytes();
+      // The camera's file is a plain copy with location data; only the
+      // cleaned, encrypted page is kept.
+      await deleteQuietly(x.path);
       setState(() => _pages.add(b));
     }
   }
@@ -66,6 +70,8 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
     final files = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: const ['pdf']);
     if (files.isEmpty) return;
     final bytes = await files.first.xFile.readAsBytes();
+    // The picker's plain copy in the cache is not needed once read.
+    await deleteQuietly(files.first.path);
     if (bytes.length > 25 * 1024 * 1024) {
       setState(() => _error = 'That PDF is over 25 MB. Ask the lab for the report alone.');
       return;

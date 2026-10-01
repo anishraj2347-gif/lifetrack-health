@@ -21,6 +21,9 @@ Future<void> main(List<String> args) async {
   final port = int.parse(_arg(args, '--port') ?? '8787');
   final dataDir = Directory(_arg(args, '--data') ?? 'data');
   await dataDir.create(recursive: true);
+  // Owner-only: the ID map, doctor enrolments, backups and keys. A folder
+  // others cannot open protects every file in it, including ones written later.
+  if (!Platform.isWindows) await Process.run('chmod', ['-R', 'go-rwx', dataDir.path]);
 
   final signingKey = await _registryKey(File('${dataDir.path}/registry_key.json'));
   final adminToken = await _adminToken(File('${dataDir.path}/admin_token'));

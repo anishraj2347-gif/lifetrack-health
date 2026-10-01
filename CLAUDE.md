@@ -86,9 +86,10 @@ copy predate the claim fixes; the app's wording is authoritative).
      their own phone — sealed to the linked phone's reply key via the relay. Never reports,
      prescriptions or history. Unlink tells the other phone to delete its copy.
    - 1f. **Export** (DPDP access right): the patient, or whoever `actingGrantor()` allows,
-     taps Export; an unencrypted zip (readable HTML, JSON, originals, access log) goes to the
-     system share sheet the patient chooses from. Logged (`AuditAction.export`) before the file
-     is built; the screen says the file is not encrypted.
+     taps Export; a zip (readable HTML, JSON, originals, access log) goes to the system share
+     sheet the patient chooses from. AES-256 password-protected by default (app-generated
+     password shown once); if the patient turns that off, the screen says the file is not
+     encrypted. Logged (`AuditAction.export`) before the file is built.
 2. No UI string may assert unreconstructibility (that LifeTrack/the server/anyone cannot read,
    open or access the patient's data) until the offline-guessing oracle is closed by a PAKE or a
    system-generated passphrase. Enforced on claim *subject* by `ui_claims_test.dart`, not by a
@@ -105,8 +106,13 @@ copy predate the claim fixes; the app's wording is authoritative).
 6. Personal notes, vitals and the patient's own reminders are local-only by default; backup
    includes them only on opt-in. Reminder notifications name nothing on the lock screen unless
    the patient turns names on.
-7. The Emergency ID lives outside the vault, is edited only by the patient, holds fixed bounded
+7. The Emergency ID lives outside the app lock (readable from the lock screen), is sealed under
+   the device key like every other blob, is edited only by the patient, holds fixed bounded
    fields, and every unauthenticated read is audited.
+   - 7c. Nothing is written to disk in the clear: every blob is sealed (`data_at_rest_test`);
+     plain copies passing through the cache (camera file, picked PDF, share-sheet files) are
+     deleted after use and swept at start (`plain_leftovers.dart`). Screen privacy
+     (FLAG_SECURE) is on by default, off by default only in demo builds.
    - 7a. The app opens behind the phone's own lock (`AppLockGate`, local_auth: fingerprint, face
      or device PIN; release permissions add USE_BIOMETRIC/USE_FINGERPRINT only). The lock
      screen offers the owner's Emergency ID read-only, logged as `unauthenticated:lock_screen`.
@@ -184,6 +190,7 @@ copy predate the claim fixes; the app's wording is authoritative).
   lime accent) after a Dribbble reference the user supplied; components are native, in
   `lib/src/ui/widgets/parts.dart`. Lime means "selected / now" only — never a health status.
   Do not add the `shadcn_ui` package: it pulls in `http` and `extended_image` (network-capable).
+- Build the APK with `scripts/build_apk.sh` (obfuscated release).
 - **Bump the version with every update** (user rule, 1 Oct 2026): `app/pubspec.yaml` and/or
   `doctor/pubspec.yaml`, feature → middle number, fix → last; build number always rises; add a
   line to `CHANGELOG.md` in the same commit.

@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import '../audit/audit_log.dart';
 import '../model/health_record.dart';
 import '../storage/byte_store.dart';
+import '../storage/sealed_store.dart';
 
 /// The one card readable without unlocking the phone (blueprint §5.3).
 ///
@@ -73,19 +73,30 @@ class EmergencyCard {
       );
 }
 
+/// Outside the app lock, but not unencrypted: sealed under the device key
+/// like everything else, which the app can use without the patient's
+/// fingerprint — so the lock screen can still show it, while a copy of the
+/// file taken off the phone is ciphertext. Cards saved by older versions as
+/// plain JSON are sealed the first time they are read.
 class EmergencyCardStore {
-  EmergencyCardStore(this.bytes, this.audit);
+  EmergencyCardStore(this.bytes, this.audit, this.sealed);
 
   static String _blob(String patientId) => 'emergency_card_$patientId';
   static const unauthenticatedActor = 'unauthenticated:lock_screen';
 
   final ByteStore bytes;
   final AuditLog audit;
+  final SealedStore sealed;
 
   Future<EmergencyCard> load(String patientId) async {
     final raw = await bytes.read(_blob(patientId));
     if (raw == null) return const EmergencyCard();
-    return EmergencyCard.fromJson((jsonDecode(utf8.decode(raw)) as Map).cast<String, Object?>());
+    if (raw.isNotEmpty && raw.first == 0x7B /* { : plain JSON from before 1.13 */) {
+      final card = EmergencyCard.fromJson((jsonDecode(utf8.decode(raw)) as Map).cast<String, Object?>());
+      await sealed.write(_blob(patientId), card.toJson());
+      return card;
+    }
+    return EmergencyCard.fromJson(((await sealed.read(_blob(patientId)))! as Map).cast<String, Object?>());
   }
 
   /// A read from the lock screen. Audited, because it is the one read that
@@ -104,7 +115,7 @@ class EmergencyCardStore {
   Future<void> save(String patientId, EmergencyCard card) async {
     final problems = card.validate();
     if (problems.isNotEmpty) throw ArgumentError(problems.join(' '));
-    await bytes.write(_blob(patientId), Uint8List.fromList(utf8.encode(jsonEncode(card.toJson()))));
+    await sealed.write(_blob(patientId), card.toJson());
   }
 
   Future<void> erase(String patientId) => bytes.delete(_blob(patientId));

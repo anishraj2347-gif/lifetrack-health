@@ -122,11 +122,11 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Me'));
     await tester.pumpAndSettle();
     u.answer = false;
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.byType(Switch).first);
     await tester.pumpAndSettle();
     expect(services.appLockEnabled, isTrue);
     u.answer = true;
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.byType(Switch).first);
     await tester.pumpAndSettle();
     expect(services.appLockEnabled, isFalse);
   });

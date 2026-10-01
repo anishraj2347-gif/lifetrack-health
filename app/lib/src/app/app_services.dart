@@ -37,6 +37,7 @@ import '../model/abha.dart';
 import '../family/family_link.dart';
 import '../identity/identity_verifier.dart';
 import '../identity/lifetrack_ids.dart';
+import '../security/screen_privacy.dart';
 import '../share/access_requests.dart';
 import '../share/http_relay_client.dart';
 import '../share/relay.dart';
@@ -182,6 +183,7 @@ class AppServices {
     bool identityRequired = false,
     bool demoTools = false,
     ReminderScheduler? reminderScheduler,
+    ScreenPrivacy? screenPrivacy,
   }) async {
     final now = clock ?? DateTime.now;
     final sealed = SealedStore(bytes, deviceKey);
@@ -200,7 +202,7 @@ class AppServices {
       consent: consent,
       access: access,
       insightEngine: InsightEngine(access),
-      emergency: EmergencyCardStore(bytes, audit),
+      emergency: EmergencyCardStore(bytes, audit, sealed),
       vault: BackupVault(remote: remote, audit: audit, params: kdf),
       cloud: cloudFactory(repository: repository, consent: consent, audit: audit, access: access, clock: now),
       settings: settings,
@@ -210,6 +212,8 @@ class AppServices {
     services.identityRequired = identityRequired;
     services.demoTools = demoTools;
     services.reminderScheduler = reminderScheduler;
+    services.screenPrivacy = screenPrivacy;
+    unawaited(screenPrivacy?.set(services.screenPrivacyEnabled));
     services._doseLog = ((await sealed.read(_doseLogBlob) as Map?) ?? {}).cast<String, Object?>();
     services._vaccines = ((await sealed.read(_vaccinesBlob) as Map?) ?? {}).cast<String, Object?>();
     services._custom = ((await sealed.read(_customBlob) as Map?) ?? {}).cast<String, Object?>();
@@ -267,6 +271,26 @@ class AppServices {
       patientId: selfPatientId ?? currentPatientId ?? '',
       action: AuditAction.edit,
       detail: on ? 'App lock turned on' : 'App lock turned off',
+    ));
+  }
+
+  ScreenPrivacy? screenPrivacy;
+
+  /// Screenshots, recordings and the Recent apps preview blanked. On unless
+  /// the patient turns it off; demo builds start with it off so the screen
+  /// can be recorded for a demonstration.
+  bool get screenPrivacyEnabled => (settings['screenPrivacy'] as bool?) ?? !demoTools;
+
+  Future<void> setScreenPrivacy(bool on) async {
+    settings['screenPrivacy'] = on;
+    await _saveSettings();
+    await screenPrivacy?.set(on);
+    await audit.append(AuditEntry(
+      at: clock(),
+      actorId: 'patient:${selfPatientId ?? currentPatientId}',
+      patientId: selfPatientId ?? currentPatientId ?? '',
+      action: AuditAction.edit,
+      detail: on ? 'Screen privacy turned on' : 'Screen privacy turned off',
     ));
   }
 

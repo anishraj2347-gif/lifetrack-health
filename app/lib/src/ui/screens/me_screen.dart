@@ -89,7 +89,7 @@ class MeScreen extends StatelessWidget {
         child: Column(children: [
           _link(context, LucideIcons.heartPulse, 'Emergency ID', 'What a paramedic sees', const EmergencyScreen()),
           _link(context, LucideIcons.idCard, 'ABHA health ID', p.abha == null ? 'Optional · not added' : '${p.abha!.display} · not verified', const AbhaScreen()),
-          _link(context, LucideIcons.bell, 'Medicine reminders', s.reminderSettings.on ? 'On · ${s.reminderPlan().length} in the next 2 weeks' : 'Off', const RemindersScreen()),
+          _link(context, LucideIcons.bell, 'Reminders', s.reminderSettings.on ? 'On · ${s.reminderPlan().length} in the next 2 weeks' : 'Off', const RemindersScreen()),
           _link(context, LucideIcons.cloudUpload, 'Backup', s.backupAccount == null ? 'Off · records are only on this phone' : s.lastBackupError != null ? 'On · last attempt failed' : 'On · ${s.lastBackupAt == null ? 'not yet run' : 'last ${dateTime(s.lastBackupAt!)}'}', const BackupScreen()),
           _link(context, LucideIcons.history, 'Access log', '${s.auditEntries().length} ${s.auditEntries().length == 1 ? 'entry' : 'entries'} on this phone', const AuditScreen()),
           _link(context, LucideIcons.scale, 'Your data and your rights', 'What is held where, and how to erase it', const DataRightsScreen(), last: true),
@@ -116,6 +116,27 @@ class MeScreen extends StatelessWidget {
             ),
           ]),
         ),
+      ShadCard(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+        child: Row(children: [
+          const IconTile(LucideIcons.eyeOff),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Hide from screenshots', style: LT.label),
+              SizedBox(height: 4),
+              Text('Screenshots, screen recordings and the Recent apps preview come out blank while LifeTrack is open', style: LT.small),
+            ]),
+          ),
+          Switch(
+            value: s.screenPrivacyEnabled,
+            onChanged: (v) async {
+              await s.setScreenPrivacy(v);
+              if (context.mounted) AppScope.changed(context);
+            },
+          ),
+        ]),
+      ),
       const Eyebrow('Family on this phone'),
       for (final f in s.familyOnPhone().where((f) => f.id != s.selfPatientId))
         () {

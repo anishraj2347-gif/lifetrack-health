@@ -1,11 +1,13 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../model/custody.dart';
+import '../../app/app_services.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
@@ -28,6 +30,7 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
   final _confirm = TextEditingController();
   bool _erasing = false;
   bool _exporting = false;
+  bool _protect = true;
 
   Future<void> _export() async {
     setState(() => _exporting = true);
@@ -35,9 +38,14 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
     final messenger = ScaffoldMessenger.of(context);
     File? file;
     try {
+      String? password;
+      if (_protect) {
+        password = AppServices.newBackupPassword();
+        if (!await _showPassword(password)) return;
+      }
       final export = await s.exportCurrent();
       file = File('${(await getTemporaryDirectory()).path}/${export.fileName}');
-      await file.writeAsBytes(export.zip(), flush: true);
+      await file.writeAsBytes(export.zip(password: password), flush: true);
       await SharePlus.instance.share(ShareParams(files: [XFile(file.path, mimeType: 'application/zip')], subject: 'My LifeTrack records'));
     } on CustodyRefused catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
@@ -55,23 +63,64 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
     }
   }
 
+  /// The export's password, shown once before the file is made.
+  Future<bool> _showPassword(String password) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: const Text('Password for this file'),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Write it down or keep it in a password manager. It is shown only now, and the file will not open without it.'),
+            const SizedBox(height: 14),
+            SelectableText(password, style: LT.title.copyWith(fontSize: 18, letterSpacing: 1)),
+            const SizedBox(height: 14),
+            const Text('Opens with 7-Zip or WinRAR on a computer, Keka on a Mac, or ZArchiver on Android.', style: LT.small),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Clipboard.setData(ClipboardData(text: password)), child: const Text('Copy')),
+            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('I have saved it')),
+          ],
+        ),
+      ) ??
+      false;
+
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(),
         body: ListView(children: [
           const Masthead(eyebrow: 'Your data', title: 'What is held, where'),
           const SizedBox(height: 14),
-          _section('On this phone', 'Your profile, records, notes, the permissions you have given and your access log — encrypted under a key in the phone\'s secure hardware. The Emergency ID card is kept separately and unencrypted so it can be shown in an emergency.'),
+          _section('On this phone', 'Your profile, records, notes, the permissions you have given and your access log — encrypted under a key in the phone\'s secure hardware. The Emergency ID card is kept outside the app lock so it can be shown from the lock screen in an emergency; it is encrypted on the phone like the rest.'),
           _section('With LifeTrack', 'No records are stored with LifeTrack. When you share with a doctor or a linked family member, it is encrypted on this phone to their device, passes through LifeTrack\'s relay, and is deleted there once collected or within 48 hours. If you turn on backup, LifeTrack also holds an encrypted copy of your records, encrypted on this phone with a key made from a password the app creates; whoever has that password or two of your recovery codes can open it. The app generates the password because a weak one could be guessed from what the service stores.'),
           _section('Why we process it', 'To keep your medical records for you, to compare values with published ranges when you turn Insights on, and to let a doctor see what you choose to share, for as long as you choose.'),
           _section('Your rights', 'You can see everything held (it is all in this app), correct any record, withdraw any permission from Share at any time, and erase everything below. Withdrawing consent does not affect access that already happened; it appears in your access log.'),
           _section('Complaints', 'Data Fiduciary: $kDataFiduciary\nGrievance Officer: $kGrievanceContact\nIf you are not satisfied with our response you may complain to the Data Protection Board of India.'),
           const Eyebrow('Take a copy'),
           const Note(
-            'One file with everything held for this profile: a page you can read or print, the same records for another app, the original report photos and your access log. '
-            'The file is not encrypted — anyone you send it to can read it.',
+            'One file with everything held for this profile: a page you can read or print, the same records for another app, the original report photos and your access log.',
             icon: LucideIcons.download,
             margin: EdgeInsets.fromLTRB(16, 0, 16, 12),
+          ),
+          ShadCard(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+            child: Row(children: [
+              const IconTile(LucideIcons.fileLock),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Protect with a password', style: LT.label),
+                  const SizedBox(height: 4),
+                  Text(
+                    _protect
+                        ? 'The file is encrypted (AES-256). The app makes a password and shows it once.'
+                        : 'Off: the file is not encrypted — anyone who gets it can read it.',
+                    style: LT.small.copyWith(color: _protect ? null : LT.signal),
+                  ),
+                ]),
+              ),
+              Switch(value: _protect, onChanged: (v) => setState(() => _protect = v)),
+            ]),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
