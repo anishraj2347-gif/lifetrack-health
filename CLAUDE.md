@@ -102,7 +102,9 @@ copy predate the claim fixes; the app's wording is authoritative).
    read; the tap is spent synchronously before any `await`.
 5. An agent may never create, extend or exercise a grant it was not given. Nothing under
    `lib/src/ai/` calls `ConsentStore.issue`.
-6. Personal notes and vitals are local-only by default; backup includes them only on opt-in.
+6. Personal notes, vitals and the patient's own reminders are local-only by default; backup
+   includes them only on opt-in. Reminder notifications name nothing on the lock screen unless
+   the patient turns names on.
 7. The Emergency ID lives outside the vault, is edited only by the patient, holds fixed bounded
    fields, and every unauthenticated read is audited.
    - 7a. The app opens behind the phone's own lock (`AppLockGate`, local_auth: fingerprint, face

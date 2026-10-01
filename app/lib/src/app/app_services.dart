@@ -30,6 +30,7 @@ import '../crypto/shamir.dart';
 import '../crypto/vault_codec.dart';
 import '../export/record_export.dart';
 import '../model/vital_reading.dart';
+import '../reminders/custom_reminder.dart';
 import '../reminders/reminder_plan.dart';
 import '../vaccines/uip_schedule.dart';
 import '../model/abha.dart';
@@ -211,6 +212,7 @@ class AppServices {
     services.reminderScheduler = reminderScheduler;
     services._doseLog = ((await sealed.read(_doseLogBlob) as Map?) ?? {}).cast<String, Object?>();
     services._vaccines = ((await sealed.read(_vaccinesBlob) as Map?) ?? {}).cast<String, Object?>();
+    services._custom = ((await sealed.read(_customBlob) as Map?) ?? {}).cast<String, Object?>();
     services._backup = ((await sealed.read(_backupBlob) as Map?) ?? {}).cast<String, Object?>();
     consent.evictFinished(now());
     await services._settleOwner();
@@ -356,7 +358,8 @@ class AppServices {
                 vaccine: (p.name.split(' ').first, d.name),
               ),
     ];
-    return [...meds, ...shots.where((r) => r.at.isAfter(now))]..sort((a, b) => a.at.compareTo(b.at));
+    final mine = planCustomReminders(people: [for (final p in familyOnPhone()) (p, customRemindersOf(p.id))], now: now);
+    return [...meds, ...shots.where((r) => r.at.isAfter(now)), ...mine]..sort((a, b) => a.at.compareTo(b.at));
   }
 
   // ---- children's vaccinations (UIP) ---------------------------------------
@@ -392,11 +395,72 @@ class AppServices {
     if (sched == null) return;
     try {
       final st = reminderSettings;
-      await sched.replaceAll(st.on ? reminderPlan() : const [], showNames: st.showNames, selfPatientId: selfPatientId);
+      await sched.replaceAll(st.on ? reminderPlan().take(maxScheduled).toList() : const [], showNames: st.showNames, selfPatientId: selfPatientId);
     } on Object {
       // The schedule stays as it was; the next change tries again.
     }
   }
+
+  /// Android keeps at most 500 alarms per app; stay well under.
+  static const maxScheduled = 400;
+
+  // ---- the patient's own reminders -----------------------------------------
+
+  static const _customBlob = 'custom_reminders';
+  Map<String, Object?> _custom = {};
+
+  List<CustomReminder> customRemindersOf(String patientId) => [
+        for (final j in (_custom[patientId] as List?) ?? const []) CustomReminder.fromJson((j as Map).cast()),
+      ]..sort((a, b) => a.times.first.$1 * 60 + a.times.first.$2 - (b.times.first.$1 * 60 + b.times.first.$2));
+
+  static String newReminderId() => 'r-${_randomId()}';
+
+  /// Adds or replaces (same id) a reminder. Turns reminders on — making one
+  /// is asking to be reminded — and returns false if notifications are not
+  /// allowed.
+  Future<bool> saveCustomReminder(CustomReminder r) async {
+    final problem = r.problem();
+    if (problem != null) throw ArgumentError(problem);
+    final list = customRemindersOf(r.patientId);
+    final i = list.indexWhere((x) => x.id == r.id);
+    i < 0 ? list.add(r) : list[i] = r;
+    _custom[r.patientId] = [for (final x in list) x.toJson()];
+    await sealed.write(_customBlob, _custom);
+    await audit.append(AuditEntry(at: clock(), actorId: actingGrantor(), patientId: r.patientId, action: AuditAction.edit, detail: '${i < 0 ? 'reminder added' : 'reminder changed'}: ${r.title}'));
+    await _backUpQuietly();
+    if (!reminderSettings.on) return setReminders(reminderSettings.copyWith(on: true));
+    await refreshReminders();
+    return true;
+  }
+
+  Future<void> deleteCustomReminder(CustomReminder r) async {
+    final list = customRemindersOf(r.patientId)..removeWhere((x) => x.id == r.id);
+    _custom[r.patientId] = [for (final x in list) x.toJson()];
+    await sealed.write(_customBlob, _custom);
+    await audit.append(AuditEntry(at: clock(), actorId: actingGrantor(), patientId: r.patientId, action: AuditAction.edit, detail: 'reminder deleted: ${r.title}'));
+    await refreshReminders();
+    await _backUpQuietly();
+  }
+
+  /// Today's times of the patient's own reminders, for the profile on screen.
+  List<(int, int, CustomReminder)> todaysCustom() {
+    final id = currentPatientId;
+    if (id == null) return const [];
+    final now = clock();
+    return [
+      for (final c in customRemindersOf(id))
+        if (c.occursOn(now))
+          for (final (h, m) in c.times) (h, m, c),
+    ]..sort((a, b) => a.$1 * 60 + a.$2 - (b.$1 * 60 + b.$2));
+  }
+
+  static String _customKey(CustomReminder c, int h, int m) => '${c.id}@$h:$m';
+
+  bool customDoneToday(CustomReminder c, int h, int m) =>
+      (((_doseLog[_day(clock())] as Map?)?['custom'] as List?) ?? const []).contains(_customKey(c, h, m));
+
+  Future<void> markCustomDone(CustomReminder c, int h, int m, bool done) =>
+      _logToday('custom', _customKey(c, h, m), done);
 
   static const _doseLogBlob = 'dose_log';
   Map<String, Object?> _doseLog = {};
@@ -420,12 +484,14 @@ class AppServices {
       (((_doseLog[_day(clock())] as Map?)?[slot.name] as List?) ?? const []).contains(recordId);
 
   /// Ticks a dose taken (or not). Kept on this phone only, for 60 days.
-  Future<void> markTaken(DoseSlot slot, String recordId, bool taken) async {
+  Future<void> markTaken(DoseSlot slot, String recordId, bool taken) => _logToday(slot.name, recordId, taken);
+
+  Future<void> _logToday(String key, String item, bool done) async {
     final day = _day(clock());
     final d = ((_doseLog[day] as Map?) ?? {}).cast<String, Object?>();
-    final list = ((d[slot.name] as List?) ?? const []).cast<String>().toSet();
-    taken ? list.add(recordId) : list.remove(recordId);
-    d[slot.name] = list.toList();
+    final list = ((d[key] as List?) ?? const []).cast<String>().toSet();
+    done ? list.add(item) : list.remove(item);
+    d[key] = list.toList();
     _doseLog[day] = d;
     final cutoff = _day(clock().subtract(const Duration(days: 60)));
     _doseLog.removeWhere((k, _) => k.compareTo(cutoff) < 0);
@@ -1075,6 +1141,7 @@ class AppServices {
       'lifetrackIds': ids?.export() ?? const {},
       'vaccinations': _vaccines,
       // Home readings, like notes, only when the patient opted in (#6).
+      if (includeNotes) 'customReminders': _custom,
       if (includeNotes) 'vitals': [for (final p in patients) for (final v in repository.vitalsOf(p.id)) v.toJson()],
       'originals': {
         for (final r in records)
@@ -1186,6 +1253,10 @@ class AppServices {
     for (final v in (b['vitals'] as List?) ?? const []) {
       await repository.addVital(VitalReading.fromJson((v as Map).cast()));
     }
+    if (b['customReminders'] is Map) {
+      _custom = (b['customReminders']! as Map).cast<String, Object?>();
+      await sealed.write(_customBlob, _custom);
+    }
     if (b['vaccinations'] is Map) {
       _vaccines = (b['vaccinations']! as Map).cast<String, Object?>();
       await sealed.write(_vaccinesBlob, _vaccines);
@@ -1246,6 +1317,7 @@ class AppServices {
     }
     await repository.eraseFor(id);
     if (_vaccines.remove(id) != null) await sealed.write(_vaccinesBlob, _vaccines);
+    if (_custom.remove(id) != null) await sealed.write(_customBlob, _custom);
     consent.eraseFor(id);
     await emergency.erase(id);
     if (id == selfPatientId) {

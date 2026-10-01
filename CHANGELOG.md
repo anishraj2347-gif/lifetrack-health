@@ -6,6 +6,12 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.9.0 (1 Oct 2026)
+- Create your own reminders (what, optional note, one or more times, every day / some days /
+  once, optional end date); edit, pause or delete them. Today's ones are ticked off on the
+  Reminders tab. Kept on the phone; backed up only with personal notes.
+- Each medicine in Today's medicines has an edit button that opens its prescription.
+
 ### 1.8.0 (1 Oct 2026)
 - Reminders is its own tab, first in the bar, and the app opens on it: today's medicines to tick
   off, vaccinations due, what is coming up, and the reminder settings. Records no longer

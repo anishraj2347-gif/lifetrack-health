@@ -53,7 +53,7 @@ class LocalNotificationScheduler implements ReminderScheduler {
           android: AndroidNotificationDetails(
             'medicine_reminders',
             'Medicine reminders',
-            channelDescription: 'When to take the medicines in your prescriptions',
+            channelDescription: 'Medicines, vaccinations and the reminders you make',
             importance: Importance.high,
             priority: Priority.high,
             visibility: showNames ? NotificationVisibility.public : NotificationVisibility.private,

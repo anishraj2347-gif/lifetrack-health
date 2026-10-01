@@ -1,5 +1,6 @@
 import '../model/health_record.dart';
 import '../model/patient.dart';
+import 'custom_reminder.dart';
 
 enum DoseSlot {
   morning('Morning'),
@@ -51,7 +52,7 @@ class ReminderItem {
 }
 
 class PlannedReminder {
-  const PlannedReminder({required this.id, required this.at, required this.slot, required this.items, this.vaccine});
+  const PlannedReminder({required this.id, required this.at, required this.slot, required this.items, this.vaccine, this.custom, this.customFor});
   final int id;
   final DateTime at;
   final DoseSlot slot;
@@ -60,11 +61,20 @@ class PlannedReminder {
   /// A vaccination due today instead of medicines: (child's first name, dose name).
   final (String, String)? vaccine;
 
-  String get title => vaccine != null ? 'Vaccination due' : '${slot.label} medicines';
+  /// One the patient made, and whose profile it is on.
+  final CustomReminder? custom;
+  final Patient? customFor;
+
+  String get title => vaccine != null ? 'Vaccination due' : custom != null ? 'Reminder' : '${slot.label} medicines';
 
   /// What the notification says. Without [showNames] it names no medicine
   /// and no person — the lock screen is public.
   String body({required bool showNames, String? selfPatientId}) {
+    if (custom case final c?) {
+      if (!showNames) return 'You have a reminder. Open LifeTrack to see it.';
+      final who = customFor == null || customFor!.id == selfPatientId ? '' : '${customFor!.name.split(' ').first}: ';
+      return '$who${c.title}${c.note == null || c.note!.isEmpty ? '' : ' — ${c.note}'}';
+    }
     if (vaccine case (final child, final dose)) return showNames ? '$child: $dose is due today.' : 'A vaccination is due today. Open LifeTrack to see it.';
     if (!showNames) return items.length == 1 ? 'Time for 1 medicine. Open LifeTrack to see it.' : 'Time for ${items.length} medicines. Open LifeTrack to see them.';
     final people = items.map((i) => i.patient.id).toSet().length;
@@ -98,6 +108,32 @@ List<PlannedReminder> planReminders({
               ReminderItem(patient: p, record: r, count: slot.countIn(r.dose!)),
       ];
       if (items.isNotEmpty) out.add(PlannedReminder(id: d * 3 + slot.index, at: at, slot: slot, items: items));
+    }
+  }
+  return out;
+}
+
+/// The patient's own reminders for the next [days] days. Ids from 2000, after
+/// medicines (0–41) and vaccinations (1000+).
+List<PlannedReminder> planCustomReminders({
+  required List<(Patient, List<CustomReminder>)> people,
+  required DateTime now,
+  int days = 14,
+}) {
+  final out = <PlannedReminder>[];
+  final today = DateTime(now.year, now.month, now.day);
+  var id = 2000;
+  for (var d = 0; d < days; d++) {
+    final day = DateTime(today.year, today.month, today.day + d);
+    for (final (p, list) in people) {
+      for (final c in list) {
+        if (!c.occursOn(day)) continue;
+        for (final (h, m) in c.times) {
+          final at = DateTime(day.year, day.month, day.day, h, m);
+          if (!at.isAfter(now)) continue;
+          out.add(PlannedReminder(id: id++, at: at, slot: h < 12 ? DoseSlot.morning : h < 18 ? DoseSlot.afternoon : DoseSlot.night, items: const [], custom: c, customFor: p));
+        }
+      }
     }
   }
   return out;
