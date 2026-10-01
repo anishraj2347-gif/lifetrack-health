@@ -104,6 +104,7 @@ void main() {
       audit: audit,
       repository: repo,
       relay: relay,
+      lifeTrackIdOf: (pid) => pid == 'p1' ? '148209375516' : null,
     );
   });
 
@@ -218,6 +219,13 @@ void main() {
       final b = await pickUpAndOpen(d);
       expect([for (final t in b['latestTests']! as List) (t as Map)['analyte']], ['hba1c']);
       expect([for (final doc in b['documents']! as List) (doc as Map)['title']], ['HbA1c']);
+    });
+
+    test('the share carries the patient\'s LifeTrack ID, so the doctor can ask again later', () async {
+      final d = await doctor();
+      await service.share(patientId: 'p1', doctor: await service.scan(d.qr, now), levels: {AccessLevel.summary}, at: now);
+      final b = await pickUpAndOpen(d);
+      expect((b['patient']! as Map)['lifeTrackId'], '148209375516');
     });
 
     test('with a test filter, prescriptions and scans from the same months stay home', () async {

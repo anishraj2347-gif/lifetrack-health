@@ -233,6 +233,7 @@ class AppServices {
         replyIdentity: services._replyIdentity,
         originals: services.originals,
         shrink: ReportImage.forShare,
+        lifeTrackIdOf: services.lifeTrackIdOf,
         keyBook: tokens,
       );
       services.ids = LifeTrackIds(

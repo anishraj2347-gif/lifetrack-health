@@ -46,8 +46,13 @@ class ClinicalShareService {
     required this.replyIdentity,
     this.originals,
     this.shrink,
+    this.lifeTrackIdOf,
     WithdrawTokenStore? keyBook,
   }) : keyBook = keyBook ?? InMemoryWithdrawTokens();
+
+  /// The patient's LifeTrack ID, sent with a share so the doctor can ask for
+  /// access again later (#17a); the patient still approves every request.
+  final String? Function(String patientId)? lifeTrackIdOf;
 
   /// Each live share's doctor key, so ending access can tell that device to
   /// close a share it has already picked up.
@@ -165,6 +170,9 @@ class ClinicalShareService {
       ..['replyTo'] = (await replyIdentity(patientId)).replyTo
       ..['sharedBy'] = sharedBy
       ..['closeSecret'] = await _closeSecret(patientId, grant.id);
+    if (lifeTrackIdOf?.call(patientId) case final id?) {
+      bundle['patient'] = {...(bundle['patient']! as Map).cast<String, Object?>(), 'lifeTrackId': id};
+    }
     await _attachOriginals(bundle, released);
 
     final envelope = await ShareEnvelope.seal(

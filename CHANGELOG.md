@@ -6,6 +6,10 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.14.0 (1 Oct 2026)
+- A share now carries the patient's LifeTrack ID, so the doctor can ask for access again later
+  (the patient still approves every request).
+
 ### 1.13.0 (1 Oct 2026) — security
 - Hide from screenshots (Me): screenshots, screen recordings and the Recent apps preview come
   out blank. On by default; demo builds start with it off so demos can be recorded.
@@ -79,6 +83,19 @@ always goes up (Android refuses to install a lower one).
 - Rebuilt phase-2 app: records, insights, consent, clinical sharing with verified doctors.
 
 ## Doctor web app
+
+### 1.3.0 (1 Oct 2026)
+- **My patients**: everyone who has shared with you — open shares first with time left, then
+  the whole register (last shared, how many times, prescriptions, next follow-up). Search by
+  name or LifeTrack ID. A closed patient can be asked for access again in one tap.
+- **Prescriptions**: every prescription you signed, searchable; print again, or write it again
+  for the same patient while their access is open.
+- **Consult notes**: private notes per visit (complaint, findings, plan, follow-up date); add,
+  edit, copy, delete. Never sent to the patient or LifeTrack.
+- **Phone layout**: bottom bar (Patients · Prescriptions · My code) on narrow screens.
+- **Encrypted storage**: keys, inbox, register, prescriptions and notes are sealed with a
+  non-extractable WebCrypto key kept in this browser; values saved in the clear by older
+  versions are sealed on first read. Start over deletes the key.
 
 ### 1.2.0 (1 Oct 2026)
 - Print or save a signed prescription as a PDF.

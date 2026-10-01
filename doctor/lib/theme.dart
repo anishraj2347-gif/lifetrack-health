@@ -83,10 +83,11 @@ class Pill extends StatelessWidget {
 }
 
 class Field extends StatelessWidget {
-  const Field(this.label, this.controller, {super.key, this.hint});
+  const Field(this.label, this.controller, {super.key, this.hint, this.maxLines = 1});
   final String label;
   final TextEditingController controller;
   final String? hint;
+  final int maxLines;
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
@@ -97,9 +98,42 @@ class Field extends StatelessWidget {
         const SizedBox(height: 6),
         TextField(
           controller: controller,
+          minLines: 1,
+          maxLines: maxLines,
           decoration: InputDecoration(hintText: hint == null ? null : 'e.g. $hint', hintStyle: TextStyle(color: DT.ink3.withValues(alpha: 0.6))),
         ),
       ],
     ),
   );
+}
+
+const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/// 3 Oct 2026
+String fmtDate(DateTime d) {
+  final l = d.toLocal();
+  return '${l.day} ${_months[l.month - 1]} ${l.year}';
+}
+
+/// 3 Oct 2026, 14:05
+String fmtDateTime(DateTime d) {
+  final l = d.toLocal();
+  return '${fmtDate(l)}, ${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}';
+}
+
+/// 1482 0937 5516
+String fmtLifeTrackId(String id) => id.length == 12 ? '${id.substring(0, 4)} ${id.substring(4, 8)} ${id.substring(8)}' : id;
+
+/// A small status label.
+class Tag extends StatelessWidget {
+  const Tag(this.text, {super.key, this.color = DT.surface, this.ink = DT.ink});
+  final String text;
+  final Color color;
+  final Color ink;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: ShapeDecoration(color: color, shape: const StadiumBorder()),
+        child: Text(text, style: TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w600, color: ink)),
+      );
 }

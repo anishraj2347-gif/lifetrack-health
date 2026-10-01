@@ -7,6 +7,9 @@ import 'package:http/http.dart' as http;
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'practice.dart';
+import 'store/local_cipher.dart';
+
 /// A patient's share as the doctor holds it: opened in memory; on disk only
 /// as the envelope still encrypted to this device, dropped at the grant's
 /// expiry or when the patient ends access. The doctor keeps their own consult note and any
@@ -20,6 +23,16 @@ class ReceivedShare {
 
   Map<String, Object?> get patient => (bundle['patient'] as Map?)?.cast() ?? const {};
   String get patientName => patient['name'] as String? ?? 'Patient';
+
+  /// The same person across shares: their LifeTrack ID if sent, else the
+  /// reply mailbox their phone keeps for them.
+  String get patientKey =>
+      (patient['lifeTrackId'] as String?) ?? ((bundle['replyTo'] as Map?)?['mailbox'] as String?) ?? 'name:$patientName';
+
+  String get patientLine => [
+        if (patient['sex'] == 'female') 'F' else if (patient['sex'] == 'male') 'M',
+        if (patient['age'] != null) '${patient['age']} y',
+      ].join(' · ');
   Duration remaining(DateTime now) => expiresAt.difference(now);
 }
 
@@ -28,20 +41,122 @@ enum EnrolmentState { none, pending, approved, rejected, revoked }
 /// This browser's doctor identity: two key pairs made here, never sent
 /// anywhere except their public halves.
 ///
-/// Demo-grade key storage: the seeds sit in the browser's local storage. A
-/// real deployment keeps them in a non-extractable WebCrypto key or a
-/// platform keystore (mobile app), and says so in its security notes.
+/// Everything kept in the browser — the key seeds, the inbox (still
+/// encrypted to this device), the patient register, prescriptions and
+/// consult notes — is sealed under a non-extractable WebCrypto key
+/// ([LocalCipher]). Values written by older versions in the clear are
+/// sealed the first time they are read.
 class DoctorSession {
-  DoctorSession._(this.prefs, this.base);
+  DoctorSession._(this.prefs, this.base, this.cipher);
 
   static const _kEnc = 'lt.doctor.enc';
   static const _kSign = 'lt.doctor.sign';
   static const _kProfile = 'lt.doctor.profile';
   static const _kCert = 'lt.doctor.cert';
   static const _kInbox = 'lt.doctor.inbox';
+  static const _kPatients = 'lt.doctor.patients';
+  static const _kRx = 'lt.doctor.prescriptions';
+  static const _kNotes = 'lt.doctor.notes';
 
   final SharedPreferences prefs;
   final Uri base;
+  final LocalCipher cipher;
+
+  Future<String?> _get(String k) async {
+    final v = prefs.getString(k);
+    if (v == null) return null;
+    if (!v.startsWith(LocalCipher.prefix)) {
+      await _set(k, v); // plain, from before 1.3.0: seal it now
+      return v;
+    }
+    try {
+      return await cipher.open(v);
+    } on Object {
+      return null; // sealed under a key this browser no longer has
+    }
+  }
+
+  Future<void> _set(String k, String v) async => prefs.setString(k, await cipher.seal(v));
+
+  /// Patients who have shared with this doctor, most recent first.
+  final List<PatientEntry> patients = [];
+
+  /// Prescriptions this doctor signed, newest first.
+  final List<RxEntry> prescriptions = [];
+
+  /// Private consult notes, newest first.
+  final List<ConsultNote> notes = [];
+
+  PatientEntry? patientByKey(String key) => patients.where((p) => p.key == key).firstOrNull;
+  ReceivedShare? openShareFor(String key) => inbox.where((s) => s.patientKey == key).firstOrNull;
+  List<RxEntry> prescriptionsFor(String key) => [for (final r in prescriptions) if (r.patientKey == key) r];
+  List<ConsultNote> notesFor(String key) => [for (final n in notes) if (n.patientKey == key) n];
+
+  Future<void> _savePractice() async {
+    await _set(_kPatients, jsonEncode([for (final p in patients) p.toJson()]));
+    await _set(_kRx, jsonEncode([for (final r in prescriptions) r.toJson()]));
+    await _set(_kNotes, jsonEncode([for (final n in notes) n.toJson()]));
+  }
+
+  Future<void> _loadPractice() async {
+    List<Map<String, Object?>> list(String? raw) => [for (final m in (jsonDecode(raw ?? '[]') as List)) (m as Map).cast()];
+    patients
+      ..clear()
+      ..addAll(list(await _get(_kPatients)).map(PatientEntry.fromJson));
+    prescriptions
+      ..clear()
+      ..addAll(list(await _get(_kRx)).map(RxEntry.fromJson));
+    notes
+      ..clear()
+      ..addAll(list(await _get(_kNotes)).map(ConsultNote.fromJson));
+  }
+
+  /// Adds the patient behind [sh] to the register, or updates them.
+  void registerShare(ReceivedShare sh) {
+    final p = patientByKey(sh.patientKey);
+    final levels = [for (final l in (sh.bundle['levels'] as List?) ?? const []) '$l'];
+    if (p == null) {
+      patients.add(PatientEntry(
+        key: sh.patientKey,
+        name: sh.patientName,
+        sex: sh.patient['sex'] as String?,
+        age: sh.patient['age'] as int?,
+        lifeTrackId: sh.patient['lifeTrackId'] as String?,
+        firstSeen: sh.receivedAt,
+        lastShared: sh.receivedAt,
+        levels: levels,
+      ));
+    } else {
+      p
+        ..name = sh.patientName
+        ..sex = sh.patient['sex'] as String? ?? p.sex
+        ..age = sh.patient['age'] as int? ?? p.age
+        ..lifeTrackId = sh.patient['lifeTrackId'] as String? ?? p.lifeTrackId
+        ..lastShared = sh.receivedAt
+        ..shares += 1
+        ..levels = levels;
+    }
+    patients.sort((a, b) => b.lastShared.compareTo(a.lastShared));
+  }
+
+  /// Adds or replaces (same id) a private consult note.
+  Future<void> saveNote(ConsultNote n) async {
+    for (final f in [n.complaint, n.findings, n.advice]) {
+      if (f.length > ConsultNote.maxField) throw ArgumentError('Keep each part under ${ConsultNote.maxField} characters.');
+    }
+    notes
+      ..removeWhere((x) => x.id == n.id)
+      ..add(n)
+      ..sort((a, b) => b.at.compareTo(a.at));
+    await _savePractice();
+  }
+
+  Future<void> deleteNote(String id) async {
+    notes.removeWhere((x) => x.id == id);
+    await _savePractice();
+  }
+
+  static String newNoteId() => 'note-${DateTime.now().microsecondsSinceEpoch}';
   final http.Client _http = http.Client();
 
   SimpleKeyPair? enc;
@@ -88,16 +203,17 @@ class DoctorSession {
   /// Names whose shares the patient closed since the screen last showed it.
   final List<String> closedByPatient = [];
 
-  static Future<DoctorSession> load(Uri base) async {
-    final s = DoctorSession._(await SharedPreferences.getInstance(), base);
-    final encSeed = s.prefs.getString(_kEnc);
-    final signSeed = s.prefs.getString(_kSign);
+  static Future<DoctorSession> load(Uri base, {LocalCipher? cipher}) async {
+    final s = DoctorSession._(await SharedPreferences.getInstance(), base, cipher ?? platformCipher());
+    final encSeed = await s._get(_kEnc);
+    final signSeed = await s._get(_kSign);
     if (encSeed != null && signSeed != null) {
       s.enc = await X25519().newKeyPairFromSeed(base64Decode(encSeed));
       s.sign = await Ed25519().newKeyPairFromSeed(base64Decode(signSeed));
-      s.profile = (jsonDecode(s.prefs.getString(_kProfile) ?? '{}') as Map).cast();
-      s.certificateQr = s.prefs.getString(_kCert);
+      s.profile = (jsonDecode(await s._get(_kProfile) ?? '{}') as Map).cast();
+      s.certificateQr = await s._get(_kCert);
       s.state = s.certificateQr != null ? EnrolmentState.approved : EnrolmentState.pending;
+      await s._loadPractice();
       await s._restoreInbox();
     }
     return s;
@@ -124,9 +240,9 @@ class DoctorSession {
     enc = e;
     sign = s;
     profile = {'name': name, 'speciality': speciality, 'council': council, 'registrationNo': registrationNo.toUpperCase()};
-    await prefs.setString(_kEnc, base64Encode(await e.extractPrivateKeyBytes()));
-    await prefs.setString(_kSign, base64Encode(await s.extractPrivateKeyBytes()));
-    await prefs.setString(_kProfile, jsonEncode(profile));
+    await _set(_kEnc, base64Encode(await e.extractPrivateKeyBytes()));
+    await _set(_kSign, base64Encode(await s.extractPrivateKeyBytes()));
+    await _set(_kProfile, jsonEncode(profile));
     state = EnrolmentState.pending;
   }
 
@@ -139,7 +255,7 @@ class DoctorSession {
     state = EnrolmentState.values.byName(j['status']! as String);
     if (state == EnrolmentState.approved) {
       certificateQr = j['certificate'] as String?;
-      if (certificateQr != null) await prefs.setString(_kCert, certificateQr!);
+      if (certificateQr != null) await _set(_kCert, certificateQr!);
     }
   }
 
@@ -176,9 +292,11 @@ class DoctorSession {
           }
           continue;
         }
-        inbox.removeWhere((s) => s.patientName == ((bundle['patient'] as Map?)?['name']));
         final grantId = i['grantId']! as String;
-        inbox.insert(0, ReceivedShare(grantId: grantId, bundle: bundle, expiresAt: DateTime.parse(header['exp']! as String), receivedAt: now));
+        final share = ReceivedShare(grantId: grantId, bundle: bundle, expiresAt: DateTime.parse(header['exp']! as String), receivedAt: now);
+        inbox.removeWhere((s) => s.patientKey == share.patientKey);
+        inbox.insert(0, share);
+        registerShare(share);
         _sealed[grantId] = (i['envelope']! as String, now);
         n++;
       } on ShareExpired {
@@ -186,6 +304,7 @@ class DoctorSession {
       }
     }
     await _saveInbox();
+    if (n > 0) await _savePractice();
     return n;
   }
 
@@ -203,14 +322,14 @@ class DoctorSession {
 
   Future<void> _saveInbox() async {
     _sealed.removeWhere((id, _) => !inbox.any((s) => s.grantId == id));
-    await prefs.setString(_kInbox, jsonEncode([
+    await _set(_kInbox, jsonEncode([
       for (final e in _sealed.entries) {'grantId': e.key, 'envelope': e.value.$1, 'at': e.value.$2.toIso8601String()},
     ]));
   }
 
   Future<void> _restoreInbox() async {
     final now = DateTime.now();
-    for (final i in (jsonDecode(prefs.getString(_kInbox) ?? '[]') as List).cast<Map>()) {
+    for (final i in (jsonDecode(await _get(_kInbox) ?? '[]') as List).cast<Map>()) {
       final raw = i['envelope']! as String;
       final env = base64Decode(raw);
       try {
@@ -247,11 +366,17 @@ class DoctorSession {
       headers: {RelayApi.hExpires: exp.toUtc().toIso8601String(), 'content-type': 'application/octet-stream'},
     );
     if (r.statusCode != 201) throw Exception('Prescription not delivered (${r.statusCode}).');
+    prescriptions.insert(0, RxEntry(patientKey: share.patientKey, patientName: share.patientName, patientLine: share.patientLine, rx: rx));
+    await _savePractice();
     return rx;
   }
 
   Future<void> forget() async {
     await prefs.clear();
+    await cipher.reset();
+    patients.clear();
+    prescriptions.clear();
+    notes.clear();
     enc = null;
     sign = null;
     certificateQr = null;

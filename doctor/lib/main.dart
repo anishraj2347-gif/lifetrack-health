@@ -2,11 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
+import 'patients.dart';
 import 'session.dart';
-import 'summary.dart';
-import 'print_rx.dart';
 import 'theme.dart';
 
 const _relay = String.fromEnvironment('LT_RELAY_URL', defaultValue: 'http://127.0.0.1:8787');
@@ -38,7 +36,6 @@ class _ShellState extends State<Shell> {
   DoctorSession get s => widget.session;
   Timer? _poll;
   String? _error;
-  ReceivedShare? _open;
 
   @override
   void initState() {
@@ -64,8 +61,7 @@ class _ShellState extends State<Shell> {
         }
         s.closedByPatient.clear();
       }
-      if (_open != null && !s.inbox.contains(_open)) _open = null;
-      _error = null;
+            _error = null;
     } on Object catch (e) {
       _error = '$e'.replaceFirst('Exception: ', '');
     }
@@ -117,105 +113,80 @@ class _ShellState extends State<Shell> {
     ),
   );
 
-  Widget _home() {
-    final now = DateTime.now();
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(
-          width: 360,
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              Text('LifeTrack for doctors', style: DT.muted),
-              const SizedBox(height: 4),
-              Text('${s.profile['name']}', style: DT.h1),
-              Text('${s.profile['speciality']} · ${s.registrationNo}', style: DT.muted),
-              const SizedBox(height: 20),
-              Card0(
-                dark: true,
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: DT.raised, borderRadius: BorderRadius.circular(16)),
-                      child: QrImageView(data: s.certificateQr!, size: 240, backgroundColor: DT.raised),
+  /// Patients · Prescriptions · My code. Wide screens keep the code in a
+  /// side panel; phones get a bottom bar.
+  int _tab = 0;
+  String? _openKey;
+  SignedPrescription? _prefill;
+
+  void _openPatient(String key, {SignedPrescription? prefill}) => setState(() {
+        _openKey = key;
+        _prefill = prefill;
+      });
+
+  Widget _home() => LayoutBuilder(builder: (context, box) {
+        final wide = box.maxWidth >= 1000;
+        final Widget content = _openKey != null
+            ? PatientScreen(
+                key: ValueKey('$_openKey/${_prefill?.issuedAt}'),
+                session: s,
+                patientKey: _openKey!,
+                prefill: _prefill,
+                onClose: () => setState(() {
+                  _openKey = null;
+                  _prefill = null;
+                }),
+                onChanged: () => setState(() {}),
+              )
+            : switch (wide && _tab == 2 ? 0 : _tab) {
+                0 => PatientsTab(session: s, onOpen: _openPatient, onChanged: () => setState(() {})),
+                1 => PrescriptionsTab(session: s, onOpenPatient: _openPatient, onWriteAgain: (e) => _openPatient(e.patientKey, prefill: e.rx)),
+                _ => MyCodePanel(session: s, error: _error),
+              };
+        if (wide) {
+          return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            SizedBox(width: 340, child: MyCodePanel(session: s, error: _error)),
+            Expanded(
+              child: Container(
+                color: DT.ground,
+                child: Column(children: [
+                  if (_openKey == null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: SegmentedButton<int>(
+                          segments: [
+                            ButtonSegment(value: 0, label: Text('Patients · ${s.patients.length}'), icon: const Icon(Icons.people_outline)),
+                            ButtonSegment(value: 1, label: Text('Prescriptions · ${s.prescriptions.length}'), icon: const Icon(Icons.receipt_long_outlined)),
+                          ],
+                          selected: {_tab == 2 ? 0 : _tab},
+                          onSelectionChanged: (v) => setState(() => _tab = v.first),
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Your verified code',
-                      style: TextStyle(color: DT.onDark, fontWeight: FontWeight.w600, fontSize: 16),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'The patient scans this with LifeTrack, sees your name and registration, and chooses what to share.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: DT.onDarkMuted, fontSize: 12.5),
-                    ),
+                  Expanded(child: content),
+                ]),
+              ),
+            ),
+          ]);
+        }
+        return Scaffold(
+          backgroundColor: DT.ground,
+          body: content,
+          bottomNavigationBar: _openKey != null
+              ? null
+              : NavigationBar(
+                  selectedIndex: _tab,
+                  onDestinationSelected: (i) => setState(() => _tab = i),
+                  destinations: [
+                    NavigationDestination(icon: Badge(isLabelVisible: s.inbox.isNotEmpty, label: Text('${s.inbox.length}'), child: const Icon(Icons.people_outline)), label: 'Patients'),
+                    const NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Prescriptions'),
+                    const NavigationDestination(icon: Icon(Icons.qr_code_2), label: 'My code'),
                   ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              ExpansionTile(
-                title: Text('Copy code instead', style: DT.muted),
-                children: [SelectableText(s.certificateQr!, style: const TextStyle(fontSize: 10))],
-              ),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(_error!, style: const TextStyle(color: DT.signal)),
-                ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Container(
-            color: DT.ground,
-            child: _open == null
-                ? ListView(
-                    padding: const EdgeInsets.all(24),
-                    children: [
-                      Text('Shared with you', style: DT.h1),
-                      const SizedBox(height: 4),
-                      Text('Shares arrive here the moment a patient approves. They close when access ends.', style: DT.muted),
-                      const SizedBox(height: 16),
-                      RequestByIdCard(session: s, onSent: () => setState(() {})),
-                      const SizedBox(height: 8),
-                      if (s.inbox.isEmpty) Card0(child: Text('Nothing yet. Ask the patient to scan your code, or request access by their LifeTrack ID.', style: DT.body)),
-                      for (final sh in s.inbox)
-                        Card0(
-                          onTap: () => setState(() => _open = sh),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                backgroundColor: DT.accent,
-                                child: Text(
-                                  sh.patientName.characters.first,
-                                  style: const TextStyle(color: DT.ink, fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('${sh.patientName} · ${sh.patient['age']}', style: DT.h2),
-                                    Text(((sh.bundle['levels'] as List?) ?? const []).join(' · '), style: DT.muted),
-                                  ],
-                                ),
-                              ),
-                              Countdown(until: sh.expiresAt),
-                            ],
-                          ),
-                        ),
-                    ],
-                  )
-                : PatientScreen(session: s, share: _open!, onClose: () => setState(() => _open = null), now: now),
-          ),
-        ),
-      ],
-    );
-  }
+        );
+      });
 }
 
 class EnrolScreen extends StatefulWidget {
@@ -284,237 +255,6 @@ class _EnrolScreenState extends State<EnrolScreen> {
       ),
     ),
   );
-}
-
-class PatientScreen extends StatefulWidget {
-  const PatientScreen({super.key, required this.session, required this.share, required this.onClose, required this.now});
-  final DoctorSession session;
-  final ReceivedShare share;
-  final VoidCallback onClose;
-  final DateTime now;
-  @override
-  State<PatientScreen> createState() => _PatientScreenState();
-}
-
-class _PatientScreenState extends State<PatientScreen> {
-  final _med = TextEditingController();
-  final _ing = TextEditingController();
-  final _days = TextEditingController(text: '30');
-  final _note = TextEditingController();
-  final _dose = [0, 0, 1];
-  final _qual = TextEditingController(text: 'MBBS, MD');
-  String? _timing = 'after_food';
-
-  static const _timings = {'before_food': 'Before food', 'after_food': 'After food', 'with_food': 'With food', null: 'Any time'};
-  SignedPrescription? _sent;
-  String? _error;
-
-  @override
-  Widget build(BuildContext context) {
-    final sh = widget.share;
-    final p = sh.patient;
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        Row(
-          children: [
-            TextButton(onPressed: widget.onClose, child: const Text('← All shares')),
-            const Spacer(),
-            Countdown(until: sh.expiresAt),
-          ],
-        ),
-        Card0(
-          dark: true,
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${p['name']} · ${p['sex'] == 'female'
-                          ? 'F'
-                          : p['sex'] == 'male'
-                          ? 'M'
-                          : '—'} · ${p['age']}',
-                      style: const TextStyle(color: DT.onDark, fontSize: 20, fontWeight: FontWeight.w600),
-                    ),
-                    if (sh.bundle['sharedBy'] != null)
-                      Text(
-                        'Shared on their behalf by ${sh.bundle['sharedBy']}',
-                        style: const TextStyle(color: DT.accent, fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                    Text(
-                      'Read-only · shared ${sh.receivedAt.toString().substring(11, 16)} · ${((sh.bundle['levels'] as List?) ?? const []).join(' · ')}',
-                      style: const TextStyle(color: DT.onDarkMuted, fontSize: 12.5),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        LayoutBuilder(
-          builder: (c, box) {
-            final wide = box.maxWidth > 900;
-            final left = SummaryPanel(bundle: sh.bundle);
-            final right = _prescribe(sh);
-            return wide
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: left),
-                      const SizedBox(width: 16),
-                      Expanded(flex: 2, child: right),
-                    ],
-                  )
-                : Column(children: [left, right]);
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _prescribe(ReceivedShare sh) {
-    if (_sent != null) {
-      final rx = _sent!;
-      return Card0(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Sent to ${sh.patientName}', style: DT.h2),
-            const SizedBox(height: 6),
-            Text('Signed and encrypted to their phone. It appears in their records as signed by you.', style: DT.muted),
-            const Divider(height: 24),
-            Text('Your copy — keep it in your consult record', style: DT.muted),
-            const SizedBox(height: 6),
-            SelectableText(
-              '${rx.medicine}${rx.ingredient == null ? '' : ' (${rx.ingredient})'}\n'
-              'Dose ${rx.morning}-${rx.afternoon}-${rx.night} · ${_timings[rx.timing]} · ${rx.days} days\n'
-              '${rx.note ?? ''}\n'
-              '${rx.doctorName}, ${rx.qualification} · Reg. ${rx.registrationNo}\n'
-              'Issued ${rx.issuedAt.toLocal().toString().substring(0, 16)} for ${sh.patientName}',
-              style: DT.body,
-            ),
-            const SizedBox(height: 12),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              Pill('Print / save as PDF', onTap: () => printPrescription(
-                    rx: rx,
-                    patientName: sh.patientName,
-                    patientLine: [
-                      if (sh.patient['sex'] case final String sex) sex == 'female' ? 'F' : sex == 'male' ? 'M' : '',
-                      if (sh.patient['age'] != null) '${sh.patient['age']} y',
-                    ].where((x) => x.isNotEmpty).join(' · '),
-                    council: widget.session.profile['council'] ?? '',
-                    speciality: widget.session.profile['speciality'] ?? '',
-                  )),
-              Pill('Write another', dark: false, onTap: () => setState(() => _sent = null)),
-            ]),
-          ],
-        ),
-      );
-    }
-    return Card0(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Write a prescription', style: DT.h2),
-          Text('For ${sh.patientName} only.', style: DT.muted),
-          const SizedBox(height: 12),
-          Field('Medicine', _med, hint: 'Atorvastatin 10 mg'),
-          Field('Active ingredient', _ing, hint: 'atorvastatin'),
-          Text('Dose · morning, afternoon, night', style: DT.label),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              for (var i = 0; i < 3; i++) ...[
-                Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _dose[i] = (_dose[i] + 1) % 4),
-                    child: Container(
-                      height: 44,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(color: _dose[i] > 0 ? DT.ink : DT.raised, borderRadius: BorderRadius.circular(12)),
-                      child: Text(
-                        '${_dose[i]}',
-                        style: TextStyle(fontWeight: FontWeight.w600, color: _dose[i] > 0 ? DT.accent : DT.ink),
-                      ),
-                    ),
-                  ),
-                ),
-                if (i < 2) const SizedBox(width: 8),
-              ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text('When to take it', style: DT.label),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final MapEntry(key: k, value: label) in _timings.entries)
-                ChoiceChip(
-                  label: Text(label),
-                  selected: _timing == k,
-                  onSelected: (_) => setState(() => _timing = k),
-                  selectedColor: DT.ink,
-                  labelStyle: TextStyle(color: _timing == k ? DT.onDark : DT.ink, fontWeight: FontWeight.w500),
-                  shape: const StadiumBorder(),
-                  showCheckmark: false,
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Field('Days', _days),
-          Field('Note to patient', _note, hint: 'Repeat lipid panel in 3 months'),
-          Field('Your qualification', _qual),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(_error!, style: const TextStyle(color: DT.signal)),
-            ),
-          Pill(
-            'Sign and send',
-            onTap: () async {
-              if (_med.text.trim().isEmpty) {
-                setState(() => _error = 'Name the medicine.');
-                return;
-              }
-              final s = widget.session;
-              try {
-                final rx = await s.sendPrescription(
-                  sh,
-                  SignedPrescription(
-                    patientId: (sh.bundle['patientRef'] as String?) ?? '',
-                    doctorRegistryId: s.registrationNo,
-                    doctorName: s.profile['name']!,
-                    qualification: _qual.text.trim(),
-                    registrationNo: s.registrationNo,
-                    medicine: _med.text.trim(),
-                    ingredient: _ing.text.trim().isEmpty ? null : _ing.text.trim().toLowerCase(),
-                    morning: _dose[0],
-                    afternoon: _dose[1],
-                    night: _dose[2],
-                    days: int.tryParse(_days.text) ?? 30,
-                    issuedAt: DateTime.now().toUtc(),
-                    note: _note.text.trim().isEmpty ? null : _note.text.trim(),
-                    timing: _timing,
-                  ),
-                );
-                setState(() {
-                  _sent = rx;
-                  _error = null;
-                });
-              } on Object catch (e) {
-                setState(() => _error = '$e'.replaceFirst('Exception: ', ''));
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class Countdown extends StatefulWidget {
