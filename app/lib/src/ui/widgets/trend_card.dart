@@ -13,32 +13,41 @@ import 'parts.dart';
 /// range, no colour by value (CLAUDE.md #8). Lime marks only the latest
 /// column — "now" — which is the one meaning lime has in this app.
 class TrendCard extends StatelessWidget {
-  const TrendCard({super.key, required this.analyte, required this.points});
+  const TrendCard({super.key, required this.series, this.onTap, this.maxColumns = 7});
 
-  final String analyte;
+  /// One analyte in one unit, oldest first.
+  final TrendSeries series;
+  final VoidCallback? onTap;
+  final int maxColumns;
 
-  /// (date, value, unit), oldest first, all in one unit.
-  final List<(DateTime, double, String)> points;
+  String get analyte => series.analyte;
 
-  /// The analyte with the most results in a single unit, if any has ≥ 2.
-  static TrendCard? pick(List<HealthRecord> records) {
-    final series = <String, List<(DateTime, double, String)>>{};
+  /// The minimum number of results before a test gets a trend: more than two.
+  static const minResults = 3;
+
+  /// Every test with at least [min] results in one unit, the most recently
+  /// measured first.
+  static List<TrendSeries> all(List<HealthRecord> records, {int min = minResults}) {
+    final by = <String, List<(HealthRecord, LabResult)>>{};
     for (final r in records) {
       for (final res in r.results) {
-        series.putIfAbsent('${res.analyte}|${res.unit}', () => []).add((r.date, res.value, res.unit));
+        by.putIfAbsent('${res.analyte}|${res.unit}', () => []).add((r, res));
       }
     }
-    final best = series.entries.where((e) => e.value.length >= 2).toList()
-      ..sort((a, b) => b.value.length.compareTo(a.value.length));
-    if (best.isEmpty) return null;
-    final pts = best.first.value..sort((a, b) => a.$1.compareTo(b.$1));
-    return TrendCard(analyte: best.first.key.split('|').first, points: pts.length > 7 ? pts.sublist(pts.length - 7) : pts);
+    final out = [
+      for (final e in by.entries)
+        if (e.value.length >= min)
+          TrendSeries(e.key.split('|').first, e.key.split('|').last, e.value..sort((a, b) => a.$1.effectiveDate.compareTo(b.$1.effectiveDate))),
+    ]..sort((a, b) => b.points.last.$1.effectiveDate.compareTo(a.points.last.$1.effectiveDate));
+    return out;
   }
 
   static const _rows = 6;
 
   @override
   Widget build(BuildContext context) {
+    final all = [for (final (r, x) in series.points) (r.effectiveDate, x.value, x.unit)];
+    final points = all.length > maxColumns ? all.sublist(all.length - maxColumns) : all;
     final values = [for (final p in points) p.$2];
     final lo = values.reduce((a, b) => a < b ? a : b);
     final hi = values.reduce((a, b) => a > b ? a : b);
@@ -47,6 +56,7 @@ class TrendCard extends StatelessWidget {
 
     return ShadCard(
       color: LT.primary,
+      onTap: onTap,
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -63,6 +73,7 @@ class TrendCard extends StatelessWidget {
               Text(analyteName(analyte), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
             ]),
           ),
+          if (onTap != null) const Icon(LucideIcons.chevronRight, color: LT.onDarkMuted),
         ]),
         const SizedBox(height: 16),
         Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
@@ -71,7 +82,7 @@ class TrendCard extends StatelessWidget {
           Text(latest.$3, style: const TextStyle(fontSize: 14, color: LT.onDarkMuted)),
         ]),
         const SizedBox(height: 4),
-        Text('${points.length} reports · ${fullDate(points.first.$1)} – ${fullDate(latest.$1)}', style: const TextStyle(fontSize: 11.5, color: LT.onDarkMuted)),
+        Text('${all.length} results · ${fullDate(all.first.$1)} – ${fullDate(latest.$1)}${onTap != null ? ' · tap for every result' : ''}', style: const TextStyle(fontSize: 11.5, color: LT.onDarkMuted)),
         const SizedBox(height: 18),
         SizedBox(
           height: _rows * 14.0 + 22,
@@ -110,4 +121,12 @@ class TrendCard extends StatelessWidget {
           color: filled ? (now ? LT.accent : LT.onDark) : const Color(0xFF2A2A28),
         ),
       );
+}
+
+/// One test in one unit: (record, result), oldest first.
+class TrendSeries {
+  const TrendSeries(this.analyte, this.unit, this.points);
+  final String analyte;
+  final String unit;
+  final List<(HealthRecord, LabResult)> points;
 }

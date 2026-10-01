@@ -6,6 +6,12 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.10.0 (1 Oct 2026)
+- Every test with more than two results gets a trend on Records automatically (the most
+  recent as the big card, others as tiles). Tap one for every result: value, date, how long
+  ago, lab, doctor, source, and one tap to the report or its original photo/PDF.
+- Tests you already have: each test opens the same history.
+
 ### 1.9.0 (1 Oct 2026)
 - Create your own reminders (what, optional note, one or more times, every day / some days /
   once, optional end date); edit, pause or delete them. Today's ones are ticked off on the

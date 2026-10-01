@@ -5,6 +5,7 @@ import '../../model/health_record.dart';
 import '../app_scope.dart';
 import '../../app/test_history.dart';
 import 'tests_you_have_screen.dart';
+import 'test_trend_screen.dart';
 import 'vitals_screen.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
@@ -62,7 +63,8 @@ class _RecordsScreenState extends State<RecordsScreen> {
     }
 
     final name = s.currentPatient?.name ?? '';
-    final trend = _query.isEmpty && _filter == null ? TrendCard.pick(all) : null;
+    final trends = _query.isEmpty && _filter == null ? TrendCard.all(all) : const <TrendSeries>[];
+    void openTrend(TrendSeries t) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TestTrendScreen(analyte: t.analyte, unit: t.unit)));
     return Column(children: [
       const FamilyBar(),
       Masthead(eyebrow: 'Records', title: name),
@@ -110,7 +112,10 @@ class _RecordsScreenState extends State<RecordsScreen> {
                 ),
               ])
             : ListView(padding: const EdgeInsets.only(top: 6, bottom: 8), children: [
-                if (trend != null) Padding(padding: const EdgeInsets.only(top: 8), child: trend),
+                if (trends.isNotEmpty) ...[
+                  Padding(padding: const EdgeInsets.only(top: 8), child: TrendCard(series: trends.first, onTap: () => openTrend(trends.first))),
+                  MoreTrends(series: trends.skip(1).toList()),
+                ],
                 Builder(builder: (context) {
                   final n = TestHistory(all).count;
                   return QuickTiles(

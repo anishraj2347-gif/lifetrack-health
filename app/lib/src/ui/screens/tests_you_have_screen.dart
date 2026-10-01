@@ -9,6 +9,7 @@ import '../theme.dart';
 import '../widgets/parts.dart';
 import '../widgets/summary_view.dart';
 import 'originals_viewer.dart';
+import 'test_trend_screen.dart';
 
 /// Every test the profile on screen already has, to show a doctor before
 /// they order one again. States age and source; never says whether a result
@@ -55,10 +56,12 @@ class TestsYouHaveScreen extends StatelessWidget {
         if (h.isEmpty) const Note('No test results yet. Add a report from Records — a photo or the lab\'s PDF.', icon: LucideIcons.fileText),
         for (final t in h.series)
           ShadCard(
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TestTrendScreen(analyte: t.analyte, unit: t.latest.$2.unit))),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(child: Text(analyteName(t.analyte), style: LT.label.copyWith(fontWeight: FontWeight.w600))),
                 Badge2(ageOf(days(t.latest.$1)), tone: BadgeTone.outline),
+                const Padding(padding: EdgeInsets.only(left: 4), child: Icon(LucideIcons.chevronRight, size: 18, color: LT.inactive)),
               ]),
               const SizedBox(height: 6),
               Text('${fmt(t.latest.$2.value)} ${t.latest.$2.unit}', style: LT.title.copyWith(fontSize: 22)),
