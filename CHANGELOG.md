@@ -6,6 +6,11 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.8.0 (1 Oct 2026)
+- Reminders is its own tab, first in the bar, and the app opens on it: today's medicines to tick
+  off, vaccinations due, what is coming up, and the reminder settings. Records no longer
+  repeats them.
+
 ### 1.7.0 (1 Oct 2026)
 - Import lab reports from a PDF; pages kept as the original.
 - "Tests you already have" card: age, lab and source of every result.

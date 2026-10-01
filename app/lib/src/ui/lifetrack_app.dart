@@ -9,6 +9,7 @@ import 'screens/insights_screen.dart';
 import 'screens/me_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/records_screen.dart';
+import 'screens/reminders_screen.dart';
 import 'screens/share_screen.dart';
 import 'theme.dart';
 
@@ -69,6 +70,7 @@ class _HomeShellState extends State<HomeShell> {
   int _tab = 0;
 
   static const _tabs = [
+    ('Reminders', LucideIcons.bell),
     ('Records', LucideIcons.fileText),
     ('Insights', LucideIcons.activity),
     ('Share', LucideIcons.qrCode),
@@ -80,9 +82,10 @@ class _HomeShellState extends State<HomeShell> {
     body: SafeArea(
       bottom: false,
       child: switch (_tab) {
-        0 => const RecordsScreen(),
-        1 => const InsightsScreen(),
-        2 => const ShareScreen(),
+        0 => const RemindersTab(),
+        1 => const RecordsScreen(),
+        2 => const InsightsScreen(),
+        3 => const ShareScreen(),
         _ => const MeScreen(),
       },
     ),

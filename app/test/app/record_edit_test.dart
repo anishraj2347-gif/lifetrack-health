@@ -83,7 +83,9 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(LifeTrackApp(boot: () async => s));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Telmisartan 40 mg').last); // the list row, below Today's medicines
+    await tester.tap(find.bySemanticsLabel('Records'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Telmisartan 40 mg').last);
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('More'));
     await tester.pumpAndSettle();
@@ -105,5 +107,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(s.records(), isEmpty);
     expect(find.text('No records yet'), findsOneWidget);
+  });
+
+  testWidgets('the app opens on Reminders: today\'s doses there, not repeated in Records', (tester) async {
+    late AppServices s;
+    await tester.runAsync(() async {
+      s = await open();
+      await s.addRecord(rx(s.selfPatientId!));
+    });
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.6;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(LifeTrackApp(boot: () async => s));
+    await tester.pumpAndSettle();
+    expect(find.text("Today's medicines"), findsOneWidget);
+    expect(find.text('Telmisartan 40 mg'), findsNWidgets(2), reason: 'morning and night');
+    await tester.tap(find.bySemanticsLabel('Records'));
+    await tester.pumpAndSettle();
+    expect(find.text("Today's medicines"), findsNothing);
+    expect(find.text('Telmisartan 40 mg'), findsOneWidget, reason: 'the record row only');
   });
 }

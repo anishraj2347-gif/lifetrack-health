@@ -39,6 +39,10 @@ void main() {
     await tester.scrollUntilVisible(find.text('Finish setup'), 200, scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text('Finish setup'));
     await tester.pumpAndSettle();
+    // The app opens on Reminders; the timeline is the next tab.
+    expect(find.text('Reminders'), findsWidgets);
+    await tester.tap(find.bySemanticsLabel('Records'));
+    await tester.pumpAndSettle();
   }
 
   testWidgets('sample onboarding lands on the timeline', (tester) async {

@@ -3,10 +3,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../model/health_record.dart';
 import '../app_scope.dart';
-import 'reminders_screen.dart';
 import '../../app/test_history.dart';
 import 'tests_you_have_screen.dart';
-import 'vaccinations_screen.dart';
 import 'vitals_screen.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
@@ -92,7 +90,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
       Expanded(
         child: shown.isEmpty
             ? ListView(children: [
-                if (all.isEmpty) ...[const VaccinationsCard(), const VitalsCard()],
+                if (all.isEmpty) const VitalsCard(),
                 Padding(
                   padding: const EdgeInsets.all(32),
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -112,8 +110,6 @@ class _RecordsScreenState extends State<RecordsScreen> {
                 ),
               ])
             : ListView(padding: const EdgeInsets.only(top: 6, bottom: 8), children: [
-                const VaccinationsCard(),
-                const TodaysMedicines(),
                 if (trend != null) Padding(padding: const EdgeInsets.only(top: 8), child: trend),
                 Builder(builder: (context) {
                   final n = TestHistory(all).count;

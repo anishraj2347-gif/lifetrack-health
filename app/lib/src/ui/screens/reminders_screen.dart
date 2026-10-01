@@ -3,6 +3,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../reminders/reminder_plan.dart';
 import '../app_scope.dart';
+import '../widgets/family_bar.dart';
+import 'vaccinations_screen.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
 
@@ -158,5 +160,89 @@ class TodaysMedicines extends StatelessWidget {
           ],
       ]),
     );
+  }
+}
+
+/// First tab: what to take today, vaccinations due, and what is coming up —
+/// for the profile on screen, with the settings one tap away.
+class RemindersTab extends StatelessWidget {
+  const RemindersTab({super.key});
+
+  Future<void> _settings(BuildContext context) async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const RemindersScreen()));
+    if (context.mounted) AppScope.changed(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final p = s.currentPatient;
+    final st = s.reminderSettings;
+    final available = s.reminderScheduler != null;
+    final doses = s.todaysDoses();
+    final child = p != null && p.ageAt(s.clock()) < 18;
+    final coming = st.on ? s.reminderPlan().take(6).toList() : const <PlannedReminder>[];
+    final times = [
+      for (final slot in DoseSlot.values)
+        if (doses.any((d) => d.$1 == slot)) '${slot.label} ${_RemindersScreenState.hm(st.times[slot]!)}',
+    ];
+    return Column(children: [
+      const FamilyBar(),
+      Masthead(
+        eyebrow: 'Reminders',
+        title: p?.name ?? '',
+        trailing: available ? Badge2(st.on ? 'On' : 'Off', tone: st.on ? BadgeTone.trace : BadgeTone.outline) : null,
+      ),
+      Expanded(
+        child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 96), children: [
+          if (available)
+            ShadCard(
+              margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              onTap: () => _settings(context),
+              child: Row(children: [
+                IconTile(st.on ? LucideIcons.bellRing : LucideIcons.bellOff),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(st.on ? 'Medicine reminders are on' : 'Medicine reminders are off', style: LT.label),
+                    const SizedBox(height: 4),
+                    Text(
+                      st.on
+                          ? (times.isEmpty ? 'Times, and whether names show on the lock screen' : times.join(' · '))
+                          : 'Tap to have the phone remind you at the times you choose',
+                      style: LT.small,
+                    ),
+                  ]),
+                ),
+                const Icon(LucideIcons.chevronRight, color: LT.inactive),
+              ]),
+            ),
+          const TodaysMedicines(),
+          if (child) const VaccinationsCard(),
+          if (doses.isEmpty && !child)
+            const Note(
+              'Nothing to take today. Reminders come from prescriptions that have a dose — add one in Records, and it shows here.',
+              icon: LucideIcons.pill,
+            ),
+          if (coming.isNotEmpty) ...[
+            const Eyebrow('Coming up'),
+            for (final r in coming)
+              ShadCard(
+                child: Row(children: [
+                  Icon(r.vaccine != null ? LucideIcons.syringe : switch (r.slot) { DoseSlot.morning => LucideIcons.sunrise, DoseSlot.afternoon => LucideIcons.sun, DoseSlot.night => LucideIcons.moon }, size: 18, color: LT.ink2),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('${r.title} · ${dateTime(r.at)}', style: LT.small),
+                      const SizedBox(height: 4),
+                      Text(r.body(showNames: true, selfPatientId: s.selfPatientId), style: LT.label),
+                    ]),
+                  ),
+                ]),
+              ),
+          ],
+        ]),
+      ),
+    ]);
   }
 }
