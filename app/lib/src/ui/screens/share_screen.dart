@@ -9,6 +9,7 @@ import '../theme.dart';
 import '../widgets/parts.dart';
 import 'doctor_share_screen.dart';
 import 'show_on_phone_screen.dart';
+import 'tests_you_have_screen.dart';
 
 String describeActor(String actorId) {
   if (actorId == Actors.planeA) return 'On-device insights';
@@ -114,6 +115,7 @@ class ShareScreen extends StatelessWidget {
         ),
       ] else
         const Note('Sharing with a doctor\'s device is not set up in this build. "Show on my phone" works without it.', icon: LucideIcons.cloudOff),
+      const TestsYouHaveCard(margin: EdgeInsets.fromLTRB(16, 0, 16, 12)),
       if (sharing != null) const _Requests(),
       const Eyebrow('Who has access now'),
       if (grants.isEmpty)

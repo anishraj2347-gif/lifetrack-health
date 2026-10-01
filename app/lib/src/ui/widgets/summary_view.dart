@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../ai/plane_a/reference_ranges.dart' show analyteName;
 import '../theme.dart';
+import '../../app/test_history.dart' show ageOf;
 import 'parts.dart';
 
 /// Renders a share bundle the way a doctor reads it in an OPD: allergies,
@@ -14,13 +15,7 @@ class SummaryView extends StatelessWidget {
   /// Opens a record's original pages; the test row shows a link when set.
   final void Function(String recordId)? onOpenOriginal;
 
-  static String age(int days) => days < 14
-      ? '$days days ago'
-      : days < 60
-          ? '${(days / 7).round()} weeks ago'
-          : days < 730
-              ? '${(days / 30.4).round()} months ago'
-              : '${(days / 365).round()} years ago';
+  static String age(int days) => ageOf(days);
 
   static (String, BadgeTone) sourceBadge(String s, [String? original]) => switch (s) {
         'signed' => ('Lab / doctor signed', BadgeTone.trace),
