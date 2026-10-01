@@ -82,7 +82,7 @@ class _RecordScreenState extends State<RecordScreen> {
           },
           itemBuilder: (_) => [
             if (r.editable) const PopupMenuItem(value: 'edit', child: Text('Edit'))
-            else const PopupMenuItem(enabled: false, value: 'signed', child: Text('Signed — can\'t be edited')),
+            else const PopupMenuItem(enabled: false, value: 'signed', child: Text('Signed — kept as issued')),
             const PopupMenuItem(value: 'delete', child: Text('Delete')),
           ],
         ),

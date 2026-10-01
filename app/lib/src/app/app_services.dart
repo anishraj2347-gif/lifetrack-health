@@ -310,7 +310,7 @@ class AppServices {
   /// their content is the lab's or doctor's, not the patient's to change.
   Future<void> updateRecord(HealthRecord r) async {
     final old = repository.recordsOf(r.patientId).where((x) => x.id == r.id).firstOrNull ?? (throw StateError('No such record.'));
-    if (!old.editable) throw StateError('A signed record cannot be changed.');
+    if (!old.editable) throw StateError('LifeTrack keeps signed records as they were issued.');
     await repository.add(r);
     await audit.append(AuditEntry(
       at: clock(),
