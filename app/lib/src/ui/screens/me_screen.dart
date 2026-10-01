@@ -15,6 +15,7 @@ import '../widgets/parts.dart';
 import 'data_rights_screen.dart';
 import 'abha_screen.dart';
 import 'add_family_screen.dart';
+import 'family_overview_screen.dart';
 import '../../app/app_version.dart';
 import 'backup_screens.dart';
 import 'reminders_screen.dart';
@@ -138,6 +139,21 @@ class MeScreen extends StatelessWidget {
         ]),
       ),
       const Eyebrow('Family on this phone'),
+      ShadCard(
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FamilyOverviewScreen())),
+        child: Row(children: [
+          const IconTile(LucideIcons.users),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Family overview', style: LT.label),
+              const SizedBox(height: 4),
+              Text('${s.familyOnPhone().length} on this phone · you are the head of family', style: LT.small),
+            ]),
+          ),
+          const Icon(LucideIcons.chevronRight, color: LT.inactive),
+        ]),
+      ),
       for (final f in s.familyOnPhone().where((f) => f.id != s.selfPatientId))
         () {
           final c = s.custodyOf(f.id)!;

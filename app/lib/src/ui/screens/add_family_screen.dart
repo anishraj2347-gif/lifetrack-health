@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'package:lifetrack_protocol/lifetrack_protocol.dart' show IdentityAttestation;
 
+import '../../family/family_role.dart';
 import '../../identity/identity_verifier.dart';
 import '../../model/custody.dart';
 import '../../model/patient.dart';
@@ -84,14 +85,7 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
         buttonLabel: child && _newborn ? 'Share the birth certificate from my DigiLocker' : 'Verify with DigiLocker (Aadhaar)',
         onVerified: (x) => setState(() => _verified = x),
       ),
-      if (v != null)
-        LabeledField(
-          label: 'They are your…',
-          child: Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final r in child ? const ['son', 'daughter'] : const ['mother', 'father', 'grandmother', 'grandfather', 'spouse'])
-              Chip2(r, selected: _relation.text == r, onTap: () => setState(() => _relation.text = r)),
-          ]),
-        ),
+      if (v != null) _rolePicker(child),
       if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
@@ -128,6 +122,33 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
         else
           const Note('Linking an adult with their own phone needs the relay, which is not set up in this build.', icon: LucideIcons.cloudOff),
       ]);
+
+  /// Who they are to the head of family (you), grouped by generation.
+  Widget _rolePicker(bool child) {
+    final head = AppScope.of(context).selfPatient?.name.split(' ').first ?? 'you';
+    final roles = child ? FamilyRole.forChild : FamilyRole.forAdult;
+    final gens = {for (final r in roles) r.generation}.toList()..sort();
+    return LabeledField(
+      label: 'Who are they to $head, the head of family?',
+      hint: child ? 'A child under 18 is added by their parent. A younger sister or a grandchild is added by their own parent, on that parent\'s phone.' : null,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        for (final g in gens) ...[
+          if (gens.length > 1) Padding(padding: const EdgeInsets.only(top: 6, bottom: 6), child: Text(_generationLabel(g), style: LT.small.copyWith(fontWeight: FontWeight.w600))),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final r in roles.where((r) => r.generation == g)) Chip2(r.label, selected: _relation.text == r.name, onTap: () => setState(() => _relation.text = r.name)),
+          ]),
+        ],
+      ]),
+    );
+  }
+
+  static String _generationLabel(int g) => switch (g) {
+        -2 => 'Grandparents',
+        -1 => 'Parents and elders',
+        0 => 'Same generation',
+        1 => 'Children',
+        _ => 'Grandchildren',
+      };
 
   Widget _option(IconData icon, String title, String body, VoidCallback onTap) => ShadCard(
         onTap: onTap,
@@ -169,13 +190,7 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
           for (final x in Sex.values) Chip2(x == Sex.unspecified ? 'Prefer not to say' : x.name, selected: _sex == x, onTap: () => setState(() => _sex = x)),
         ]),
       ),
-      LabeledField(
-        label: child ? 'They are your…' : 'They are your…',
-        child: Wrap(spacing: 8, runSpacing: 8, children: [
-          for (final r in child ? const ['son', 'daughter'] : const ['mother', 'father', 'grandmother', 'grandfather', 'spouse'])
-            Chip2(r, selected: _relation.text == r, onTap: () => setState(() => _relation.text = r)),
-        ]),
-      ),
+      _rolePicker(child),
       if (child)
         ShadCard(
           onTap: () => setState(() => _parent = !_parent),

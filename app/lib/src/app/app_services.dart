@@ -35,6 +35,7 @@ import '../reminders/reminder_plan.dart';
 import '../vaccines/uip_schedule.dart';
 import '../model/abha.dart';
 import '../family/family_link.dart';
+import '../family/family_role.dart';
 import '../identity/identity_verifier.dart';
 import '../identity/lifetrack_ids.dart';
 import '../security/screen_privacy.dart';
@@ -739,6 +740,20 @@ class AppServices {
       repository.custodyOf(patientId) ??
       (patientId == selfPatientId ? Custody(patientId: patientId, kind: CustodyKind.self, custodianId: patientId, relation: 'self') : null);
 
+  /// The head of family's view: who each person is to the head. A child's
+  /// role stays son or daughter — only their parent can hold it.
+  Future<void> setRole(String patientId, FamilyRole role) async {
+    final c = repository.custodyOf(patientId);
+    if (c == null || c.kind == CustodyKind.self) throw const CustodyRefused('The head of family has no role to set.');
+    if (c.kind == CustodyKind.childOfParent && !FamilyRole.forChild.contains(role)) {
+      throw const CustodyRefused('A child on this phone is your son or daughter.');
+    }
+    final old = c.relation;
+    await repository.saveCustody(c.withRelation(role.name));
+    await audit.append(AuditEntry(at: clock(), actorId: Actors.patient(selfPatientId!), patientId: patientId, action: AuditAction.edit, detail: 'Role changed: ${FamilyRole.describe(old)} → ${role.label.toLowerCase()}'));
+    await _backUpQuietly();
+  }
+
   Future<void> switchTo(String patientId) async {
     if (!familyOnPhone().any((p) => p.id == patientId)) throw const CustodyRefused('That profile is not on this phone.');
     settings['currentPatientId'] = patientId;
@@ -751,6 +766,9 @@ class AppServices {
   Future<Patient> addChild({required String name, required DateTime dob, required Sex sex, required String relation, IdentityAttestation? verification}) async {
     await _settleOwner();
     final self = selfPatient ?? (throw const CustodyRefused('Set up your own profile first.'));
+    if (!FamilyRole.forChild.contains(FamilyRole.parse(relation))) {
+      throw const CustodyRefused('A child under 18 is added only by their parent, as your son or daughter. Their own parent can add them on their phone.');
+    }
     if (identityRequired && verification == null) {
       throw const CustodyRefused('Verify the child with DigiLocker: their own Aadhaar, or your DigiLocker birth certificate for a newborn.');
     }
@@ -795,6 +813,9 @@ class AppServices {
   }) async {
     await _settleOwner();
     final self = selfPatient ?? (throw const CustodyRefused('Set up your own profile first.'));
+    if (!FamilyRole.forAdult.contains(FamilyRole.parse(relation)) && FamilyRole.parse(relation) != FamilyRole.spouse) {
+      throw const CustodyRefused('Pick who they are to you.');
+    }
     if (identityRequired && verification?.method != IdentityMethod.aadhaarDigiLocker) {
       throw const CustodyRefused('They verify with their own Aadhaar through DigiLocker, on this phone.');
     }

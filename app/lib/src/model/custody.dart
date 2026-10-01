@@ -83,6 +83,19 @@ class Custody {
         endedAt: at,
       );
 
+  /// The same custody with a corrected role (only the label changes).
+  Custody withRelation(String r) => Custody(
+        patientId: patientId,
+        kind: kind,
+        custodianId: custodianId,
+        relation: r,
+        method: method,
+        consentedAt: consentedAt,
+        statement: statement,
+        signedName: signedName,
+        endedAt: endedAt,
+      );
+
   Map<String, Object?> toJson() => {
         'patientId': patientId,
         'kind': kind.name,

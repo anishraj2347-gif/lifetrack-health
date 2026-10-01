@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../family/family_role.dart';
 import '../../model/custody.dart';
 import '../app_scope.dart';
 import '../screens/add_family_screen.dart';
+import '../screens/family_overview_screen.dart';
 import '../theme.dart';
 import 'parts.dart';
 
@@ -79,6 +81,25 @@ class FamilyBar extends StatelessWidget {
                   ),
                 ),
               Semantics(
+                label: 'Family overview',
+                button: true,
+                excludeSemantics: true,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: RoundButton(
+                      LucideIcons.users,
+                      dark: false,
+                      onTap: () async {
+                        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FamilyOverviewScreen()));
+                        if (context.mounted) AppScope.changed(context);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              Semantics(
                 label: 'Add a family member',
                 button: true,
                 excludeSemantics: true,
@@ -117,9 +138,9 @@ class FamilyBar extends StatelessWidget {
 
   static String authorityLine(Custody c) => switch (c.kind) {
     CustodyKind.childOfParent => c.isVerified
-        ? 'Your ${c.relation}\'s records · you are the parent (birth certificate, DigiLocker)'
-        : 'Your ${c.relation}\'s records · you are the parent (declared, not yet verified)',
-    CustodyKind.delegatedByAdult => 'Your ${c.relation}\'s records · they asked you to manage (agreed in person)',
+        ? 'Your ${FamilyRole.describe(c.relation)}\'s records · you are the parent (birth certificate, DigiLocker)'
+        : 'Your ${FamilyRole.describe(c.relation)}\'s records · you are the parent (declared, not yet verified)',
+    CustodyKind.delegatedByAdult => 'Your ${FamilyRole.describe(c.relation)}\'s records · they asked you to manage (agreed in person)',
     CustodyKind.self => '',
   };
 }

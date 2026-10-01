@@ -6,6 +6,16 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.15.0 (1 Oct 2026)
+- **Family overview** (family bar → people icon, or Me): the phone owner is the head of family;
+  grandparents and parents above, the head's own generation (spouse, brothers, sisters), then
+  children and grandchildren. Each person: role, age, LifeTrack ID, verified or declared,
+  records, medicines now, vaccines due, next reminder. Tap to open their records.
+- **Roles to the head**: when adding someone you pick who they are to the head — father,
+  mother, wife, husband, brother, sister, son, daughter, grandparents, in-laws, grandchildren,
+  uncle, aunt, nephew, niece, cousin. Change a role later from the overview (logged).
+- A child under 18 is still added only by their parent (son or daughter of the head).
+
 ### 1.14.0 (1 Oct 2026)
 - A share now carries the patient's LifeTrack ID, so the doctor can ask for access again later
   (the patient still approves every request).
