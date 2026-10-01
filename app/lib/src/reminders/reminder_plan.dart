@@ -51,17 +51,21 @@ class ReminderItem {
 }
 
 class PlannedReminder {
-  const PlannedReminder({required this.id, required this.at, required this.slot, required this.items});
+  const PlannedReminder({required this.id, required this.at, required this.slot, required this.items, this.vaccine});
   final int id;
   final DateTime at;
   final DoseSlot slot;
   final List<ReminderItem> items;
 
-  String get title => '${slot.label} medicines';
+  /// A vaccination due today instead of medicines: (child's first name, dose name).
+  final (String, String)? vaccine;
+
+  String get title => vaccine != null ? 'Vaccination due' : '${slot.label} medicines';
 
   /// What the notification says. Without [showNames] it names no medicine
   /// and no person — the lock screen is public.
   String body({required bool showNames, String? selfPatientId}) {
+    if (vaccine case (final child, final dose)) return showNames ? '$child: $dose is due today.' : 'A vaccination is due today. Open LifeTrack to see it.';
     if (!showNames) return items.length == 1 ? 'Time for 1 medicine. Open LifeTrack to see it.' : 'Time for ${items.length} medicines. Open LifeTrack to see them.';
     final people = items.map((i) => i.patient.id).toSet().length;
     return items

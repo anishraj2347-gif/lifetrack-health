@@ -30,6 +30,7 @@ import '../crypto/shamir.dart';
 import '../crypto/vault_codec.dart';
 import '../export/record_export.dart';
 import '../reminders/reminder_plan.dart';
+import '../vaccines/uip_schedule.dart';
 import '../model/abha.dart';
 import '../family/family_link.dart';
 import '../identity/identity_verifier.dart';
@@ -208,6 +209,7 @@ class AppServices {
     services.demoTools = demoTools;
     services.reminderScheduler = reminderScheduler;
     services._doseLog = ((await sealed.read(_doseLogBlob) as Map?) ?? {}).cast<String, Object?>();
+    services._vaccines = ((await sealed.read(_vaccinesBlob) as Map?) ?? {}).cast<String, Object?>();
     services._backup = ((await sealed.read(_backupBlob) as Map?) ?? {}).cast<String, Object?>();
     consent.evictFinished(now());
     await services._settleOwner();
@@ -332,12 +334,55 @@ class AppServices {
     return true;
   }
 
-  /// The next fortnight's reminders, from every profile on this phone.
-  List<PlannedReminder> reminderPlan() => planReminders(
-        people: [for (final p in familyOnPhone()) (p, repository.recordsOf(p.id))],
-        settings: reminderSettings,
-        now: clock(),
-      );
+  /// The next fortnight's reminders, from every profile on this phone:
+  /// medicines by dose, and children's vaccinations on their due day.
+  List<PlannedReminder> reminderPlan() {
+    final now = clock();
+    final meds = planReminders(people: [for (final p in familyOnPhone()) (p, repository.recordsOf(p.id))], settings: reminderSettings, now: now);
+    final (h, m) = reminderSettings.times[DoseSlot.morning]!;
+    var id = 1000;
+    final shots = <PlannedReminder>[
+      for (final p in familyOnPhone())
+        if (p.ageAt(now) < 18)
+          for (final (d, st, _) in vaccineStatus(p.dateOfBirth, vaccinesOf(p.id), now))
+            if (st == VaccineStatus.upcoming && d.dueDate(p.dateOfBirth).difference(now).inDays < 14)
+              PlannedReminder(
+                id: id++,
+                at: DateTime(d.dueDate(p.dateOfBirth).year, d.dueDate(p.dateOfBirth).month, d.dueDate(p.dateOfBirth).day, h, m),
+                slot: DoseSlot.morning,
+                items: const [],
+                vaccine: (p.name.split(' ').first, d.name),
+              ),
+    ];
+    return [...meds, ...shots.where((r) => r.at.isAfter(now))]..sort((a, b) => a.at.compareTo(b.at));
+  }
+
+  // ---- children's vaccinations (UIP) ---------------------------------------
+
+  static const _vaccinesBlob = 'vaccinations';
+  Map<String, Object?> _vaccines = {};
+
+  Map<String, VaccineGiven> vaccinesOf(String patientId) => {
+        for (final e in ((_vaccines[patientId] as Map?) ?? const {}).entries) e.key as String: VaccineGiven.fromJson((e.value as Map).cast()),
+      };
+
+  /// Marks a dose given (or, with null, not given). Logged and backed up.
+  Future<void> markVaccine(String patientId, String code, VaccineGiven? given) async {
+    final m = ((_vaccines[patientId] as Map?) ?? {}).cast<String, Object?>();
+    given == null ? m.remove(code) : m[code] = given.toJson();
+    _vaccines[patientId] = m;
+    await sealed.write(_vaccinesBlob, _vaccines);
+    final dose = uipSchedule.where((d) => d.code == code).firstOrNull?.name ?? code;
+    await audit.append(AuditEntry(
+      at: clock(),
+      actorId: actingGrantor(),
+      patientId: patientId,
+      action: AuditAction.edit,
+      detail: given == null ? '$dose marked not given' : '$dose given on ${given.on.toIso8601String().substring(0, 10)}${given.place == null ? '' : ' at ${given.place}'}',
+    ));
+    await refreshReminders();
+    await _backUpQuietly();
+  }
 
   /// Re-plans after anything that could change a dose. Never throws.
   Future<void> refreshReminders() async {
@@ -1007,6 +1052,7 @@ class AppServices {
       'emergency': {for (final p in patients) p.id: (await emergency.load(p.id)).toJson()},
       'records': [for (final r in records) r.toJson()],
       'lifetrackIds': ids?.export() ?? const {},
+      'vaccinations': _vaccines,
       'originals': {
         for (final r in records)
           if (r.attachmentId != null)
@@ -1114,6 +1160,10 @@ class AppServices {
     }
     final records = [for (final r in (b['records']! as List).cast<Map>()) HealthRecord.fromJson(r.cast())];
     await repository.addAll(records);
+    if (b['vaccinations'] is Map) {
+      _vaccines = (b['vaccinations']! as Map).cast<String, Object?>();
+      await sealed.write(_vaccinesBlob, _vaccines);
+    }
     if (ids != null && b['lifetrackIds'] is Map) {
       await ids!.import((b['lifetrackIds']! as Map).cast());
     }
@@ -1169,6 +1219,7 @@ class AppServices {
       // Offline: the ID's entry stays on the server until erased again.
     }
     await repository.eraseFor(id);
+    if (_vaccines.remove(id) != null) await sealed.write(_vaccinesBlob, _vaccines);
     consent.eraseFor(id);
     await emergency.erase(id);
     if (id == selfPatientId) {
