@@ -21,6 +21,7 @@ import 'package:lifetrack/src/ui/screens/vitals_screen.dart';
 import 'package:lifetrack/src/ui/screens/family_overview_screen.dart';
 import 'package:lifetrack/src/ui/screens/record_screen.dart';
 import 'package:lifetrack/src/ui/screens/test_trend_screen.dart';
+import 'package:lifetrack/src/ui/theme.dart';
 import 'package:lifetrack/src/vault/backup_vault.dart';
 
 import 'contrast_check.dart';
@@ -33,77 +34,128 @@ void main() {
 
   Future<AppServices> open() async {
     final s = await AppServices.open(
-      bytes: InMemoryByteStore(), deviceKey: SecretKey(List.filled(32, 5)), remote: InMemoryRemoteVaultStore(),
-      kdf: KdfParams.weakForTests(), cloudFactory: defaultCloud, clock: () => now, demoTools: true,
+      bytes: InMemoryByteStore(),
+      deviceKey: SecretKey(List.filled(32, 5)),
+      remote: InMemoryRemoteVaultStore(),
+      kdf: KdfParams.weakForTests(),
+      cloudFactory: defaultCloud,
+      clock: () => now,
+      demoTools: true,
     );
-    await s.createProfile(name: 'Anjali Sharma', dob: DateTime(1984), sex: Sex.female);
+    await s.createProfile(
+      name: 'Anjali Sharma',
+      dob: DateTime(1984),
+      sex: Sex.female,
+    );
     await s.addSampleRecords();
-    await s.addChild(name: 'Aarav Sharma', dob: DateTime(2021), sex: Sex.male, relation: 'son');
+    await s.addChild(
+      name: 'Aarav Sharma',
+      dob: DateTime(2021),
+      sex: Sex.male,
+      relation: 'son',
+    );
     await s.switchTo(s.selfPatientId!);
     return s;
   }
 
   Future<void> check(WidgetTester tester, String where) async {
     await tester.pumpAndSettle();
-    expect(lowContrastTexts(tester), isEmpty, reason: where);
-    await expectLater(tester, meetsGuideline(textContrastGuideline), reason: where);
+    expect(lowContrastTexts(tester, page: LT.ground), isEmpty, reason: where);
+    await expectLater(
+      tester,
+      meetsGuideline(textContrastGuideline),
+      reason: where,
+    );
   }
 
-  testWidgets('main screens: every text is readable on its background', (tester) async {
-    final handle = tester.ensureSemantics();
-    late AppServices s;
-    await tester.runAsync(() async => s = await open());
-    tester.view.physicalSize = const Size(1080, 2400);
-    tester.view.devicePixelRatio = 2.6;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(LifeTrackApp(boot: () async => s));
-    await tester.pumpAndSettle();
+  for (final mode in ['light', 'dark']) {
+    testWidgets(
+      'main screens, $mode: every text is readable on its background',
+      (tester) async {
+        final handle = tester.ensureSemantics();
+        addTearDown(() {
+          appearance.value = ThemeMode.system;
+          LT.dark = false;
+        });
+        late AppServices s;
+        await tester.runAsync(() async {
+          s = await open();
+          await s.setThemeChoice(mode);
+        });
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.6;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(LifeTrackApp(boot: () async => s));
+        await tester.pumpAndSettle();
+        expect(LT.dark, mode == 'dark');
 
-    await check(tester, 'Reminders');
-    for (final tab in ['Records', 'Insights', 'Share', 'Me']) {
-      await tester.tap(find.bySemanticsLabel(tab));
-      await check(tester, tab);
-    }
+        await check(tester, 'Reminders');
+        for (final tab in ['Records', 'Insights', 'Share', 'Me']) {
+          await tester.tap(find.bySemanticsLabel(tab));
+          await check(tester, tab);
+        }
 
-    await tester.ensureVisible(find.text('Family overview'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Family overview'));
-    await check(tester, 'Family overview');
-    Navigator.of(tester.element(find.byType(FamilyOverviewScreen))).pop();
-    await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(
+          find.text('Family overview'),
+          300,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Family overview'));
+        await check(tester, 'Family overview');
+        Navigator.of(tester.element(find.byType(FamilyOverviewScreen))).pop();
+        await tester.pumpAndSettle();
 
-    final nav = Navigator.of(tester.element(find.byType(Scaffold).first));
-    final finished = s.records().firstWhere((r) => r.title == 'Glycomet 500 SR');
-    nav.push(MaterialPageRoute<void>(builder: (_) => RecordScreen(recordId: finished.id)));
-    await tester.pumpAndSettle();
-    expect(find.text('Course finished'), findsOneWidget, reason: 'the finished course is on screen');
-    await check(tester, 'A finished course (badge on the black card)');
-    nav.pop();
-    nav.push(MaterialPageRoute<void>(builder: (_) => const TestTrendScreen(analyte: 'hba1c', unit: '%')));
-    await check(tester, 'Results over time');
-    nav.pop();
-    for (final (name, screen) in <(String, Widget)>[
-      ('Emergency ID', const EmergencyScreen()),
-      ('Reminder settings', const RemindersScreen()),
-      ('New reminder', const CustomReminderScreen()),
-      ('Tests you already have', const TestsYouHaveScreen()),
-      ('BP & sugar diary', const VitalsScreen()),
-      ('Backup', const BackupScreen()),
-      ('Your data and your rights', const DataRightsScreen()),
-      ('Access log', const AuditScreen()),
-      ('ABHA', const AbhaScreen()),
-      ('Add record', const AddRecordScreen()),
-      ('Add family', const AddFamilyScreen()),
-    ]) {
-      nav.push(MaterialPageRoute<void>(builder: (_) => screen));
-      await check(tester, name);
-      nav.pop();
-      await tester.pumpAndSettle();
-    }
-    // A child's profile: vaccinations.
-    await s.switchTo(s.familyOnPhone().last.id);
-    nav.push(MaterialPageRoute<void>(builder: (_) => const VaccinationsScreen()));
-    await check(tester, 'Vaccinations');
-    handle.dispose();
-  });
+        final nav = Navigator.of(tester.element(find.byType(Scaffold).first));
+        final finished = s.records().firstWhere(
+          (r) => r.title == 'Glycomet 500 SR',
+        );
+        nav.push(
+          MaterialPageRoute<void>(
+            builder: (_) => RecordScreen(recordId: finished.id),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Course finished'),
+          findsOneWidget,
+          reason: 'the finished course is on screen',
+        );
+        await check(tester, 'A finished course (badge on the black card)');
+        nav.pop();
+        nav.push(
+          MaterialPageRoute<void>(
+            builder: (_) => const TestTrendScreen(analyte: 'hba1c', unit: '%'),
+          ),
+        );
+        await check(tester, 'Results over time');
+        nav.pop();
+        for (final (name, screen) in <(String, Widget)>[
+          ('Emergency ID', const EmergencyScreen()),
+          ('Reminder settings', const RemindersScreen()),
+          ('New reminder', const CustomReminderScreen()),
+          ('Tests you already have', const TestsYouHaveScreen()),
+          ('BP & sugar diary', const VitalsScreen()),
+          ('Backup', const BackupScreen()),
+          ('Your data and your rights', const DataRightsScreen()),
+          ('Access log', const AuditScreen()),
+          ('ABHA', const AbhaScreen()),
+          ('Add record', const AddRecordScreen()),
+          ('Add family', const AddFamilyScreen()),
+        ]) {
+          nav.push(MaterialPageRoute<void>(builder: (_) => screen));
+          await check(tester, name);
+          nav.pop();
+          await tester.pumpAndSettle();
+        }
+        // A child's profile: vaccinations.
+        await s.switchTo(s.familyOnPhone().last.id);
+        nav.push(
+          MaterialPageRoute<void>(builder: (_) => const VaccinationsScreen()),
+        );
+        await check(tester, 'Vaccinations');
+        handle.dispose();
+      },
+    );
+  }
 }

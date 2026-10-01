@@ -33,13 +33,13 @@ class PrescriptionCard extends StatelessWidget {
       ShadCard(
         color: LT.primary,
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const IconTile(LucideIcons.pill, color: LT.ink, background: LT.accent),
-          const SizedBox(width: 14),
+          IconTile(LucideIcons.pill, color: LT.onAccent, background: LT.accent),
+          SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(r.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: LT.onDark)),
-              if (r.ingredient != null) Text('Contains ${r.ingredient}', style: const TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
-              const SizedBox(height: 8),
+              Text(r.title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: LT.onDark)),
+              if (r.ingredient != null) Text('Contains ${r.ingredient}', style: TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
+              SizedBox(height: 8),
               Badge2(
                 r.endDate == null
                     ? 'No end date given'
@@ -58,20 +58,20 @@ class PrescriptionCard extends StatelessWidget {
         ShadCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('How much, and when', style: LT.small.copyWith(fontWeight: FontWeight.w600, color: LT.ink2)),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(children: [
               _slot(LucideIcons.sunrise, 'Morning', d.morning),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               _slot(LucideIcons.sun, 'Afternoon', d.afternoon),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               _slot(LucideIcons.moon, 'Night', d.night),
             ]),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Row(children: [
-              const Icon(LucideIcons.utensils, size: 16, color: LT.ink3),
-              const SizedBox(width: 8),
+              Icon(LucideIcons.utensils, size: 16, color: LT.ink3),
+              SizedBox(width: 8),
               Text(timingLabel(r.timing), style: LT.label.copyWith(fontSize: 14)),
-              const Spacer(),
+              Spacer(),
               Text('${d.perDay} a day', style: LT.small),
             ]),
           ]),
@@ -92,12 +92,12 @@ class PrescriptionCard extends StatelessWidget {
         ShadCard(
           color: LT.raised,
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Icon(LucideIcons.messageSquareText, size: 18, color: LT.ink2),
-            const SizedBox(width: 12),
+            Icon(LucideIcons.messageSquareText, size: 18, color: LT.ink2),
+            SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text("Doctor's instructions", style: LT.small.copyWith(fontWeight: FontWeight.w600, color: LT.ink2)),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(r.instructions!, style: LT.label.copyWith(fontSize: 15, height: 1.5)),
               ]),
             ),
@@ -127,7 +127,7 @@ class PrescriptionCard extends StatelessWidget {
       ),
       if (r.patientConfirmedAt != null)
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+          padding: EdgeInsets.fromLTRB(20, 0, 20, 0),
           child: Text('You confirmed you were still taking this on ${fullDate(r.patientConfirmedAt!)}.', style: LT.small),
         ),
     ]);
@@ -135,14 +135,14 @@ class PrescriptionCard extends StatelessWidget {
 
   Widget _slot(IconData icon, String label, int count) => Expanded(
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: count > 0 ? LT.primary : LT.raised,
             borderRadius: BorderRadius.circular(LT.radius),
           ),
           child: Column(children: [
             Icon(icon, size: 18, color: count > 0 ? LT.accent : LT.inactive),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Text('$count', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: count > 0 ? LT.onDark : LT.ink3)),
             Text(label, style: TextStyle(fontSize: 11.5, color: count > 0 ? LT.onDarkMuted : LT.ink3)),
           ]),
@@ -150,13 +150,13 @@ class PrescriptionCard extends StatelessWidget {
       );
 
   Widget _row(IconData icon, String label, String value, {bool last = false}) => Container(
-        padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
-        decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: LT.rule))),
+        padding: EdgeInsets.fromLTRB(16, 13, 16, 13),
+        decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: LT.rule))),
         child: Row(children: [
           Icon(icon, size: 16, color: LT.ink3),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Text(label, style: LT.small),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(child: Text(value, style: LT.label.copyWith(fontSize: 14), textAlign: TextAlign.right)),
         ]),
       );

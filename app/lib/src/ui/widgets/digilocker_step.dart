@@ -55,18 +55,18 @@ class _DigiLockerStepState extends State<DigiLockerStep> {
       return ShadCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Badge2('Verified · ${v.method.label}', tone: BadgeTone.trace),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(v.name, style: LT.title.copyWith(fontSize: 22)),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text('Born ${fullDate(v.dateOfBirth)}${v.gender == null ? '' : ' · ${switch (v.gender) { 'F' => 'Female', 'M' => 'Male', _ => 'Other' }}'}', style: LT.small),
-          const SizedBox(height: 8),
-          const Text('As DigiLocker confirmed it. LifeTrack keeps no Aadhaar number and no document.', style: LT.small),
+          SizedBox(height: 8),
+          Text('As DigiLocker confirmed it. LifeTrack keeps no Aadhaar number and no document.', style: LT.small),
         ]),
       );
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+        padding: EdgeInsets.fromLTRB(16, 6, 16, 6),
         child: SlabButton(
           _waiting ? 'Waiting for DigiLocker…' : widget.buttonLabel ?? 'Verify with DigiLocker',
           icon: LucideIcons.shieldCheck,
@@ -74,8 +74,8 @@ class _DigiLockerStepState extends State<DigiLockerStep> {
         ),
       ),
       if (_waiting)
-        const Note('Finish signing in to DigiLocker in the browser, then come back here. This page updates by itself.', icon: LucideIcons.externalLink),
-      if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
+        Note('Finish signing in to DigiLocker in the browser, then come back here. This page updates by itself.', icon: LucideIcons.externalLink),
+      if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 8, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
     ]);
   }
 }

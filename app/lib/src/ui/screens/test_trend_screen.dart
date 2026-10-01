@@ -54,14 +54,14 @@ class TestTrendScreen extends StatelessWidget {
               ? null
               : '${rows.length} result${rows.length == 1 ? '' : 's'} · ${fullDate(rows.last.$1.effectiveDate)} – ${fullDate(rows.first.$1.effectiveDate)}',
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         if (series != null && series.points.length > 1) TrendCard(series: series, maxColumns: 12),
-        const Note(
+        Note(
           'Each value as the lab reported it, with its date and where it came from. Whether a change matters is for your doctor — show them this page.',
           icon: LucideIcons.info,
           margin: EdgeInsets.fromLTRB(16, 0, 16, 4),
         ),
-        const Eyebrow('Every result'),
+        Eyebrow('Every result'),
         for (final (i, (r, x)) in rows.indexed)
           ShadCard(
             onTap: () => openRecord(r),
@@ -73,10 +73,10 @@ class TestTrendScreen extends StatelessWidget {
                     TextSpan(text: '  ${x.unit}', style: LT.small),
                   ])),
                 ),
-                if (i == 0) const Padding(padding: EdgeInsets.only(right: 6), child: Badge2('Latest', tone: BadgeTone.outline)),
+                if (i == 0) Padding(padding: EdgeInsets.only(right: 6), child: Badge2('Latest', tone: BadgeTone.outline)),
                 Badge2(ageOf(now.difference(r.effectiveDate).inDays), tone: BadgeTone.outline),
               ]),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 [
                   fullDate(r.effectiveDate),
@@ -85,28 +85,28 @@ class TestTrendScreen extends StatelessWidget {
                 ].join(' · '),
                 style: LT.small,
               ),
-              const SizedBox(height: 2),
+              SizedBox(height: 2),
               Text('${SummaryView.sourceBadge(r.provenance.name, r.originalFormat).$1} · ${r.title}', style: LT.small),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Wrap(spacing: 16, children: [
                 TextButton.icon(
                   style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
                   onPressed: () => openRecord(r),
-                  icon: const Icon(LucideIcons.fileText, size: 16),
-                  label: const Text('Open report'),
+                  icon: Icon(LucideIcons.fileText, size: 16),
+                  label: Text('Open report'),
                 ),
                 if (r.attachmentId != null) ...[
                   TextButton.icon(
                     style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
                     onPressed: () => openOriginal(r),
-                    icon: const Icon(LucideIcons.image, size: 16),
+                    icon: Icon(LucideIcons.image, size: 16),
                     label: Text(r.originalFormat == 'pdf' ? 'PDF pages' : 'Original photo'),
                   ),
                 ],
               ]),
             ]),
           ),
-        const SizedBox(height: 28),
+        SizedBox(height: 28),
       ]),
     );
   }
@@ -125,28 +125,28 @@ class MoreTrends extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (series.isEmpty) return const SizedBox.shrink();
+    if (series.isEmpty) return SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Wrap(spacing: 10, runSpacing: 10, children: [
         for (final t in series)
           SizedBox(
               width: (MediaQuery.sizeOf(context).width - 32 - 10) / 2,
               child: ShadCard(
                 margin: EdgeInsets.zero,
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.all(14),
                 onTap: onSelect != null
                     ? () => onSelect!(t)
                     : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TestTrendScreen(analyte: t.analyte, unit: t.unit))),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
-                    const Icon(LucideIcons.chartLine, size: 18, color: LT.ink),
-                    const Spacer(),
+                    Icon(LucideIcons.chartLine, size: 18, color: LT.ink),
+                    Spacer(),
                     Text('${identical(t, latest) ? 'Latest · ' : ''}${t.points.length}×', style: LT.small),
                   ]),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(analyteName(t.analyte), style: LT.label, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text('${TestTrendScreen.fmt(t.points.last.$2.value)} ${t.unit} · ${fullDate(t.points.last.$1.effectiveDate)}', style: LT.small, maxLines: 1, overflow: TextOverflow.ellipsis),
                 ]),
               ),

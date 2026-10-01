@@ -21,7 +21,7 @@ class ReceivedShare {
   final DateTime expiresAt;
   final DateTime receivedAt;
 
-  Map<String, Object?> get patient => (bundle['patient'] as Map?)?.cast() ?? const {};
+  Map<String, Object?> get patient => (bundle['patient'] as Map?)?.cast() ?? {};
   String get patientName => patient['name'] as String? ?? 'Patient';
 
   /// The same person across shares: their LifeTrack ID if sent, else the
@@ -57,6 +57,7 @@ class DoctorSession {
   static const _kPatients = 'lt.doctor.patients';
   static const _kRx = 'lt.doctor.prescriptions';
   static const _kNotes = 'lt.doctor.notes';
+  static const _kTheme = 'lt.doctor.theme';
 
   final SharedPreferences prefs;
   final Uri base;
@@ -77,6 +78,14 @@ class DoctorSession {
   }
 
   Future<void> _set(String k, String v) async => prefs.setString(k, await cipher.seal(v));
+
+  /// 'system' (follow the device), 'light' or 'dark'.
+  String themeChoice = 'system';
+
+  Future<void> setThemeChoice(String choice) async {
+    themeChoice = choice;
+    await _set(_kTheme, choice);
+  }
 
   /// Patients who have shared with this doctor, most recent first.
   final List<PatientEntry> patients = [];
@@ -114,7 +123,7 @@ class DoctorSession {
   /// Adds the patient behind [sh] to the register, or updates them.
   void registerShare(ReceivedShare sh) {
     final p = patientByKey(sh.patientKey);
-    final levels = [for (final l in (sh.bundle['levels'] as List?) ?? const []) '$l'];
+    final levels = [for (final l in (sh.bundle['levels'] as List?) ?? []) '$l'];
     if (p == null) {
       patients.add(PatientEntry(
         key: sh.patientKey,
@@ -205,6 +214,7 @@ class DoctorSession {
 
   static Future<DoctorSession> load(Uri base, {LocalCipher? cipher}) async {
     final s = DoctorSession._(await SharedPreferences.getInstance(), base, cipher ?? platformCipher());
+    s.themeChoice = await s._get(_kTheme) ?? 'system';
     final encSeed = await s._get(_kEnc);
     final signSeed = await s._get(_kSign);
     if (encSeed != null && signSeed != null) {
@@ -272,7 +282,7 @@ class DoctorSession {
     );
     if (r.statusCode != 200) throw Exception((jsonDecode(r.body) as Map)['error'] ?? 'Pickup failed (${r.statusCode}).');
     var n = 0;
-    for (final i in ((jsonDecode(r.body) as Map)['items'] as List?) ?? const []) {
+    for (final i in ((jsonDecode(r.body) as Map)['items'] as List?) ?? []) {
       final env = base64Decode((i as Map)['envelope']! as String);
       final header = (jsonDecode(utf8.decode(env)) as Map);
       try {
@@ -352,7 +362,7 @@ class DoctorSession {
     final rx = await draft.signedWith(sign!);
     final replyTo = (share.bundle['replyTo']! as Map).cast<String, Object?>();
     final key = base64Decode(replyTo['key']! as String);
-    final exp = DateTime.now().add(const Duration(hours: 47));
+    final exp = DateTime.now().add(Duration(hours: 47));
     final sealed = await ShareEnvelope.seal(
       bundle: {'prescription': rx.toJson(), 'certificate': certificateQr},
       recipientKey: key,

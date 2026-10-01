@@ -70,7 +70,7 @@ class _CustomReminderScreenState extends State<CustomReminderScreen> {
       note: _note.text.trim().isEmpty ? null : _note.text.trim(),
       times: _times,
       repeat: _repeat,
-      days: _repeat == Repeat.weekdays ? _days : const {},
+      days: _repeat == Repeat.weekdays ? _days : {},
       start: _start,
       end: _repeat == Repeat.once ? null : _end,
       paused: widget.existing?.paused ?? false,
@@ -82,7 +82,7 @@ class _CustomReminderScreenState extends State<CustomReminderScreen> {
     if (!mounted) return;
     AppScope.changed(context);
     if (!allowed) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved. Notifications are not allowed for LifeTrack — allow them in the phone\'s settings to be reminded.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Saved. Notifications are not allowed for LifeTrack — allow them in the phone\'s settings to be reminded.')));
     }
     Navigator.of(context).pop();
   }
@@ -92,11 +92,11 @@ class _CustomReminderScreenState extends State<CustomReminderScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Delete this reminder?'),
+        title: Text('Delete this reminder?'),
         content: Text('"${r.title}" will stop reminding you.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Keep')),
-          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text('Keep')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: Text('Delete')),
         ],
       ),
     );
@@ -124,16 +124,16 @@ class _CustomReminderScreenState extends State<CustomReminderScreen> {
         Masthead(
           eyebrow: editing ? 'Edit reminder' : 'New reminder',
           title: editing ? widget.existing!.title : 'Remind me to…',
-          trailing: editing && widget.existing!.paused ? const Badge2('Paused', tone: BadgeTone.outline) : null,
+          trailing: editing && widget.existing!.paused ? Badge2('Paused', tone: BadgeTone.outline) : null,
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         LabeledField(
           label: 'What',
           child: TextField(
             controller: _title,
             maxLength: CustomReminder.maxTitle,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(hintText: 'e.g. Check BP, Drink water, Vitamin D', counterText: ''),
+            decoration: InputDecoration(hintText: 'e.g. Check BP, Drink water, Vitamin D', counterText: ''),
           ),
         ),
         LabeledField(
@@ -144,7 +144,7 @@ class _CustomReminderScreenState extends State<CustomReminderScreen> {
             maxLines: 2,
             minLines: 1,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(hintText: 'e.g. before breakfast', counterText: ''),
+            decoration: InputDecoration(hintText: 'e.g. before breakfast', counterText: ''),
           ),
         ),
         LabeledField(
@@ -157,7 +157,7 @@ class _CustomReminderScreenState extends State<CustomReminderScreen> {
                 onDeleted: _times.length > 1 ? () => setState(() => _times.removeAt(i)) : null,
                 deleteButtonTooltipMessage: 'Remove',
               ),
-            ActionChip(avatar: const Icon(LucideIcons.plus, size: 16), label: const Text('Add a time'), onPressed: _addTime),
+            ActionChip(avatar: Icon(LucideIcons.plus, size: 16), label: Text('Add a time'), onPressed: _addTime),
           ]),
         ),
         LabeledField(
@@ -204,30 +204,30 @@ class _CustomReminderScreenState extends State<CustomReminderScreen> {
                   text: _end == null ? 'No end date' : fullDate(_end!),
                   placeholder: _end == null,
                   onTap: () async {
-                    final d = await _pickDate(_end ?? _start.add(const Duration(days: 30)), first: _start);
+                    final d = await _pickDate(_end ?? _start.add(Duration(days: 30)), first: _start);
                     if (d != null) setState(() => _end = d);
                   },
                 ),
               ),
-              if (_end != null) IconButton(tooltip: 'No end date', onPressed: () => setState(() => _end = null), icon: const Icon(LucideIcons.x, size: 18)),
+              if (_end != null) IconButton(tooltip: 'No end date', onPressed: () => setState(() => _end = null), icon: Icon(LucideIcons.x, size: 18)),
             ]),
           ),
-        if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 12), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
+        if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 12), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+          padding: EdgeInsets.fromLTRB(20, 4, 20, 10),
           child: SlabButton(editing ? 'Save changes' : 'Save reminder', icon: LucideIcons.check, onPressed: _saving ? null : _save),
         ),
         if (editing) ...[
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 10),
             child: SlabButton(widget.existing!.paused ? 'Resume' : 'Pause', variant: ButtonVariant.outline, icon: widget.existing!.paused ? LucideIcons.play : LucideIcons.pause, onPressed: _togglePause),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 10),
             child: SlabButton('Delete', variant: ButtonVariant.outline, icon: LucideIcons.trash2, onPressed: _delete),
           ),
         ],
-        const Note('Kept on this phone. A backup includes it only if you back up personal notes.', icon: LucideIcons.smartphone, margin: EdgeInsets.fromLTRB(16, 4, 16, 28)),
+        Note('Kept on this phone. A backup includes it only if you back up personal notes.', icon: LucideIcons.smartphone, margin: EdgeInsets.fromLTRB(16, 4, 16, 28)),
       ]),
     );
   }

@@ -68,18 +68,18 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
       await showDialog<bool>(
         context: context,
         builder: (c) => AlertDialog(
-          title: const Text('Password for this file'),
+          title: Text('Password for this file'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Write it down or keep it in a password manager. It is shown only now, and the file will not open without it.'),
-            const SizedBox(height: 14),
+            Text('Write it down or keep it in a password manager. It is shown only now, and the file will not open without it.'),
+            SizedBox(height: 14),
             SelectableText(password, style: LT.title.copyWith(fontSize: 18, letterSpacing: 1)),
-            const SizedBox(height: 14),
-            const Text('Opens with 7-Zip or WinRAR on a computer, Keka on a Mac, or ZArchiver on Android.', style: LT.small),
+            SizedBox(height: 14),
+            Text('Opens with 7-Zip or WinRAR on a computer, Keka on a Mac, or ZArchiver on Android.', style: LT.small),
           ]),
           actions: [
-            TextButton(onPressed: () => Clipboard.setData(ClipboardData(text: password)), child: const Text('Copy')),
-            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('I have saved it')),
+            TextButton(onPressed: () => Clipboard.setData(ClipboardData(text: password)), child: Text('Copy')),
+            TextButton(onPressed: () => Navigator.pop(c, false), child: Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(c, true), child: Text('I have saved it')),
           ],
         ),
       ) ??
@@ -89,28 +89,28 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(),
         body: ListView(children: [
-          const Masthead(eyebrow: 'Your data', title: 'What is held, where'),
-          const SizedBox(height: 14),
+          Masthead(eyebrow: 'Your data', title: 'What is held, where'),
+          SizedBox(height: 14),
           _section('On this phone', 'Your profile, records, notes, the permissions you have given and your access log — encrypted under a key in the phone\'s secure hardware. The Emergency ID card is kept outside the app lock so it can be shown from the lock screen in an emergency; it is encrypted on the phone like the rest.'),
           _section('With LifeTrack', 'No records are stored with LifeTrack. When you share with a doctor or a linked family member, it is encrypted on this phone to their device, passes through LifeTrack\'s relay, and is deleted there once collected or within 48 hours. If you turn on backup, LifeTrack also holds an encrypted copy of your records, encrypted on this phone with a key made from a password the app creates; whoever has that password or two of your recovery codes can open it. The app generates the password because a weak one could be guessed from what the service stores.'),
           _section('Why we process it', 'To keep your medical records for you, to compare values with published ranges when you turn Insights on, and to let a doctor see what you choose to share, for as long as you choose.'),
           _section('Your rights', 'You can see everything held (it is all in this app), correct any record, withdraw any permission from Share at any time, and erase everything below. Withdrawing consent does not affect access that already happened; it appears in your access log.'),
           _section('Complaints', 'Data Fiduciary: $kDataFiduciary\nGrievance Officer: $kGrievanceContact\nIf you are not satisfied with our response you may complain to the Data Protection Board of India.'),
-          const Eyebrow('Take a copy'),
-          const Note(
+          Eyebrow('Take a copy'),
+          Note(
             'One file with everything held for this profile: a page you can read or print, the same records for another app, the original report photos and your access log.',
             icon: LucideIcons.download,
             margin: EdgeInsets.fromLTRB(16, 0, 16, 12),
           ),
           ShadCard(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+            padding: EdgeInsets.fromLTRB(16, 8, 8, 8),
             child: Row(children: [
-              const IconTile(LucideIcons.fileLock),
-              const SizedBox(width: 14),
+              IconTile(LucideIcons.fileLock),
+              SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Protect with a password', style: LT.label),
-                  const SizedBox(height: 4),
+                  Text('Protect with a password', style: LT.label),
+                  SizedBox(height: 4),
                   Text(
                     _protect
                         ? 'The file is encrypted (AES-256). The app makes a password and shows it once.'
@@ -123,14 +123,14 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
             ]),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: SlabButton('Export my records', variant: ButtonVariant.outline, icon: LucideIcons.fileDown, onPressed: _exporting ? null : _export),
           ),
-          const Eyebrow('Danger zone'),
-          const Note(icon: LucideIcons.trash2, 'Deletes this profile\'s records, notes, permissions and Emergency ID from this phone. Erasing your own profile also deletes your backup. It cannot be undone.', margin: EdgeInsets.fromLTRB(20, 0, 20, 12)),
-          LabeledField(label: 'Type ERASE to confirm', child: TextField(controller: _confirm, onChanged: (_) => setState(() {}), decoration: const InputDecoration(hintText: 'ERASE'))),
+          Eyebrow('Danger zone'),
+          Note(icon: LucideIcons.trash2, 'Deletes this profile\'s records, notes, permissions and Emergency ID from this phone. Erasing your own profile also deletes your backup. It cannot be undone.', margin: EdgeInsets.fromLTRB(20, 0, 20, 12)),
+          LabeledField(label: 'Type ERASE to confirm', child: TextField(controller: _confirm, onChanged: (_) => setState(() {}), decoration: InputDecoration(hintText: 'ERASE'))),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+            padding: EdgeInsets.fromLTRB(16, 4, 16, 28),
             child: SlabButton(
               'Erase my profile',
               variant: ButtonVariant.destructive,
@@ -160,7 +160,7 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
   Widget _section(String title, String body) => ShadCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(title, style: LT.label.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(body, style: LT.small.copyWith(fontSize: 14, color: LT.ink2)),
         ]),
       );

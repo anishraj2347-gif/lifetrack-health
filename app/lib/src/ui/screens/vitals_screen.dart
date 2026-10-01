@@ -26,7 +26,7 @@ class _VitalsScreenState extends State<VitalsScreen> {
     final s = AppScope.of(context);
     final p = s.currentPatient!;
     final all = [for (final v in s.vitalsOf(p.id)) if (v.kind == _kind) v];
-    final since = s.clock().subtract(const Duration(days: 30));
+    final since = s.clock().subtract(Duration(days: 30));
     final recent = [for (final v in all) if (!v.at.isBefore(since)) v].reversed.toList();
     return Scaffold(
       appBar: AppBar(),
@@ -34,13 +34,13 @@ class _VitalsScreenState extends State<VitalsScreen> {
         backgroundColor: LT.primary,
         foregroundColor: LT.onDark,
         onPressed: () => _add(context),
-        icon: const Icon(LucideIcons.plus),
-        label: const Text('Add a reading'),
+        icon: Icon(LucideIcons.plus),
+        label: Text('Add a reading'),
       ),
       body: ListView(children: [
         Masthead(eyebrow: 'Home readings', title: p.name, description: 'Blood pressure and sugar you measure at home'),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Wrap(spacing: 8, children: [
             Chip2('Blood pressure', selected: _kind == VitalKind.bloodPressure, onTap: () => setState(() => _kind = VitalKind.bloodPressure)),
             Chip2('Sugar', selected: _kind == VitalKind.glucose, onTap: () => setState(() => _kind = VitalKind.glucose)),
@@ -48,33 +48,33 @@ class _VitalsScreenState extends State<VitalsScreen> {
         ),
         if (recent.length >= 2)
           ShadCard(
-            margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            margin: EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Last 30 days · ${recent.length} readings', style: LT.small),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               SizedBox(height: 180, child: CustomPaint(painter: _Chart(recent, _kind), size: Size.infinite)),
               if (_kind == VitalKind.bloodPressure) ...[
-                const SizedBox(height: 8),
-                const Row(children: [_Key(LT.ink, 'Top number'), SizedBox(width: 16), _Key(LT.ink3, 'Bottom number')]),
+                SizedBox(height: 8),
+                Row(children: [_Key(LT.ink, 'Top number'), SizedBox(width: 16), _Key(LT.ink3, 'Bottom number')]),
               ],
             ]),
           ),
-        const Note('Only on this phone. A doctor sees these only if you tick "Home BP & sugar readings" when you share; a backup has them only if you include personal data.', icon: LucideIcons.smartphone),
-        const SizedBox(height: 12),
-        if (all.isEmpty) const Note('No readings yet. Tap "Add a reading".', icon: LucideIcons.activity, margin: EdgeInsets.fromLTRB(16, 8, 16, 0)),
+        Note('Only on this phone. A doctor sees these only if you tick "Home BP & sugar readings" when you share; a backup has them only if you include personal data.', icon: LucideIcons.smartphone),
+        SizedBox(height: 12),
+        if (all.isEmpty) Note('No readings yet. Tap "Add a reading".', icon: LucideIcons.activity, margin: EdgeInsets.fromLTRB(16, 8, 16, 0)),
         for (final v in all)
           ShadCard(
             child: Row(children: [
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(v.display, style: LT.label.copyWith(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(dateTime(v.at), style: LT.small),
                 ]),
               ),
               IconButton(
                 tooltip: 'Delete reading',
-                icon: const Icon(LucideIcons.trash2, size: 18, color: LT.ink3),
+                icon: Icon(LucideIcons.trash2, size: 18, color: LT.ink3),
                 onPressed: () async {
                   await s.deleteVital(v);
                   if (context.mounted) setState(() {});
@@ -82,7 +82,7 @@ class _VitalsScreenState extends State<VitalsScreen> {
               ),
             ]),
           ),
-        const SizedBox(height: 96),
+        SizedBox(height: 96),
       ]),
     );
   }
@@ -103,23 +103,23 @@ class _VitalsScreenState extends State<VitalsScreen> {
           padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.of(sheet).viewInsets.bottom),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text(bp ? 'Blood pressure' : 'Sugar', style: LT.title.copyWith(fontSize: 20)),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (bp)
               Row(children: [
-                Expanded(child: TextField(controller: a, keyboardType: TextInputType.number, inputFormatters: digits, decoration: const InputDecoration(labelText: 'Top (mmHg)'))),
-                const SizedBox(width: 10),
-                Expanded(child: TextField(controller: b, keyboardType: TextInputType.number, inputFormatters: digits, decoration: const InputDecoration(labelText: 'Bottom (mmHg)'))),
-                const SizedBox(width: 10),
-                Expanded(child: TextField(controller: c, keyboardType: TextInputType.number, inputFormatters: digits, decoration: const InputDecoration(labelText: 'Pulse'))),
+                Expanded(child: TextField(controller: a, keyboardType: TextInputType.number, inputFormatters: digits, decoration: InputDecoration(labelText: 'Top (mmHg)'))),
+                SizedBox(width: 10),
+                Expanded(child: TextField(controller: b, keyboardType: TextInputType.number, inputFormatters: digits, decoration: InputDecoration(labelText: 'Bottom (mmHg)'))),
+                SizedBox(width: 10),
+                Expanded(child: TextField(controller: c, keyboardType: TextInputType.number, inputFormatters: digits, decoration: InputDecoration(labelText: 'Pulse'))),
               ])
             else ...[
-              TextField(controller: a, keyboardType: const TextInputType.numberWithOptions(decimal: true), inputFormatters: digits, decoration: const InputDecoration(labelText: 'Sugar (mg/dL)')),
-              const SizedBox(height: 10),
+              TextField(controller: a, keyboardType: TextInputType.numberWithOptions(decimal: true), inputFormatters: digits, decoration: InputDecoration(labelText: 'Sugar (mg/dL)')),
+              SizedBox(height: 10),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final g in GlucoseContext.values) Chip2(g.label, selected: ctx == g, onTap: () => set(() => ctx = g)),
               ]),
             ],
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             FieldButton(
               text: dateTime(at),
               placeholder: false,
@@ -130,8 +130,8 @@ class _VitalsScreenState extends State<VitalsScreen> {
                 set(() => at = DateTime(d.year, d.month, d.day, t?.hour ?? at.hour, t?.minute ?? at.minute));
               },
             ),
-            if (error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(error!, style: LT.small.copyWith(color: LT.signal))),
-            const SizedBox(height: 16),
+            if (error != null) Padding(padding: EdgeInsets.only(top: 8), child: Text(error!, style: LT.small.copyWith(color: LT.signal))),
+            SizedBox(height: 16),
             SlabButton('Save reading', icon: LucideIcons.check, onPressed: () async {
               final sys = bp ? int.tryParse(a.text) : null, dia = bp ? int.tryParse(b.text) : null, pulse = bp ? int.tryParse(c.text) : null;
               final glu = bp ? null : double.tryParse(a.text);
@@ -171,7 +171,7 @@ class _Key extends StatelessWidget {
   final Color color;
   final String label;
   @override
-  Widget build(BuildContext context) => Row(children: [Container(width: 14, height: 3, color: color), const SizedBox(width: 6), Text(label, style: LT.small)]);
+  Widget build(BuildContext context) => Row(children: [Container(width: 14, height: 3, color: color), SizedBox(width: 6), Text(label, style: LT.small)]);
 }
 
 /// Lines through the readings, oldest left. Axis labels only — no bands,
@@ -204,7 +204,7 @@ class _Chart extends CustomPainter {
     for (final v in [lo + 5, (lo + hi) / 2, hi - 5]) {
       canvas.drawLine(Offset(left, y(v)), Offset(size.width, y(v)), grid);
       label
-        ..text = TextSpan(text: v.round().toString(), style: const TextStyle(fontFamily: LT.body, fontSize: 10, color: LT.ink3))
+        ..text = TextSpan(text: v.round().toString(), style: TextStyle(fontFamily: LT.body, fontSize: 10, color: LT.ink3))
         ..layout();
       label.paint(canvas, Offset(0, y(v) - 6));
     }
@@ -222,11 +222,11 @@ class _Chart extends CustomPainter {
       canvas.drawPath(path, line);
     }
     label
-      ..text = TextSpan(text: '${points.first.at.day}/${points.first.at.month}', style: const TextStyle(fontFamily: LT.body, fontSize: 10, color: LT.ink3))
+      ..text = TextSpan(text: '${points.first.at.day}/${points.first.at.month}', style: TextStyle(fontFamily: LT.body, fontSize: 10, color: LT.ink3))
       ..layout();
     label.paint(canvas, Offset(left, h + 4));
     label
-      ..text = TextSpan(text: '${points.last.at.day}/${points.last.at.month}', style: const TextStyle(fontFamily: LT.body, fontSize: 10, color: LT.ink3))
+      ..text = TextSpan(text: '${points.last.at.day}/${points.last.at.month}', style: TextStyle(fontFamily: LT.body, fontSize: 10, color: LT.ink3))
       ..layout();
     label.paint(canvas, Offset(size.width - label.width, h + 4));
   }
@@ -243,30 +243,30 @@ class VitalsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final id = s.currentPatientId;
-    if (id == null) return const SizedBox.shrink();
+    if (id == null) return SizedBox.shrink();
     final all = s.vitalsOf(id);
     final bp = all.where((v) => v.kind == VitalKind.bloodPressure).firstOrNull;
     final glu = all.where((v) => v.kind == VitalKind.glucose).firstOrNull;
     return ShadCard(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      margin: EdgeInsets.fromLTRB(16, 8, 16, 12),
       onTap: () async {
-        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const VitalsScreen()));
+        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => VitalsScreen()));
         if (context.mounted) AppScope.changed(context);
       },
       child: Row(children: [
-        const IconTile(LucideIcons.heartPulse),
-        const SizedBox(width: 14),
+        IconTile(LucideIcons.heartPulse),
+        SizedBox(width: 14),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Home BP & sugar', style: LT.label),
-            const SizedBox(height: 4),
+            Text('Home BP & sugar', style: LT.label),
+            SizedBox(height: 4),
             Text(
               all.isEmpty ? 'Keep a diary of what you measure at home' : [if (bp != null) 'BP ${bp.systolic}/${bp.diastolic}', if (glu != null) 'Sugar ${glu.display.split(' mg').first}'].join(' · '),
               style: LT.small,
             ),
           ]),
         ),
-        const Icon(LucideIcons.chevronRight, color: LT.inactive),
+        Icon(LucideIcons.chevronRight, color: LT.inactive),
       ]),
     );
   }
@@ -283,31 +283,31 @@ class QuickTiles extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final id = s.currentPatientId;
-    final vitals = id == null ? const <VitalReading>[] : s.vitalsOf(id);
+    final vitals = id == null ? <VitalReading>[] : s.vitalsOf(id);
     final bp = vitals.where((v) => v.kind == VitalKind.bloodPressure).firstOrNull;
     Widget tile(IconData icon, String title, String sub, VoidCallback? onTap) => Expanded(
           child: ShadCard(
             margin: EdgeInsets.zero,
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14),
             onTap: onTap,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Icon(icon, size: 20, color: LT.ink),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(title, style: LT.label, maxLines: 1, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 2),
+              SizedBox(height: 2),
               Text(sub, style: LT.small, maxLines: 1, overflow: TextOverflow.ellipsis),
             ]),
           ),
         );
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      padding: EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: Row(children: [
         if (onTests != null) ...[
           tile(LucideIcons.flaskConical, 'Tests you have', '$testsCount · show your doctor', onTests),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
         ],
         tile(LucideIcons.heartPulse, 'Home BP & sugar', bp != null ? 'Last ${bp.systolic}/${bp.diastolic}' : vitals.isEmpty ? 'Start a diary' : '${vitals.length} readings', () async {
-          await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const VitalsScreen()));
+          await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => VitalsScreen()));
           if (context.mounted) AppScope.changed(context);
         }),
       ]),

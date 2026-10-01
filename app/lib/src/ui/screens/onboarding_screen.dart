@@ -70,7 +70,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             1 => _custody(),
             _ => EmergencyEditor(
                 patientId: _patientId!,
-                initial: const EmergencyCard(),
+                initial: EmergencyCard(),
                 onboarding: true,
                 onSaved: widget.onDone,
               ),
@@ -79,12 +79,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
 
   Widget _intro(String title, String body) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+        padding: EdgeInsets.fromLTRB(20, 20, 20, 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           StepIndicator(step: _step),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           Text(title, style: LT.hero),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(body, style: LT.lede),
         ]),
       );
@@ -94,20 +94,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         children: [
           _intro('Verify who you are', 'Your profile is made from DigiLocker with your Aadhaar: your name, date of birth and gender, exactly as confirmed. LifeTrack keeps no Aadhaar number.'),
           DigiLockerStep(purpose: 'self', buttonLabel: 'Verify with DigiLocker (Aadhaar)', onVerified: (v) => setState(() => _verified = v)),
-          if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 10, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
+          if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 10, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
           if (_verified != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 10),
               child: SlabButton('Continue', onPressed: _busy ? null : () => _createProfile(demo: false)),
             ),
-          const Note('Everyone needs Aadhaar to create a profile. A newborn without Aadhaar is added later by a verified parent, from the parent\'s DigiLocker birth certificate.', icon: LucideIcons.info),
+          Note('Everyone needs Aadhaar to create a profile. A newborn without Aadhaar is added later by a verified parent, from the parent\'s DigiLocker birth certificate.', icon: LucideIcons.info),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 6),
+            padding: EdgeInsets.fromLTRB(20, 20, 20, 6),
             child: SlabButton('Explore with sample records', variant: ButtonVariant.outline, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true)),
           ),
           if (AppScope.of(context).backupEnabled)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 28),
               child: SlabButton('Restore from backup', variant: ButtonVariant.ghost, icon: LucideIcons.cloudDownload, onPressed: _busy
                   ? null
                   : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RestoreScreen(onRestored: widget.onDone)))),
@@ -127,7 +127,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             controller: _name,
             onChanged: (_) => setState(() {}),
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(hintText: 'e.g. Anjali Sharma'),
+            decoration: InputDecoration(hintText: 'e.g. Anjali Sharma'),
           ),
         ),
         LabeledField(
@@ -155,18 +155,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               Chip2(s == Sex.unspecified ? 'Prefer not to say' : s.name, selected: _sex == s, onTap: () => setState(() => _sex = s)),
           ]),
         ),
-        const Note('We ask for as little as we can. Nothing here is shared with a doctor until you grant access.', icon: LucideIcons.shieldCheck),
+        Note('We ask for as little as we can. Nothing here is shared with a doctor until you grant access.', icon: LucideIcons.shieldCheck),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+          padding: EdgeInsets.fromLTRB(20, 24, 20, 10),
           child: SlabButton('Continue', onPressed: ready && !_busy ? () => _createProfile(demo: false) : null),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 6, 20, 28),
+          padding: EdgeInsets.fromLTRB(20, 6, 20, 28),
           child: SlabButton('Explore with sample records', variant: ButtonVariant.outline, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true)),
         ),
         if (AppScope.of(context).backupEnabled)
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 28),
             child: SlabButton('Restore from backup', variant: ButtonVariant.ghost, icon: LucideIcons.cloudDownload, onPressed: _busy
                 ? null
                 : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RestoreScreen(onRestored: widget.onDone)))),
@@ -191,16 +191,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             body: 'Until you turn on backup in Me → Backup, your records exist only here — if this phone is lost or reset, they are gone.',
           ),
           ShadCard(
-            margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            padding: const EdgeInsets.fromLTRB(8, 4, 12, 4),
+            margin: EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: EdgeInsets.fromLTRB(8, 4, 12, 4),
             onTap: () => setState(() => _understood = !_understood),
             child: Row(children: [
               Checkbox(value: _understood, onChanged: (v) => setState(() => _understood = v ?? false)),
-              const Expanded(child: Text('I understand my records are only on this phone until I turn on backup.', style: TextStyle(fontSize: 14, color: LT.ink))),
+              Expanded(child: Text('I understand my records are only on this phone until I turn on backup.', style: TextStyle(fontSize: 14, color: LT.ink))),
             ]),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            padding: EdgeInsets.fromLTRB(20, 20, 20, 28),
             child: SlabButton('Continue', onPressed: _understood ? () => setState(() => _step = 2) : null),
           ),
         ],
@@ -224,7 +224,7 @@ class StepIndicator extends StatelessWidget {
             if (i < 2) const SizedBox(width: 6),
           ],
         ]),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Text('Step ${step + 1} of 3', style: LT.eyebrow),
       ]);
 }
@@ -238,18 +238,18 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (fg, bg) = switch (tone) {
-      BadgeTone.trace => (LT.trace, const Color(0xFFECFDF5)),
+      BadgeTone.trace => (LT.traceInk, Color(0xFFECFDF5)),
       BadgeTone.caution => (LT.cautionInk, LT.caution),
       _ => (LT.ink, LT.band),
     };
     return ShadCard(
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         IconTile(icon, color: fg, background: bg),
-        const SizedBox(width: 14),
+        SizedBox(width: 14),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title, style: LT.label),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(body, style: LT.small),
           ]),
         ),

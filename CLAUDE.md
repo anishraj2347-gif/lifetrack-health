@@ -199,6 +199,11 @@ copy predate the claim fixes; the app's wording is authoritative).
   `doctor/pubspec.yaml`, feature → middle number, fix → last; build number always rises; add a
   line to `CHANGELOG.md` in the same commit.
 - Semantic colours are CVD-checked (see `lib/src/ui/theme.dart`); re-measure before changing one.
+- **Dark mode** (1 Oct 2026, both apps): colours are getters on `LT`/`DT` switched by `LT.dark`/
+  `DT.dark`; the root redraws every element on change. Use `LT.button/onButton` for primary
+  buttons, `LT.primary` for hero cards, `LT.onAccent` on lime, `LT.signalFill`/`traceInk` on
+  fills and pale badges. QR codes are always black on white. `contrast_test.dart` (both apps,
+  both modes) must pass — it walks every visible text to the solid colour behind it (WCAG AA).
 
 ### Project state (29 Sep 2026)
 

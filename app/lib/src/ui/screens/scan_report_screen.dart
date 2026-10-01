@@ -67,7 +67,7 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
   /// A PDF the lab sent: each page becomes an image, then goes through the
   /// same clean-and-encrypt path as a photo. At most 12 pages.
   Future<void> _pdf() async {
-    final files = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: const ['pdf']);
+    final files = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
     if (files.isEmpty) return;
     final bytes = await files.first.xFile.readAsBytes();
     // The picker's plain copy in the cache is not needed once read.
@@ -152,35 +152,35 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(), body: _details ? _form() : _capture());
 
   Widget _capture() => ListView(children: [
-        const Masthead(
+        Masthead(
           eyebrow: 'Add a paper report',
           title: 'Photograph every page',
           description: 'The photo is kept for your doctor. Location and camera details are removed; it stays encrypted on this phone.',
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: 16),
           child: Row(children: [
             Expanded(child: SlabButton('Camera', icon: LucideIcons.camera, onPressed: _camera)),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Expanded(child: SlabButton('From photos', icon: LucideIcons.images, variant: ButtonVariant.outline, onPressed: _gallery)),
           ]),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          padding: EdgeInsets.fromLTRB(16, 10, 16, 0),
           child: SlabButton(_converting ? 'Opening the PDF…' : 'From a PDF the lab sent', icon: LucideIcons.fileText, variant: ButtonVariant.outline, onPressed: _converting ? null : _pdf),
         ),
-        if (_error != null && !_details) Padding(padding: const EdgeInsets.fromLTRB(20, 10, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
-        const SizedBox(height: 16),
+        if (_error != null && !_details) Padding(padding: EdgeInsets.fromLTRB(20, 10, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
+        SizedBox(height: 16),
         if (_pages.isEmpty)
-          const Note('Tip: lay the report flat in good light, fill the frame, one photo per page. A WhatsApp photo of a report works too.', icon: LucideIcons.lightbulb)
+          Note('Tip: lay the report flat in good light, fill the frame, one photo per page. A WhatsApp photo of a report works too.', icon: LucideIcons.lightbulb)
         else
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: 16),
             child: GridView.count(
               crossAxisCount: 3,
               shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
+              physics: NeverScrollableScrollPhysics(),
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
               childAspectRatio: 0.72,
@@ -198,7 +198,7 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
                       top: 4,
                       child: IconButton.filledTonal(
                         tooltip: 'Remove page ${i + 1}',
-                        icon: const Icon(LucideIcons.x, size: 16),
+                        icon: Icon(LucideIcons.x, size: 16),
                         onPressed: () => setState(() => _pages.removeAt(i)),
                       ),
                     ),
@@ -207,7 +207,7 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
             ),
           ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+          padding: EdgeInsets.fromLTRB(16, 20, 16, 28),
           child: SlabButton(
             _pages.isEmpty ? 'Add at least one page' : 'Next · ${_pages.length} page${_pages.length == 1 ? '' : 's'}',
             onPressed: _pages.isEmpty ? null : () => setState(() => _details = true),
@@ -216,19 +216,19 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
       ]);
 
   Widget _form() => ListView(children: [
-        const Masthead(eyebrow: 'Add a paper report', title: 'What is it?', description: 'Only what is printed on it. You can skip the values — the photo carries them.'),
+        Masthead(eyebrow: 'Add a paper report', title: 'What is it?', description: 'Only what is printed on it. You can skip the values — the photo carries them.'),
         SizedBox(
           height: 110,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.fromLTRB(16, 12, 16, 0), children: [
+          child: ListView(scrollDirection: Axis.horizontal, padding: EdgeInsets.fromLTRB(16, 12, 16, 0), children: [
             for (final p in _pages)
               Padding(
-                padding: const EdgeInsets.only(right: 8),
+                padding: EdgeInsets.only(right: 8),
                 child: ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.memory(p, width: 70, fit: BoxFit.cover, cacheWidth: 200)),
               ),
           ]),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+          padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
           child: Wrap(spacing: 8, runSpacing: 8, children: [
             for (final k in [RecordKind.report, RecordKind.prescription, RecordKind.scan])
               Chip2(kindLabel(k), selected: _kind == k, onTap: () => setState(() => _kind = k)),
@@ -237,14 +237,14 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
         LabeledField(label: _kind == RecordKind.prescription ? 'Medicine or title' : 'Report name', child: TextField(controller: _title)),
         if (_kind == RecordKind.report)
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 14),
             child: Wrap(spacing: 8, runSpacing: 8, children: [
               for (final c in _commonReports) Chip2(c, selected: _title.text == c, onTap: () => setState(() => _title.text = c)),
             ]),
           ),
         LabeledField(
           label: _kind == RecordKind.prescription ? 'Clinic or hospital' : 'Lab name, as printed',
-          child: TextField(controller: _lab, decoration: const InputDecoration(hintText: 'e.g. Thyrocare, Dr Lal PathLabs')),
+          child: TextField(controller: _lab, decoration: InputDecoration(hintText: 'e.g. Thyrocare, Dr Lal PathLabs')),
         ),
         if (_kind == RecordKind.prescription) LabeledField(label: 'Doctor', child: TextField(controller: _doctor)),
         LabeledField(
@@ -260,39 +260,39 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
           ),
         ),
         if (_kind == RecordKind.report) ...[
-          const Eyebrow('Key values (optional)'),
+          Eyebrow('Key values (optional)'),
           for (final v in _values)
             ShadCard(
               child: Column(children: [
                 DropdownButtonFormField<String>(
                   initialValue: v.analyte,
                   isExpanded: true,
-                  hint: const Text('Which test'),
+                  hint: Text('Which test'),
                   items: [for (final e in analyteNames.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
                   onChanged: (x) => setState(() => v.analyte = x),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Row(children: [
-                  Expanded(child: TextField(controller: v.value, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(hintText: 'Result'))),
-                  const SizedBox(width: 8),
-                  Expanded(child: TextField(controller: v.unit, decoration: const InputDecoration(hintText: 'Unit'))),
+                  Expanded(child: TextField(controller: v.value, keyboardType: TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(hintText: 'Result'))),
+                  SizedBox(width: 8),
+                  Expanded(child: TextField(controller: v.unit, decoration: InputDecoration(hintText: 'Unit'))),
                 ]),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Row(children: [
-                  Expanded(child: TextField(controller: v.low, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(hintText: 'Lab range from'))),
-                  const SizedBox(width: 8),
-                  Expanded(child: TextField(controller: v.high, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(hintText: 'to'))),
+                  Expanded(child: TextField(controller: v.low, keyboardType: TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(hintText: 'Lab range from'))),
+                  SizedBox(width: 8),
+                  Expanded(child: TextField(controller: v.high, keyboardType: TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(hintText: 'to'))),
                 ]),
               ]),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+            padding: EdgeInsets.fromLTRB(16, 6, 16, 6),
             child: SlabButton('Add a value', variant: ButtonVariant.outline, icon: LucideIcons.plus, onPressed: () => setState(() => _values.add(_Value()))),
           ),
         ],
-        if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
+        if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+          padding: EdgeInsets.fromLTRB(16, 20, 16, 28),
           child: SlabButton(_saving ? 'Saving…' : 'Save report', icon: LucideIcons.check, onPressed: _saving ? null : _save),
         ),
       ]);

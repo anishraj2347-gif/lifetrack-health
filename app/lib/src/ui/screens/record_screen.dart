@@ -46,15 +46,15 @@ class _RecordScreenState extends State<RecordScreen> {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final r = s.records().where((x) => x.id == widget.recordId).firstOrNull;
-    if (r == null) return const Scaffold(body: Center(child: Text('This record no longer exists.')));
-    final cited = _run?.insights.where((i) => i.evidence.contains(r.id)).toList() ?? const <Insight>[];
-    final unchecked = _run?.unresolved.where((u) => u.recordId == r.id).toList() ?? const <NotChecked>[];
+    if (r == null) return Scaffold(body: Center(child: Text('This record no longer exists.')));
+    final cited = _run?.insights.where((i) => i.evidence.contains(r.id)).toList() ?? <Insight>[];
+    final unchecked = _run?.unresolved.where((u) => u.recordId == r.id).toList() ?? <NotChecked>[];
 
     return Scaffold(
       appBar: AppBar(actions: [
         PopupMenuButton<String>(
           tooltip: 'More',
-          icon: const Icon(LucideIcons.ellipsisVertical),
+          icon: Icon(LucideIcons.ellipsisVertical),
           onSelected: (v) async {
             if (v == 'edit') {
               await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AddRecordScreen(editing: r)));
@@ -68,8 +68,8 @@ class _RecordScreenState extends State<RecordScreen> {
                       ? 'It is removed from this phone and, at the next backup, from your backup. Anything already shared with a doctor is not recalled by this.'
                       : 'It and its original pages are removed from this phone and, at the next backup, from your backup. Anything already shared with a doctor is not recalled by this.'),
                   actions: [
-                    TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('Keep')),
-                    TextButton(onPressed: () => Navigator.of(c).pop(true), child: const Text('Delete')),
+                    TextButton(onPressed: () => Navigator.of(c).pop(false), child: Text('Keep')),
+                    TextButton(onPressed: () => Navigator.of(c).pop(true), child: Text('Delete')),
                   ],
                 ),
               );
@@ -83,25 +83,25 @@ class _RecordScreenState extends State<RecordScreen> {
           itemBuilder: (_) => [
             if (r.editable) const PopupMenuItem(value: 'edit', child: Text('Edit'))
             else const PopupMenuItem(enabled: false, value: 'signed', child: Text('Signed — kept as issued')),
-            const PopupMenuItem(value: 'delete', child: Text('Delete')),
+            PopupMenuItem(value: 'delete', child: Text('Delete')),
           ],
         ),
       ]),
       body: ListView(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 IconTile(iconForKind(r.kind)),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(r.title, style: LT.title),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
@@ -138,16 +138,16 @@ class _RecordScreenState extends State<RecordScreen> {
               ),
             ),
           if (r.results.isNotEmpty) ...[
-            const Eyebrow('Values as reported'),
+            Eyebrow('Values as reported'),
             ShadCard(
               padding: EdgeInsets.zero,
               child: Column(
                 children: [
                   for (final (i, res) in r.results.indexed)
                     Container(
-                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                      padding: EdgeInsets.fromLTRB(16, 14, 16, 14),
                       decoration: BoxDecoration(
-                        border: i == r.results.length - 1 ? null : const Border(bottom: BorderSide(color: LT.rule)),
+                        border: i == r.results.length - 1 ? null : Border(bottom: BorderSide(color: LT.rule)),
                       ),
                       child: Row(
                         children: [
@@ -160,13 +160,13 @@ class _RecordScreenState extends State<RecordScreen> {
               ),
             ),
             if (_run == null && s.insightsEnabled() == false)
-              const Note(
+              Note(
                 'Turn on Insights to have these values compared with published reference ranges.',
                 icon: LucideIcons.activity,
                 margin: EdgeInsets.fromLTRB(16, 4, 16, 0),
               )
             else ...[
-              if (cited.isNotEmpty || unchecked.isNotEmpty) const Eyebrow('From Insights'),
+              if (cited.isNotEmpty || unchecked.isNotEmpty) Eyebrow('From Insights'),
               for (final i in cited) InsightCard(insight: i),
               for (final u in unchecked)
                 CautionPanel(
@@ -175,21 +175,21 @@ class _RecordScreenState extends State<RecordScreen> {
                 ),
             ],
           ],
-          const SizedBox(height: 28),
+          SizedBox(height: 28),
         ],
       ),
     );
   }
 
   Widget _meta(IconData icon, String label, String value, {bool last = false}) => Container(
-    padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
+    padding: EdgeInsets.fromLTRB(16, 13, 16, 13),
     decoration: BoxDecoration(
-      border: last ? null : const Border(bottom: BorderSide(color: LT.rule)),
+      border: last ? null : Border(bottom: BorderSide(color: LT.rule)),
     ),
     child: Row(
       children: [
         Icon(icon, size: 16, color: LT.ink3),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(child: Text(label, style: LT.small)),
         Flexible(
           child: Text(value, style: LT.label.copyWith(fontSize: 14), textAlign: TextAlign.right),

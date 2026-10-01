@@ -80,7 +80,7 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    if (_available == null) return const Scaffold();
+    if (_available == null) return Scaffold();
     if (!_available! || !_enabled || !_locked) {
       return _Scope(control: AppLockControl._(this), child: widget.child);
     }
@@ -97,22 +97,22 @@ class _LockScreen extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+            padding: EdgeInsets.fromLTRB(24, 24, 24, 20),
             child: Column(children: [
-              const Spacer(),
-              const IconTile(LucideIcons.lock, color: LT.ink, background: LT.accent),
-              const SizedBox(height: 20),
-              const Text('LifeTrack is locked', style: TextStyle(fontFamily: LT.body, fontSize: 24, fontWeight: FontWeight.w600, color: LT.ink)),
-              const SizedBox(height: 8),
-              const Text('Use your fingerprint, face or phone PIN.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: LT.ink3)),
-              const Spacer(),
+              Spacer(),
+              IconTile(LucideIcons.lock, color: LT.onAccent, background: LT.accent),
+              SizedBox(height: 20),
+              Text('LifeTrack is locked', style: TextStyle(fontFamily: LT.body, fontSize: 24, fontWeight: FontWeight.w600, color: LT.ink)),
+              SizedBox(height: 8),
+              Text('Use your fingerprint, face or phone PIN.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: LT.ink3)),
+              Spacer(),
               SlabButton('Unlock', icon: LucideIcons.lockOpen, onPressed: asking ? null : onUnlock),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               SlabButton('Emergency ID', icon: LucideIcons.heartPulse, variant: ButtonVariant.outline, onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const EmergencyScreen(fromLockScreen: true)));
+                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => EmergencyScreen(fromLockScreen: true)));
               }),
-              const SizedBox(height: 8),
-              const Text('Anyone holding the phone can open the Emergency ID. Each time is written to your access log.',
+              SizedBox(height: 8),
+              Text('Anyone holding the phone can open the Emergency ID. Each time is written to your access log.',
                   textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: LT.ink3)),
             ]),
           ),

@@ -75,7 +75,7 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
         patientId: s.currentPatientId!,
         doctor: _doctor!,
         levels: _levels,
-        filter: _lastTwoYears ? RecordFilter(from: at.subtract(const Duration(days: 730))) : null,
+        filter: _lastTwoYears ? RecordFilter(from: at.subtract(Duration(days: 730))) : null,
         requested: widget.request?.levels,
         at: at,
       );
@@ -101,11 +101,11 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
       );
 
   Widget _scan() => ListView(children: [
-        const Masthead(eyebrow: 'Share with a doctor', title: "Scan the doctor's code", description: 'Their LifeTrack screen shows a verified code. Nothing is shared until you choose.'),
+        Masthead(eyebrow: 'Share with a doctor', title: "Scan the doctor's code", description: 'Their LifeTrack screen shows a verified code. Nothing is shared until you choose.'),
         if (_scanning)
           Container(
             height: 320,
-            margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            margin: EdgeInsets.fromLTRB(16, 16, 16, 0),
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(LT.radiusLg), color: LT.primary),
             child: ReaderWidget(
@@ -119,16 +119,16 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
             ),
           ),
         if (_error != null)
-          Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
+          Padding(padding: EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
         LabeledField(
           label: 'Or paste the code',
           child: Padding(
-            padding: const EdgeInsets.only(top: 0),
-            child: TextField(controller: _paste, maxLines: 2, decoration: const InputDecoration(hintText: 'Code from the doctor\'s screen')),
+            padding: EdgeInsets.only(top: 0),
+            child: TextField(controller: _paste, maxLines: 2, decoration: InputDecoration(hintText: 'Code from the doctor\'s screen')),
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 28),
           child: SlabButton('Check this doctor', variant: ButtonVariant.outline, icon: LucideIcons.shieldCheck, onPressed: () => _verify(_paste.text)),
         ),
       ]);
@@ -138,33 +138,33 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
     final active = [for (final r in s.records()) if (r.isActiveAt(s.clock())) r];
     return ListView(children: [
       ShadCard(
-        margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        margin: EdgeInsets.fromLTRB(16, 8, 16, 16),
         color: LT.primary,
         child: Row(children: [
-          const IconTile(LucideIcons.stethoscope, color: LT.ink, background: LT.accent),
-          const SizedBox(width: 14),
+          IconTile(LucideIcons.stethoscope, color: LT.onAccent, background: LT.accent),
+          SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(d.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
-              Text('${d.speciality} · ${d.registrationNo}', style: const TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
-              Text(d.council, style: const TextStyle(fontSize: 12, color: LT.onDarkMuted)),
+              Text(d.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
+              Text('${d.speciality} · ${d.registrationNo}', style: TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
+              Text(d.council, style: TextStyle(fontSize: 12, color: LT.onDarkMuted)),
             ]),
           ),
-          const Badge2('Verified', tone: BadgeTone.trace),
+          Badge2('Verified', tone: BadgeTone.trace),
         ]),
       ),
-      const Eyebrow('What should this doctor see?', padding: EdgeInsets.fromLTRB(20, 0, 20, 10)),
+      Eyebrow('What should this doctor see?', padding: EdgeInsets.fromLTRB(20, 0, 20, 10)),
       _level(AccessLevel.summary, 'Summary', 'Allergies, current medicines, conditions, latest results with their source', recommended: true),
       _level(AccessLevel.allReports, 'All my reports', 'Every report, prescription and scan'),
       if (_levels.contains(AccessLevel.allReports))
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+          padding: EdgeInsets.fromLTRB(20, 0, 20, 10),
           child: Chip2('Last 2 years only', selected: _lastTwoYears, onTap: () => setState(() => _lastTwoYears = !_lastTwoYears)),
         ),
       _level(AccessLevel.familyIllnesses, 'Family illnesses', 'What you have told LifeTrack about your family, marked "patient-reported"'),
       _level(AccessLevel.homeReadings, 'Home BP & sugar readings', 'What you measured at home in the last 30 days, marked "measured at home"'),
       if (active.isNotEmpty) ...[
-        const Eyebrow('Are you still taking these?'),
+        Eyebrow('Are you still taking these?'),
         for (final r in active)
           CheckboxListTile(
             value: _stillTaking.contains(r.id),
@@ -173,11 +173,11 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
             subtitle: Text(r.doctor ?? '', style: LT.small),
           ),
       ],
-      const Note('For this visit, up to 4 hours. Encrypted so only this doctor\'s device can open it. Personal notes are never included. The doctor keeps their own consult note; you can end access any time.',
+      Note('For this visit, up to 4 hours. Encrypted so only this doctor\'s device can open it. Personal notes are never included. The doctor keeps their own consult note; you can end access any time.',
           icon: LucideIcons.lock),
-      if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
+      if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+        padding: EdgeInsets.fromLTRB(16, 20, 16, 28),
         child: SlabButton('Share with ${d.name}', icon: LucideIcons.send, onPressed: _busy || _levels.isEmpty ? null : _share),
       ),
     ]);
@@ -191,14 +191,14 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
       onTap: () => setState(() => on ? _levels.remove(l) : _levels.add(l)),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(on ? LucideIcons.circleCheck : LucideIcons.circle, size: 20, color: on ? LT.ink : LT.inactive),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Wrap(spacing: 8, children: [
               Text(title, style: LT.label.copyWith(fontWeight: FontWeight.w600)),
-              if (recommended) const Badge2('Recommended'),
+              if (recommended) Badge2('Recommended'),
             ]),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text(body, style: LT.small),
           ]),
         ),
@@ -207,14 +207,14 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
   }
 
   Widget _done(ShareReceipt r) => ListView(children: [
-        const Padding(
+        Padding(
           padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
-          child: IconTile(LucideIcons.circleCheck, color: LT.ink, background: LT.accent),
+          child: IconTile(LucideIcons.circleCheck, color: LT.onAccent, background: LT.accent),
         ),
         Masthead(eyebrow: 'Shared', title: 'Sent to ${r.doctor.name}', description: 'Encrypted to their device. Access ends ${dateTime(r.grant.expiresAt)}.'),
-        const Note('If they have not opened it yet, ending access removes it. If they already have, their app is asked to close it — LifeTrack cannot take back what they have seen.', icon: LucideIcons.info),
+        Note('If they have not opened it yet, ending access removes it. If they already have, their app is asked to close it — LifeTrack cannot take back what they have seen.', icon: LucideIcons.info),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+          padding: EdgeInsets.fromLTRB(16, 20, 16, 10),
           child: SlabButton('End access now', variant: ButtonVariant.outline, onPressed: () async {
             await AppScope.of(context).sharing!.endAccess(r.grant, AppScope.of(context).clock());
             if (!mounted) return;
@@ -222,7 +222,7 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
             Navigator.of(context).pop();
           }),
         ),
-        Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 28), child: SlabButton('Done', onPressed: () => Navigator.of(context).pop())),
+        Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 28), child: SlabButton('Done', onPressed: () => Navigator.of(context).pop())),
       ]);
 }
 

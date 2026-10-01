@@ -262,6 +262,15 @@ class AppServices {
 
   Future<void> _saveSettings() => sealed.write(_settingsBlob, settings);
 
+  /// 'system' (follow the phone), 'light' or 'dark'.
+  String get themeChoice => (settings['theme'] as String?) ?? 'system';
+
+  Future<void> setThemeChoice(String choice) async {
+    if (!const {'system', 'light', 'dark'}.contains(choice)) throw ArgumentError('Unknown appearance: $choice');
+    settings['theme'] = choice;
+    await _saveSettings();
+  }
+
   bool get appLockEnabled => (settings['appLock'] as bool?) ?? true;
 
   Future<void> setAppLock(bool on) async {

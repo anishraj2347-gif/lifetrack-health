@@ -26,12 +26,12 @@ class _OriginalsViewerState extends State<OriginalsViewer> {
         appBar: AppBar(
           backgroundColor: LT.primary,
           foregroundColor: LT.onDark,
-          title: Text(widget.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          title: Text(widget.title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           actions: [
             Center(
               child: Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Text('Page ${_page + 1} of ${widget.pages.length}', style: const TextStyle(color: LT.onDarkMuted, fontSize: 13)),
+                padding: EdgeInsets.only(right: 16),
+                child: Text('Page ${_page + 1} of ${widget.pages.length}', style: TextStyle(color: LT.onDarkMuted, fontSize: 13)),
               ),
             ),
           ],
@@ -60,15 +60,15 @@ class OriginalsStrip extends StatelessWidget {
       future: s.originals(record),
       builder: (context, snap) {
         final pages = snap.data;
-        if (pages == null) return const SizedBox.shrink();
+        if (pages == null) return SizedBox.shrink();
         if (pages.isEmpty) {
           return Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 14),
             child: Text(record.attachmentId == null ? 'No original attached.' : 'The original is not on this phone.', style: LT.small),
           );
         }
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 10),
           child: Material(
             color: LT.surface,
             borderRadius: BorderRadius.circular(LT.radiusLg),
@@ -76,21 +76,21 @@ class OriginalsStrip extends StatelessWidget {
               borderRadius: BorderRadius.circular(LT.radiusLg),
               onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => OriginalsViewer(title: record.title, pages: pages))),
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.all(14),
                 child: Row(children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.memory(pages.first, width: 64, height: 88, fit: BoxFit.cover, cacheWidth: 200),
                   ),
-                  const SizedBox(width: 14),
+                  SizedBox(width: 14),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('Original ${record.kind == RecordKind.prescription ? 'prescription' : 'report'}', style: LT.label.copyWith(fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text('${pages.length} page${pages.length == 1 ? '' : 's'} · tap to view and zoom', style: LT.small),
                     ]),
                   ),
-                  const Icon(LucideIcons.maximize2, size: 18, color: LT.ink3),
+                  Icon(LucideIcons.maximize2, size: 18, color: LT.ink3),
                 ]),
               ),
             ),

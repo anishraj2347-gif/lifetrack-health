@@ -58,23 +58,23 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     return Scaffold(
       appBar: AppBar(),
       body: c == null
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : ListView(children: [
-              Masthead(eyebrow: 'Emergency ID', title: (widget.fromLockScreen ? s.selfPatient : s.currentPatient)?.name ?? '', trailing: const Icon(LucideIcons.heartPulse, color: LT.signal)),
-              const SizedBox(height: 14),
-              if (c.isEmpty) const Note('This card is empty. Anyone treating you would see nothing here.', margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
+              Masthead(eyebrow: 'Emergency ID', title: (widget.fromLockScreen ? s.selfPatient : s.currentPatient)?.name ?? '', trailing: Icon(LucideIcons.heartPulse, color: LT.signal)),
+              SizedBox(height: 14),
+              if (c.isEmpty) Note('This card is empty. Anyone treating you would see nothing here.', margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
               if (c.allergies.isNotEmpty)
                 ShadCard(
-                  color: LT.signal,
-                  borderColor: LT.signal,
+                  color: LT.signalFill,
+                  borderColor: LT.signalFill,
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Icon(LucideIcons.triangleAlert, color: Colors.white, size: 20),
-                    const SizedBox(width: 12),
+                    Icon(LucideIcons.triangleAlert, color: Colors.white, size: 20),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('Allergies', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xE6FFFFFF))),
-                        const SizedBox(height: 4),
-                        Text(c.allergies, style: const TextStyle(fontFamily: LT.body, fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+                        Text('Allergies', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xE6FFFFFF))),
+                        SizedBox(height: 4),
+                        Text(c.allergies, style: TextStyle(fontFamily: LT.body, fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
                       ]),
                     ),
                   ]),
@@ -92,12 +92,12 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
               if (ltId != null)
                 ShadCard(
                   child: Row(children: [
-                    const Icon(LucideIcons.fingerprint, size: 17, color: LT.ink3),
-                    const SizedBox(width: 12),
+                    Icon(LucideIcons.fingerprint, size: 17, color: LT.ink3),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('LifeTrack ID', style: LT.small),
-                        const SizedBox(height: 2),
+                        Text('LifeTrack ID', style: LT.small),
+                        SizedBox(height: 2),
                         Text(LifeTrackId.display(ltId), style: LT.label.copyWith(fontSize: 18, letterSpacing: 1)),
                       ]),
                     ),
@@ -106,21 +106,21 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
               if (!c.isEmpty)
                 ShadCard(
                   child: Column(children: [
-                    const Text('Scan for these details', style: LT.label),
-                    const SizedBox(height: 10),
+                    Text('Scan for these details', style: LT.label),
+                    SizedBox(height: 10),
                     QrImageView(data: qrText, size: 220, backgroundColor: Colors.white),
-                    const SizedBox(height: 8),
-                    const Text('Any phone camera can read it — no app or internet needed.', textAlign: TextAlign.center, style: LT.small),
+                    SizedBox(height: 8),
+                    Text('Any phone camera can read it — no app or internet needed.', textAlign: TextAlign.center, style: LT.small),
                   ]),
                 ),
               if (!widget.fromLockScreen && !c.isEmpty)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                  padding: EdgeInsets.fromLTRB(16, 6, 16, 0),
                   child: SlabButton('Save wallet card', icon: LucideIcons.wallet, variant: ButtonVariant.outline, onPressed: () => _saveWalletCard(qrText, who!.name)),
                 ),
               if (!widget.fromLockScreen)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 28),
                 child: SlabButton('Edit card', icon: LucideIcons.pencil, variant: ButtonVariant.outline, onPressed: () async {
                   await Navigator.of(context).push(MaterialPageRoute<void>(
                     builder: (_) => Scaffold(
@@ -144,7 +144,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   Future<void> _saveWalletCard(String text, String name) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final img = await QrPainter(data: text, version: QrVersions.auto, gapless: true, eyeStyle: const QrEyeStyle(color: Colors.black, eyeShape: QrEyeShape.square), dataModuleStyle: const QrDataModuleStyle(color: Colors.black, dataModuleShape: QrDataModuleShape.square)).toImageData(900);
+      final img = await QrPainter(data: text, version: QrVersions.auto, gapless: true, eyeStyle: QrEyeStyle(color: Colors.black, eyeShape: QrEyeShape.square), dataModuleStyle: QrDataModuleStyle(color: Colors.black, dataModuleShape: QrDataModuleShape.square)).toImageData(900);
       final f = File('${(await getTemporaryDirectory()).path}/emergency-id.png');
       await f.writeAsBytes(img!.buffer.asUint8List(), flush: true);
       await SharePlus.instance.share(ShareParams(files: [XFile(f.path, mimeType: 'image/png')], text: 'Emergency ID — $name. Scan with any phone camera.'));
@@ -156,15 +156,15 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   }
 
   Widget _field(IconData icon, String label, String value, {bool last = false}) => Container(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: LT.rule))),
+        padding: EdgeInsets.fromLTRB(16, 14, 16, 14),
+        decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: LT.rule))),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(icon, size: 17, color: LT.ink3),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(label, style: LT.small),
-              const SizedBox(height: 2),
+              SizedBox(height: 2),
               Text(value.isEmpty ? '—' : value, style: LT.label.copyWith(fontSize: 16)),
             ]),
           ),
@@ -191,7 +191,7 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
   late final _contact = TextEditingController(text: widget.initial.contactName);
   late final _relation = TextEditingController(text: widget.initial.contactRelation);
   late final _phone = TextEditingController(text: widget.initial.contactPhone);
-  List<String> _problems = const [];
+  List<String> _problems = [];
 
   Future<void> _save() async {
     final card = EmergencyCard(
@@ -222,20 +222,20 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
   @override
   Widget build(BuildContext context) => ListView(children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+          padding: EdgeInsets.fromLTRB(20, 20, 20, 20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            if (widget.onboarding) ...[const StepIndicator(step: 2), const SizedBox(height: 24)],
-            const Text('If you cannot speak for yourself', style: LT.hero),
-            const SizedBox(height: 8),
-            const Text('This one card is kept outside your encrypted records so it can be shown to whoever is treating you.', style: LT.lede),
+            if (widget.onboarding) ...[StepIndicator(step: 2), SizedBox(height: 24)],
+            Text('If you cannot speak for yourself', style: LT.hero),
+            SizedBox(height: 8),
+            Text('This one card is kept outside your encrypted records so it can be shown to whoever is treating you.', style: LT.lede),
           ]),
         ),
         ShadCard(
-          color: const Color(0xFFFFF7ED),
-          borderColor: const Color(0xFFFED7AA),
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-          padding: const EdgeInsets.all(14),
-          child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          color: Color(0xFFFFF7ED),
+          borderColor: Color(0xFFFED7AA),
+          margin: EdgeInsets.fromLTRB(16, 0, 16, 18),
+          padding: EdgeInsets.all(14),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Icon(LucideIcons.eye, size: 16, color: LT.signal),
             SizedBox(width: 10),
             Expanded(
@@ -259,13 +259,13 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
         _text('Emergency contact', _contact),
         _text('Relation', _relation),
         _text('Contact phone', _phone, type: TextInputType.phone),
-        for (final p in _problems) Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 6), child: Text(p, style: LT.small.copyWith(color: LT.signal))),
-        const Padding(
+        for (final p in _problems) Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 6), child: Text(p, style: LT.small.copyWith(color: LT.signal))),
+        Padding(
           padding: EdgeInsets.fromLTRB(20, 0, 20, 0),
           child: Text('You can leave any of these blank. Only you can edit this card — LifeTrack\'s insights never write to it.', style: LT.small),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+          padding: EdgeInsets.fromLTRB(16, 20, 16, 28),
           child: SlabButton(widget.onboarding ? 'Finish setup' : 'Save card', onPressed: _save),
         ),
       ]);

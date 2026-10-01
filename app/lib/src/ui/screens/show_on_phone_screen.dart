@@ -19,10 +19,10 @@ class ShowOnPhoneScreen extends StatelessWidget {
     final updated = bundle['profileUpdatedAt'] as String?;
     return Scaffold(
       backgroundColor: LT.raised,
-      appBar: AppBar(backgroundColor: LT.raised, title: const Text('For the doctor', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
+      appBar: AppBar(backgroundColor: LT.raised, title: Text('For the doctor', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
       body: ListView(children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+          padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${p.name} · ${p.sex.name == 'female' ? 'F' : p.sex.name == 'male' ? 'M' : '—'} · ${p.ageAt(s.clock())}', style: LT.title.copyWith(fontSize: 22)),
             Text(
@@ -40,7 +40,7 @@ class ShowOnPhoneScreen extends StatelessWidget {
             await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => OriginalsViewer(title: r.title, pages: pages)));
           },
         ),
-        const SizedBox(height: 28),
+        SizedBox(height: 28),
       ]),
     );
   }

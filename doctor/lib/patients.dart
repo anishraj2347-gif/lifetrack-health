@@ -49,31 +49,62 @@ class MyCodePanel extends StatelessWidget {
       padding: pagePadding(context),
       children: [
         Text('LifeTrack for doctors', style: DT.muted),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text('${s.profile['name']}', style: DT.h1),
         Text('${s.profile['speciality']} · ${s.registrationNo}', style: DT.muted),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
         Card0(
           dark: true,
           child: Column(children: [
             Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: DT.raised, borderRadius: BorderRadius.circular(16)),
-              child: QrImageView(data: s.certificateQr!, size: size, backgroundColor: DT.raised),
+              padding: EdgeInsets.all(12),
+              // Always black on white, in either mode: scanners need it.
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+              child: QrImageView(
+                data: s.certificateQr!,
+                size: size,
+                backgroundColor: Colors.white,
+                eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black),
+                dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Colors.black),
+              ),
             ),
-            const SizedBox(height: 12),
-            const Text('Your verified code', style: TextStyle(color: DT.onDark, fontWeight: FontWeight.w600, fontSize: 16)),
-            const SizedBox(height: 4),
-            const Text(
+            SizedBox(height: 12),
+            Text('Your verified code', style: TextStyle(color: DT.onDark, fontWeight: FontWeight.w600, fontSize: 16)),
+            SizedBox(height: 4),
+            Text(
               'The patient scans this with LifeTrack, sees your name and registration, and chooses what to share.',
               textAlign: TextAlign.center,
               style: TextStyle(color: DT.onDarkMuted, fontSize: 12.5),
             ),
           ]),
         ),
+        Card0(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Appearance', style: DT.label),
+            const SizedBox(height: 8),
+            StatefulBuilder(
+              builder: (context, setLocal) => Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final (v, label) in const [('system', 'Follow device'), ('light', 'Light'), ('dark', 'Dark')])
+                  ChoiceChip(
+                    label: Text(label),
+                    selected: s.themeChoice == v,
+                    onSelected: (_) async {
+                      await s.setThemeChoice(v);
+                      appearance.value = themeModeOf(v);
+                      setLocal(() {});
+                    },
+                    selectedColor: DT.button,
+                    labelStyle: TextStyle(color: s.themeChoice == v ? DT.onButton : DT.ink, fontWeight: FontWeight.w500),
+                    shape: const StadiumBorder(),
+                    showCheckmark: false,
+                  ),
+              ]),
+            ),
+          ]),
+        ),
         ExpansionTile(
           title: Text('Copy code instead', style: DT.muted),
-          children: [SelectableText(s.certificateQr!, style: const TextStyle(fontSize: 10))],
+          children: [SelectableText(s.certificateQr!, style: TextStyle(fontSize: 10))],
         ),
         Card0(
           child: Text(
@@ -81,7 +112,7 @@ class MyCodePanel extends StatelessWidget {
             style: DT.muted,
           ),
         ),
-        if (error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(error!, style: const TextStyle(color: DT.signal))),
+        if (error != null) Padding(padding: EdgeInsets.only(top: 8), child: Text(error!, style: TextStyle(color: DT.signal))),
       ],
     );
   }
@@ -114,38 +145,38 @@ class _PatientsTabState extends State<PatientsTab> {
       padding: pagePadding(context),
       children: [
         Text('My patients', style: DT.h1),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text('Everyone who has shared with you. Shared records close when access ends; your notes and prescriptions stay here.', style: DT.muted),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         TextField(
-          decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search by name or LifeTrack ID'),
+          decoration: InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search by name or LifeTrack ID'),
           onChanged: (v) => setState(() => _q = v.trim().toLowerCase()),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         RequestByIdCard(session: s, onSent: widget.onChanged),
         if (open.isNotEmpty) ...[
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text('Shared now', style: DT.h2),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           for (final sh in open)
             Card0(
               onTap: () => widget.onOpen(sh.patientKey),
               child: Row(children: [
                 _Avatar(sh.patientName, accent: true),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text([sh.patientName, if (sh.patientLine.isNotEmpty) sh.patientLine].join(' · '), style: DT.h2),
-                    Text([for (final l in (sh.bundle['levels'] as List?) ?? const []) accessLabels[l] ?? '$l'].join(' · '), style: DT.muted),
+                    Text([for (final l in (sh.bundle['levels'] as List?) ?? []) accessLabels[l] ?? '$l'].join(' · '), style: DT.muted),
                   ]),
                 ),
                 Countdown(until: sh.expiresAt),
               ]),
             ),
         ],
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text('All patients · ${s.patients.length}', style: DT.h2),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         if (s.patients.isEmpty)
           Card0(child: Text('No patients yet. Ask a patient to scan your code, or request access by their LifeTrack ID.', style: DT.body))
         else if (all.isEmpty)
@@ -155,7 +186,7 @@ class _PatientsTabState extends State<PatientsTab> {
             onTap: () => widget.onOpen(p.key),
             child: Row(children: [
               _Avatar(p.name),
-              const SizedBox(width: 14),
+              SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text([p.name, if (p.sexAge.isNotEmpty) p.sexAge].join(' · '), style: DT.h2),
@@ -166,9 +197,9 @@ class _PatientsTabState extends State<PatientsTab> {
                   ),
                 ]),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Wrap(direction: Axis.vertical, crossAxisAlignment: WrapCrossAlignment.end, spacing: 4, children: [
-                s.openShareFor(p.key) != null ? const Tag('Open', color: DT.accent) : const Tag('Closed'),
+                s.openShareFor(p.key) != null ? Tag('Open', color: DT.accent, ink: DT.onAccent) : Tag('Closed'),
                 if (nextFollowUp(s, p.key, now) case final f?) Tag('Follow-up ${fmtDate(f)}', color: DT.caution, ink: DT.cautionInk),
               ]),
             ]),
@@ -185,7 +216,7 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => CircleAvatar(
         backgroundColor: accent ? DT.accent : DT.surface,
-        child: Text(name.isEmpty ? '?' : name.characters.first, style: const TextStyle(color: DT.ink, fontWeight: FontWeight.w600)),
+        child: Text(name.isEmpty ? '?' : name.characters.first, style: TextStyle(color: accent ? DT.onAccent : DT.ink, fontWeight: FontWeight.w600)),
       );
 }
 
@@ -215,14 +246,14 @@ class _PrescriptionsTabState extends State<PrescriptionsTab> {
       padding: pagePadding(context),
       children: [
         Text('Prescriptions', style: DT.h1),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text('Every prescription you signed and sent, newest first. Print one again, or write it again for the same patient while their access is open.', style: DT.muted),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         TextField(
-          decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search by medicine or patient'),
+          decoration: InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search by medicine or patient'),
           onChanged: (v) => setState(() => _q = v.trim().toLowerCase()),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         if (s.prescriptions.isEmpty) Card0(child: Text('None yet. Prescriptions you sign appear here.', style: DT.body)),
         for (final e in shown) RxCard(session: s, entry: e, onOpenPatient: widget.onOpenPatient, onWriteAgain: widget.onWriteAgain),
       ],
@@ -247,18 +278,18 @@ class RxCard extends StatelessWidget {
           Expanded(child: Text('${rx.medicine}${rx.ingredient == null ? '' : ' (${rx.ingredient})'}', style: DT.h2)),
           Text(fmtDate(rx.issuedAt), style: DT.muted),
         ]),
-        const SizedBox(height: 2),
+        SizedBox(height: 2),
         Text([entry.patientName, if (entry.patientLine.isNotEmpty) entry.patientLine].join(' · '), style: DT.label),
         Text(doseLine(rx), style: DT.muted),
         if (rx.note != null && rx.note!.isNotEmpty) Text(rx.note!, style: DT.muted),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Wrap(spacing: 8, runSpacing: 8, children: [
-          OutlinedButton.icon(onPressed: () => printRx(session, entry), icon: const Icon(Icons.print_outlined, size: 18), label: const Text('Print / PDF')),
-          if (onOpenPatient != null) OutlinedButton(onPressed: () => onOpenPatient!(entry.patientKey), child: const Text('Open patient')),
+          OutlinedButton.icon(onPressed: () => printRx(session, entry), icon: Icon(Icons.print_outlined, size: 18), label: Text('Print / PDF')),
+          if (onOpenPatient != null) OutlinedButton(onPressed: () => onOpenPatient!(entry.patientKey), child: Text('Open patient')),
           if (onWriteAgain != null)
             Tooltip(
               message: open ? 'Prefills a new prescription' : 'Their access is closed — ask for access again to prescribe',
-              child: OutlinedButton(onPressed: open ? () => onWriteAgain!(entry) : null, child: const Text('Write again')),
+              child: OutlinedButton(onPressed: open ? () => onWriteAgain!(entry) : null, child: Text('Write again')),
             ),
         ]),
       ]),
@@ -297,24 +328,24 @@ class _PatientScreenState extends State<PatientScreen> {
       padding: pagePadding(context),
       children: [
         Row(children: [
-          TextButton(onPressed: widget.onClose, child: const Text('← Patients')),
-          const Spacer(),
-          if (sh != null) Countdown(until: sh.expiresAt) else const Tag('Access closed'),
+          TextButton(onPressed: widget.onClose, child: Text('← Patients')),
+          Spacer(),
+          if (sh != null) Countdown(until: sh.expiresAt) else Tag('Access closed'),
         ]),
         Card0(
           dark: true,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text([name, if (line.isNotEmpty) line].join(' · '), style: const TextStyle(color: DT.onDark, fontSize: 20, fontWeight: FontWeight.w600)),
-            if (ltId != null) Text('LifeTrack ID ${fmtLifeTrackId(ltId)}', style: const TextStyle(color: DT.onDarkMuted, fontSize: 12.5)),
+            Text([name, if (line.isNotEmpty) line].join(' · '), style: TextStyle(color: DT.onDark, fontSize: 20, fontWeight: FontWeight.w600)),
+            if (ltId != null) Text('LifeTrack ID ${fmtLifeTrackId(ltId)}', style: TextStyle(color: DT.onDarkMuted, fontSize: 12.5)),
             if (sh?.bundle['sharedBy'] != null)
-              Text('Shared on their behalf by ${sh!.bundle['sharedBy']}', style: const TextStyle(color: DT.accent, fontSize: 13, fontWeight: FontWeight.w600)),
+              Text('Shared on their behalf by ${sh!.bundle['sharedBy']}', style: TextStyle(color: DT.accent, fontSize: 13, fontWeight: FontWeight.w600)),
             Text(
               sh != null
-                  ? 'Read-only · shared ${fmtDateTime(sh.receivedAt)} · ${[for (final l in (sh.bundle['levels'] as List?) ?? const []) accessLabels[l] ?? '$l'].join(' · ')}'
+                  ? 'Read-only · shared ${fmtDateTime(sh.receivedAt)} · ${[for (final l in (sh.bundle['levels'] as List?) ?? []) accessLabels[l] ?? '$l'].join(' · ')}'
                   : p == null
                       ? ''
                       : 'First shared ${fmtDate(p.firstSeen)} · last ${fmtDate(p.lastShared)} · ${p.shares} ${p.shares == 1 ? 'time' : 'times'}',
-              style: const TextStyle(color: DT.onDarkMuted, fontSize: 12.5),
+              style: TextStyle(color: DT.onDarkMuted, fontSize: 12.5),
             ),
           ]),
         ),
@@ -338,7 +369,7 @@ class _PatientScreenState extends State<PatientScreen> {
           return wide
               ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Expanded(flex: 3, child: left),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(flex: 2, child: right),
                 ])
               : Column(children: [left, right]);
@@ -385,22 +416,22 @@ class _ClosedCardState extends State<_ClosedCard> {
   Widget build(BuildContext context) => Card0(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Their shared records are closed', style: DT.h2),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text('Access ended. Your own notes and the prescriptions you wrote are below.', style: DT.muted),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           if (widget.lifeTrackId == null)
             Text('To see their records again, ask them to scan your code.', style: DT.body)
           else ...[
             Text('Ask for access again', style: DT.label),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Wrap(spacing: 8, runSpacing: 8, children: [
               for (final e in accessLabels.entries)
                 FilterChip(label: Text(e.value), selected: _levels.contains(e.key), onSelected: (v) => setState(() => v ? _levels.add(e.key) : _levels.remove(e.key))),
             ]),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             FilledButton(onPressed: _busy || _levels.isEmpty ? null : _ask, child: Text(_busy ? 'Sending…' : 'Send request')),
           ],
-          if (_msg != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_msg!, style: TextStyle(color: _ok ? DT.trace : DT.signal))),
+          if (_msg != null) Padding(padding: EdgeInsets.only(top: 8), child: Text(_msg!, style: TextStyle(color: _ok ? DT.trace : DT.signal))),
         ]),
       );
 }
@@ -415,11 +446,11 @@ class _HistoryCard extends StatelessWidget {
     return Card0(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Prescriptions you wrote · ${list.length}', style: DT.h2),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         if (list.isEmpty) Text('None yet.', style: DT.muted),
         for (final e in list)
           Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: EdgeInsets.only(bottom: 10),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -427,7 +458,7 @@ class _HistoryCard extends StatelessWidget {
                   Text('${fmtDate(e.rx.issuedAt)} · ${doseLine(e.rx)}', style: DT.muted),
                 ]),
               ),
-              IconButton(tooltip: 'Print / PDF', onPressed: () => printRx(session, e), icon: const Icon(Icons.print_outlined, size: 20)),
+              IconButton(tooltip: 'Print / PDF', onPressed: () => printRx(session, e), icon: Icon(Icons.print_outlined, size: 20)),
             ]),
           ),
       ]),
@@ -499,40 +530,40 @@ class _NotesCardState extends State<NotesCard> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(child: Text('Consult notes · ${list.length}', style: DT.h2)),
-          if (!form) TextButton.icon(onPressed: () => _start(null), icon: const Icon(Icons.add, size: 18), label: const Text('Add note')),
+          if (!form) TextButton.icon(onPressed: () => _start(null), icon: Icon(Icons.add, size: 18), label: Text('Add note')),
         ]),
         Text('Private to you. Encrypted in this browser; never sent to the patient or to LifeTrack.', style: DT.muted),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         if (form) ...[
           Field('Complaint', _complaint, hint: 'Tiredness for 2 weeks', maxLines: 3),
           Field('Findings / impression', _findings, hint: 'BP 138/88; HbA1c trending down', maxLines: 4),
           Field('Advice / plan', _advice, hint: 'Continue metformin; walk 30 min daily', maxLines: 4),
           Text('Follow-up', style: DT.label),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
             OutlinedButton.icon(
-              icon: const Icon(Icons.event, size: 18),
+              icon: Icon(Icons.event, size: 18),
               label: Text(_followUp == null ? 'Set a date' : fmtDate(_followUp!)),
               onPressed: () async {
                 final now = DateTime.now();
-                final d = await showDatePicker(context: context, initialDate: _followUp ?? now.add(const Duration(days: 14)), firstDate: DateTime(now.year, now.month, now.day), lastDate: DateTime(now.year + 2));
+                final d = await showDatePicker(context: context, initialDate: _followUp ?? now.add(Duration(days: 14)), firstDate: DateTime(now.year, now.month, now.day), lastDate: DateTime(now.year + 2));
                 if (d != null) setState(() => _followUp = d);
               },
             ),
-            if (_followUp != null) TextButton(onPressed: () => setState(() => _followUp = null), child: const Text('No follow-up')),
+            if (_followUp != null) TextButton(onPressed: () => setState(() => _followUp = null), child: Text('No follow-up')),
           ]),
-          if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_error!, style: const TextStyle(color: DT.signal))),
-          const SizedBox(height: 12),
+          if (_error != null) Padding(padding: EdgeInsets.only(top: 8), child: Text(_error!, style: TextStyle(color: DT.signal))),
+          SizedBox(height: 12),
           Wrap(spacing: 8, runSpacing: 8, children: [
             Pill(_editing != null ? 'Save changes' : 'Save note', onTap: _save),
             Pill('Cancel', dark: false, onTap: _stop),
           ]),
-          const Divider(height: 28),
+          Divider(height: 28),
         ],
         if (list.isEmpty && !form) Text('No notes yet.', style: DT.muted),
         for (final n in list)
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: EdgeInsets.only(bottom: 12),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -540,7 +571,7 @@ class _NotesCardState extends State<NotesCard> {
                   if (n.complaint.isNotEmpty) Text('Complaint: ${n.complaint}', style: DT.body),
                   if (n.findings.isNotEmpty) Text('Findings: ${n.findings}', style: DT.body),
                   if (n.advice.isNotEmpty) Text('Plan: ${n.advice}', style: DT.body),
-                  if (n.followUp != null) Text('Follow-up ${fmtDate(n.followUp!)}', style: const TextStyle(color: DT.cautionInk, fontWeight: FontWeight.w600, fontSize: 13)),
+                  if (n.followUp != null) Text('Follow-up ${fmtDate(n.followUp!)}', style: TextStyle(color: DT.cautionInk, fontWeight: FontWeight.w600, fontSize: 13)),
                 ]),
               ),
               PopupMenuButton<String>(
@@ -552,11 +583,11 @@ class _NotesCardState extends State<NotesCard> {
                     final ok = await showDialog<bool>(
                       context: context,
                       builder: (c) => AlertDialog(
-                        title: const Text('Delete this note?'),
+                        title: Text('Delete this note?'),
                         content: Text('The note from ${fmtDateTime(n.at)} is removed from this browser.'),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Keep')),
-                          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete')),
+                          TextButton(onPressed: () => Navigator.pop(c, false), child: Text('Keep')),
+                          TextButton(onPressed: () => Navigator.pop(c, true), child: Text('Delete')),
                         ],
                       ),
                     );
@@ -567,7 +598,7 @@ class _NotesCardState extends State<NotesCard> {
                     }
                   }
                 },
-                itemBuilder: (_) => const [
+                itemBuilder: (_) => [
                   PopupMenuItem(value: 'edit', child: Text('Edit')),
                   PopupMenuItem(value: 'copy', child: Text('Copy text')),
                   PopupMenuItem(value: 'delete', child: Text('Delete')),
@@ -653,11 +684,11 @@ class _PrescribeCardState extends State<PrescribeCard> {
       return Card0(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Sent to ${sh.patientName}', style: DT.h2),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text('Signed and encrypted to their phone. It appears in their records as signed by you, and in your Prescriptions.', style: DT.muted),
-          const Divider(height: 24),
+          Divider(height: 24),
           SelectableText('${rx.medicine}${rx.ingredient == null ? '' : ' (${rx.ingredient})'}\n${doseLine(rx)}${rx.note == null ? '' : '\n${rx.note}'}', style: DT.body),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Wrap(spacing: 8, runSpacing: 8, children: [
             Pill('Print / save as PDF', onTap: () => printRx(widget.session, RxEntry(patientKey: sh.patientKey, patientName: sh.patientName, patientLine: sh.patientLine, rx: rx))),
             Pill('Write another', dark: false, onTap: () => setState(() => _sent = null)),
@@ -669,11 +700,11 @@ class _PrescribeCardState extends State<PrescribeCard> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Write a prescription', style: DT.h2),
         Text('For ${sh.patientName} only.', style: DT.muted),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Field('Medicine', _med, hint: 'Atorvastatin 10 mg'),
         Field('Active ingredient', _ing, hint: 'atorvastatin'),
         Text('Dose · morning, afternoon, night (tap to change)', style: DT.label),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         Row(children: [
           for (var i = 0; i < 3; i++) ...[
             Expanded(
@@ -685,8 +716,8 @@ class _PrescribeCardState extends State<PrescribeCard> {
                   child: Container(
                     height: 44,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(color: _dose[i] > 0 ? DT.ink : DT.raised, borderRadius: BorderRadius.circular(12)),
-                    child: Text('${_dose[i]}', style: TextStyle(fontWeight: FontWeight.w600, color: _dose[i] > 0 ? DT.accent : DT.ink)),
+                    decoration: BoxDecoration(color: _dose[i] > 0 ? DT.button : DT.raised, borderRadius: BorderRadius.circular(12)),
+                    child: Text('${_dose[i]}', style: TextStyle(fontWeight: FontWeight.w600, color: _dose[i] > 0 ? (DT.dark ? DT.onButton : DT.accent) : DT.ink)),
                   ),
                 ),
               ),
@@ -694,26 +725,26 @@ class _PrescribeCardState extends State<PrescribeCard> {
             if (i < 2) const SizedBox(width: 8),
           ],
         ]),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Text('When to take it', style: DT.label),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final MapEntry(key: k, value: label) in timingLabels.entries)
             ChoiceChip(
               label: Text(label),
               selected: _timing == k,
               onSelected: (_) => setState(() => _timing = k),
-              selectedColor: DT.ink,
-              labelStyle: TextStyle(color: _timing == k ? DT.onDark : DT.ink, fontWeight: FontWeight.w500),
-              shape: const StadiumBorder(),
+              selectedColor: DT.button,
+              labelStyle: TextStyle(color: _timing == k ? DT.onButton : DT.ink, fontWeight: FontWeight.w500),
+              shape: StadiumBorder(),
               showCheckmark: false,
             ),
         ]),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Field('Days', _days),
         Field('Note to patient', _note, hint: 'Repeat lipid panel in 3 months', maxLines: 3),
         Field('Your qualification', _qual),
-        if (_error != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(_error!, style: const TextStyle(color: DT.signal))),
+        if (_error != null) Padding(padding: EdgeInsets.only(bottom: 8), child: Text(_error!, style: TextStyle(color: DT.signal))),
         Pill(_busy ? 'Sending…' : 'Sign and send', onTap: _busy ? null : _send),
       ]),
     );

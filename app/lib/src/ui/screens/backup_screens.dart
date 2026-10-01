@@ -53,23 +53,23 @@ class _BackupScreenState extends State<BackupScreen> {
         Masthead(
           eyebrow: 'Backup',
           title: on ? 'Backup is on' : 'Back up your records',
-          trailing: on ? const Badge2('On', tone: BadgeTone.trace) : const Badge2('Off', tone: BadgeTone.outline),
+          trailing: on ? Badge2('On', tone: BadgeTone.trace) : Badge2('Off', tone: BadgeTone.outline),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         if (!s.backupEnabled)
-          const Note('The backup service is not set up in this build.', icon: LucideIcons.cloudOff)
+          Note('The backup service is not set up in this build.', icon: LucideIcons.cloudOff)
         else if (!on)
           ..._off(s)
         else
           ..._on(s),
-        if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
-        const SizedBox(height: 28),
+        if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
+        SizedBox(height: 28),
       ]),
     );
   }
 
   List<Widget> _off(AppServices s) => [
-        const ShadCard(
+        ShadCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('What is backed up', style: LT.label),
             SizedBox(height: 6),
@@ -84,10 +84,10 @@ class _BackupScreenState extends State<BackupScreen> {
         ),
         ShadCard(
           onTap: () => setState(() => _notes = !_notes),
-          padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
+          padding: EdgeInsets.fromLTRB(8, 6, 12, 6),
           child: Row(children: [
             Checkbox(value: _notes, onChanged: (v) => setState(() => _notes = v ?? false)),
-            const Expanded(
+            Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Include personal notes and home readings', style: LT.label),
                 SizedBox(height: 4),
@@ -96,9 +96,9 @@ class _BackupScreenState extends State<BackupScreen> {
             ),
           ]),
         ),
-        const Note('Next you will see a password and recovery codes, once. Keep them somewhere safe that is not this phone.', icon: LucideIcons.keyRound),
+        Note('Next you will see a password and recovery codes, once. Keep them somewhere safe that is not this phone.', icon: LucideIcons.keyRound),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
           child: SlabButton(_busy ? 'Encrypting…' : 'Turn on backup', icon: LucideIcons.cloudUpload, onPressed: _busy
               ? null
               : () => _run(() async {
@@ -112,17 +112,17 @@ class _BackupScreenState extends State<BackupScreen> {
   List<Widget> _on(AppServices s) => [
         ShadCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Account code', style: LT.small),
-            const SizedBox(height: 4),
+            Text('Account code', style: LT.small),
+            SizedBox(height: 4),
             Row(children: [
               Expanded(child: Text(s.backupAccount!, style: LT.title.copyWith(fontSize: 20, letterSpacing: 0.5))),
               IconButton(
                 tooltip: 'Copy account code',
-                icon: const Icon(LucideIcons.copy, size: 18),
+                icon: Icon(LucideIcons.copy, size: 18),
                 onPressed: () => Clipboard.setData(ClipboardData(text: s.backupAccount!)),
               ),
             ]),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Text(
               s.lastBackupError != null
                   ? 'Last attempt failed: ${s.lastBackupError}'
@@ -133,11 +133,11 @@ class _BackupScreenState extends State<BackupScreen> {
             ),
           ]),
         ),
-        const Note('Changes are backed up as you make them. If the service cannot be reached, the next change or "Back up now" tries again.', icon: LucideIcons.refreshCw),
+        Note('Changes are backed up as you make them. If the service cannot be reached, the next change or "Back up now" tries again.', icon: LucideIcons.refreshCw),
         ShadCard(
-          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+          padding: EdgeInsets.fromLTRB(16, 8, 8, 8),
           child: Row(children: [
-            const Expanded(
+            Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Include personal notes and home readings', style: LT.label),
                 SizedBox(height: 4),
@@ -148,23 +148,23 @@ class _BackupScreenState extends State<BackupScreen> {
           ]),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 6),
           child: SlabButton(_busy ? 'Backing up…' : 'Back up now', icon: LucideIcons.cloudUpload, onPressed: _busy ? null : () => _run(s.backUpNow)),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+          padding: EdgeInsets.fromLTRB(16, 6, 16, 6),
           child: SlabButton('Turn off and delete the backup', variant: ButtonVariant.ghost, icon: LucideIcons.trash2, onPressed: _busy
               ? null
               : () async {
                   final yes = await showDialog<bool>(
                     context: context,
                     builder: (c) => AlertDialog(
-                      title: const Text('Delete the backup?'),
-                      content: const Text('The encrypted copy is deleted from the LifeTrack server. Records on this phone are not touched. '
+                      title: Text('Delete the backup?'),
+                      content: Text('The encrypted copy is deleted from the LifeTrack server. Records on this phone are not touched. '
                           'If this phone is lost after this, the records cannot be brought back.'),
                       actions: [
-                        TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('Keep backup')),
-                        TextButton(onPressed: () => Navigator.of(c).pop(true), child: const Text('Delete')),
+                        TextButton(onPressed: () => Navigator.of(c).pop(false), child: Text('Keep backup')),
+                        TextButton(onPressed: () => Navigator.of(c).pop(true), child: Text('Delete')),
                       ],
                     ),
                   );
@@ -204,45 +204,45 @@ class _RecoveryKitScreenState extends State<RecoveryKitScreen> {
       child: Scaffold(
         appBar: AppBar(automaticallyImplyLeading: false),
         body: ListView(children: [
-          const Masthead(eyebrow: 'Backup is on', title: 'Your recovery kit', description: 'Shown once. The app does not keep the password.'),
-          const SizedBox(height: 14),
+          Masthead(eyebrow: 'Backup is on', title: 'Your recovery kit', description: 'Shown once. The app does not keep the password.'),
+          SizedBox(height: 14),
           ShadCard(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Account code', style: LT.small),
-              const SizedBox(height: 4),
+              Text('Account code', style: LT.small),
+              SizedBox(height: 4),
               SelectableText(k.account, style: LT.title.copyWith(fontSize: 20, letterSpacing: 0.5)),
-              const SizedBox(height: 14),
-              const Text('Password', style: LT.small),
-              const SizedBox(height: 4),
+              SizedBox(height: 14),
+              Text('Password', style: LT.small),
+              SizedBox(height: 4),
               SelectableText(k.password, style: LT.title.copyWith(fontSize: 20, letterSpacing: 1)),
             ]),
           ),
-          const Note('With the account code and password, a new phone gets everything back.', icon: LucideIcons.keyRound),
+          Note('With the account code and password, a new phone gets everything back.', icon: LucideIcons.keyRound),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 6),
             child: SlabButton('Save or print the recovery sheet', icon: LucideIcons.fileDown, onPressed: () => SharePlus.instance.share(ShareParams(text: _sheet, subject: 'LifeTrack recovery sheet'))),
           ),
-          const Eyebrow('If the password is lost'),
-          const ShadCard(
+          Eyebrow('If the password is lost'),
+          ShadCard(
             child: Text('There are three recovery codes; any two open the backup without the password. One stays on this phone, one is on the recovery sheet, '
                 'and one is for someone you trust.', style: LT.small),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+            padding: EdgeInsets.fromLTRB(16, 6, 16, 6),
             child: SlabButton('Send a code to someone you trust', variant: ButtonVariant.outline, icon: LucideIcons.userCheck,
                 onPressed: () => SharePlus.instance.share(ShareParams(text: _contactMessage, subject: 'LifeTrack recovery code'))),
           ),
           ShadCard(
-            margin: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+            margin: EdgeInsets.fromLTRB(16, 16, 16, 10),
             onTap: () => setState(() => _saved = !_saved),
-            padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
+            padding: EdgeInsets.fromLTRB(8, 6, 12, 6),
             child: Row(children: [
               Checkbox(value: _saved, onChanged: (v) => setState(() => _saved = v ?? false)),
-              const Expanded(child: Text('I have saved the account code and password somewhere other than this phone.', style: LT.label)),
+              Expanded(child: Text('I have saved the account code and password somewhere other than this phone.', style: LT.label)),
             ]),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 28),
+            padding: EdgeInsets.fromLTRB(16, 6, 16, 28),
             child: SlabButton('Done', icon: LucideIcons.check, onPressed: _saved ? () => Navigator.of(context).pop() : null),
           ),
         ]),
@@ -305,14 +305,14 @@ class _RestoreScreenState extends State<RestoreScreen> {
     return Scaffold(
       appBar: AppBar(),
       body: ListView(children: [
-        const Masthead(eyebrow: 'Restore', title: 'Bring back your records', description: 'Use the recovery sheet you saved when you turned on backup.'),
-        const SizedBox(height: 14),
+        Masthead(eyebrow: 'Restore', title: 'Bring back your records', description: 'Use the recovery sheet you saved when you turned on backup.'),
+        SizedBox(height: 14),
         LabeledField(
           label: 'Account code',
-          child: TextField(controller: _account, textCapitalization: TextCapitalization.characters, autocorrect: false, decoration: const InputDecoration(hintText: 'e.g. LT-7KQM2-XPA9D'), onChanged: (_) => setState(() {})),
+          child: TextField(controller: _account, textCapitalization: TextCapitalization.characters, autocorrect: false, decoration: InputDecoration(hintText: 'e.g. LT-7KQM2-XPA9D'), onChanged: (_) => setState(() {})),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+          padding: EdgeInsets.fromLTRB(16, 4, 16, 4),
           child: Wrap(spacing: 8, children: [
             Chip2('Password', selected: !_withCodes, onTap: () => setState(() => _withCodes = false)),
             Chip2('Two recovery codes', selected: _withCodes, onTap: () => setState(() => _withCodes = true)),
@@ -327,9 +327,9 @@ class _RestoreScreenState extends State<RestoreScreen> {
           LabeledField(label: 'First recovery code', child: TextField(controller: _code1, autocorrect: false, onChanged: (_) => setState(() {}))),
           LabeledField(label: 'Second recovery code', child: TextField(controller: _code2, autocorrect: false, onChanged: (_) => setState(() {}))),
         ],
-        if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
+        if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 8, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+          padding: EdgeInsets.fromLTRB(16, 20, 16, 28),
           child: SlabButton(_busy ? 'Decrypting…' : 'Restore', icon: LucideIcons.cloudDownload, onPressed: ready && !_busy ? _restore : null),
         ),
       ]),

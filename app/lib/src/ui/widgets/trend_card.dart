@@ -57,33 +57,33 @@ class TrendCard extends StatelessWidget {
     return ShadCard(
       color: LT.primary,
       onTap: onTap,
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      padding: EdgeInsets.fromLTRB(18, 16, 18, 18),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
             width: 36,
             height: 36,
-            decoration: const BoxDecoration(color: LT.accent, shape: BoxShape.circle),
-            child: const Icon(LucideIcons.flaskConical, size: 17, color: LT.ink),
+            decoration: BoxDecoration(color: LT.accent, shape: BoxShape.circle),
+            child: Icon(LucideIcons.flaskConical, size: 17, color: LT.onAccent),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Your results over time', style: TextStyle(fontSize: 11.5, color: LT.onDarkMuted)),
-              Text(analyteName(analyte), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
+              Text('Your results over time', style: TextStyle(fontSize: 11.5, color: LT.onDarkMuted)),
+              Text(analyteName(analyte), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
             ]),
           ),
-          if (onTap != null) const Icon(LucideIcons.chevronRight, color: LT.onDarkMuted),
+          if (onTap != null) Icon(LucideIcons.chevronRight, color: LT.onDarkMuted),
         ]),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
-          Text(fmt(latest.$2), style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w600, color: LT.onDark, letterSpacing: -1.2, height: 1)),
-          const SizedBox(width: 6),
-          Text(latest.$3, style: const TextStyle(fontSize: 14, color: LT.onDarkMuted)),
+          Text(fmt(latest.$2), style: TextStyle(fontSize: 38, fontWeight: FontWeight.w600, color: LT.onDark, letterSpacing: -1.2, height: 1)),
+          SizedBox(width: 6),
+          Text(latest.$3, style: TextStyle(fontSize: 14, color: LT.onDarkMuted)),
         ]),
-        const SizedBox(height: 4),
-        Text('${all.length} results · ${fullDate(all.first.$1)} – ${fullDate(latest.$1)}${onTap != null ? ' · tap for every result' : ''}', style: const TextStyle(fontSize: 11.5, color: LT.onDarkMuted)),
-        const SizedBox(height: 18),
+        SizedBox(height: 4),
+        Text('${all.length} results · ${fullDate(all.first.$1)} – ${fullDate(latest.$1)}${onTap != null ? ' · tap for every result' : ''}', style: TextStyle(fontSize: 11.5, color: LT.onDarkMuted)),
+        SizedBox(height: 18),
         SizedBox(
           height: _rows * 14.0 + 22,
           child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -92,14 +92,14 @@ class TrendCard extends StatelessWidget {
                 child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
                   for (var r = _rows - 1; r >= 0; r--)
                     Padding(
-                      padding: const EdgeInsets.only(top: 4),
+                      padding: EdgeInsets.only(top: 4),
                       child: _dot(
                         filled: r < _level(p.$2, lo, hi),
                         now: i == points.length - 1,
                       ),
                     ),
-                  const SizedBox(height: 6),
-                  Text(shortMonth(p.$1), style: const TextStyle(fontSize: 10, color: LT.onDarkMuted)),
+                  SizedBox(height: 6),
+                  Text(shortMonth(p.$1), style: TextStyle(fontSize: 10, color: LT.onDarkMuted)),
                 ]),
               ),
           ]),
@@ -118,14 +118,14 @@ class TrendCard extends StatelessWidget {
         height: 10,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: filled ? (now ? LT.accent : LT.onDark) : const Color(0xFF2A2A28),
+          color: filled ? (now ? LT.accent : LT.onDark) : LT.onDarkChip,
         ),
       );
 }
 
 /// One test in one unit: (record, result), oldest first.
 class TrendSeries {
-  const TrendSeries(this.analyte, this.unit, this.points);
+  TrendSeries(this.analyte, this.unit, this.points);
   final String analyte;
   final String unit;
   final List<(HealthRecord, LabResult)> points;

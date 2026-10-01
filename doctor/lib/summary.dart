@@ -54,12 +54,12 @@ class SummaryPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final b = bundle;
-    final withheld = (b['withheld'] as List?) ?? const [];
-    final meds = (b['medicines'] as Map?) ?? const {};
+    final withheld = (b['withheld'] as List?) ?? [];
+    final meds = (b['medicines'] as Map?) ?? {};
     final family = (b['familyIllnesses'] as Map?)?['items'] as List?;
     final home = (b['homeReadings'] as Map?)?['items'] as List?;
     final docs = b['documents'] as List?;
-    final originals = ((b['originals'] as Map?) ?? const {})
+    final originals = ((b['originals'] as Map?) ?? {})
         .cast<String, Object?>();
     final omitted = (b['originalsOmitted'] as int?) ?? 0;
 
@@ -72,7 +72,7 @@ class SummaryPanel extends StatelessWidget {
                 for (final p in originals[id]! as List)
                   base64Decode(p as String),
               ]),
-              icon: const Icon(Icons.description_outlined, size: 18),
+              icon: Icon(Icons.description_outlined, size: 18),
               label: Text(
                 'View original report · ${(originals[id]! as List).length} page${(originals[id]! as List).length == 1 ? '' : 's'}',
               ),
@@ -80,11 +80,11 @@ class SummaryPanel extends StatelessWidget {
           );
 
     final nothing =
-        ((b['allergies'] as List?) ?? const []).isEmpty &&
-        ((b['conditions'] as List?) ?? const []).isEmpty &&
-        (((meds['active'] as List?) ?? const []).isEmpty) &&
-        (((meds['endedRecently'] as List?) ?? const []).isEmpty) &&
-        ((b['latestTests'] as List?) ?? const []).isEmpty &&
+        ((b['allergies'] as List?) ?? []).isEmpty &&
+        ((b['conditions'] as List?) ?? []).isEmpty &&
+        (((meds['active'] as List?) ?? []).isEmpty) &&
+        (((meds['endedRecently'] as List?) ?? []).isEmpty) &&
+        ((b['latestTests'] as List?) ?? []).isEmpty &&
         (family == null || family.isEmpty) &&
         (home == null || home.isEmpty) &&
         (docs == null || docs.isEmpty);
@@ -106,17 +106,17 @@ class SummaryPanel extends StatelessWidget {
           _note(
             '$omitted original report${omitted == 1 ? ' was' : 's were'} too large to send. Ask the patient to show it on their phone.',
           ),
-        for (final a in (b['allergies'] as List?) ?? const [])
+        for (final a in (b['allergies'] as List?) ?? [])
           Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(14),
+            margin: EdgeInsets.only(bottom: 8),
+            padding: EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: DT.signal,
+              color: DT.signalFill,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Text(
               'Allergy: ${(a as Map)['substance']}${a['reaction'] == null ? '' : ' — ${a['reaction']}'}',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
                 fontSize: 15,
@@ -124,12 +124,12 @@ class SummaryPanel extends StatelessWidget {
             ),
           ),
         _card('Medicines', [
-          for (final m in (meds['active'] as List?) ?? const [])
+          for (final m in (meds['active'] as List?) ?? [])
             _row(
               '${(m as Map)['title']}${m['dose'] == null ? '' : ' · ${m['dose']}'}',
               '${m['patientConfirmedAt'] != null ? 'Active · patient confirmed still taking' : 'Active · not confirmed by patient'}${m['prescriber'] == null ? '' : ' · ${m['prescriber']}'}',
             ),
-          for (final m in (meds['endedRecently'] as List?) ?? const [])
+          for (final m in (meds['endedRecently'] as List?) ?? [])
             _row(
               '${(m as Map)['title']}',
               'Course ended ${(m['endsOn'] as String?)?.substring(0, 10) ?? ''}',
@@ -137,14 +137,14 @@ class SummaryPanel extends StatelessWidget {
             ),
         ]),
         _card('Conditions', [
-          for (final c in (b['conditions'] as List?) ?? const [])
+          for (final c in (b['conditions'] as List?) ?? [])
             _row(
               '${(c as Map)['name']}',
               c['since'] == null ? '' : 'since ${c['since']}',
             ),
         ]),
         _card('Latest tests', [
-          for (final t in (b['latestTests'] as List?) ?? const [])
+          for (final t in (b['latestTests'] as List?) ?? [])
             () {
               final m = t as Map;
               final r = m['printedRange'] as Map?;
@@ -178,7 +178,7 @@ class SummaryPanel extends StatelessWidget {
               _row(
                 v['kind'] == 'bloodPressure'
                     ? 'BP ${v['sys']}/${v['dia']} mmHg${v['pulse'] == null ? '' : ' · pulse ${v['pulse']}'}'
-                    : 'Sugar ${fmt(v['glucose'])} mg/dL${v['context'] == null ? '' : ' · ${const {'fasting': 'fasting', 'afterMeal': 'after a meal', 'random': 'random', 'bedtime': 'bedtime'}[v['context']]}'}',
+                    : 'Sugar ${fmt(v['glucose'])} mg/dL${v['context'] == null ? '' : ' · ${{'fasting': 'fasting', 'afterMeal': 'after a meal', 'random': 'random', 'bedtime': 'bedtime'}[v['context']]}'}',
                 (v['at'] as String).substring(0, 16).replaceFirst('T', ' '),
               ),
           ]),
@@ -204,23 +204,23 @@ class SummaryPanel extends StatelessWidget {
   }
 
   Widget _note(String text) => Container(
-    margin: const EdgeInsets.only(bottom: 12),
-    padding: const EdgeInsets.all(12),
+    margin: EdgeInsets.only(bottom: 12),
+    padding: EdgeInsets.all(12),
     decoration: BoxDecoration(
       color: DT.caution,
       borderRadius: BorderRadius.circular(14),
     ),
-    child: Text(text, style: const TextStyle(color: DT.cautionInk)),
+    child: Text(text, style: TextStyle(color: DT.cautionInk)),
   );
 
   Widget _card(String title, List<Widget> rows) => rows.isEmpty
-      ? const SizedBox.shrink()
+      ? SizedBox.shrink()
       : Card0(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: DT.muted),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               ...rows,
             ],
           ),
@@ -232,7 +232,7 @@ class SummaryPanel extends StatelessWidget {
     bool quiet = false,
     Widget? action,
   }) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
+    padding: EdgeInsets.symmetric(vertical: 6),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -256,21 +256,21 @@ void showOriginals(
 ) => showDialog<void>(
   context: context,
   builder: (c) => Dialog(
-    backgroundColor: DT.ink,
-    insetPadding: const EdgeInsets.all(24),
+    backgroundColor: DT.hero,
+    insetPadding: EdgeInsets.all(24),
     child: SizedBox(
       width: 900,
       height: 1000,
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 8, 8),
+            padding: EdgeInsets.fromLTRB(20, 14, 8, 8),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
                     '$title · original, ${pages.length} page${pages.length == 1 ? '' : 's'}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: DT.onDark,
                       fontWeight: FontWeight.w600,
                     ),
@@ -278,7 +278,7 @@ void showOriginals(
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(c).pop(),
-                  icon: const Icon(Icons.close, color: DT.onDark),
+                  icon: Icon(Icons.close, color: DT.onDark),
                   tooltip: 'Close',
                 ),
               ],
@@ -288,11 +288,11 @@ void showOriginals(
             child: InteractiveViewer(
               maxScale: 5,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16),
                 children: [
                   for (final p in pages)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
+                      padding: EdgeInsets.only(bottom: 16),
                       child: Image.memory(p),
                     ),
                 ],

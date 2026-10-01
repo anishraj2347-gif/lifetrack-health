@@ -23,21 +23,21 @@ class InsightCard extends StatelessWidget {
     };
     final fg = flood ? Colors.white : LT.ink;
     return ShadCard(
-      color: flood ? LT.signal : LT.ground,
-      borderColor: flood ? LT.signal : (i.severity == Severity.discussSoon ? const Color(0xFFFED7AA) : LT.rule),
+      color: flood ? LT.signalFill : LT.ground,
+      borderColor: flood ? LT.signalFill : (i.severity == Severity.discussSoon ? Color(0xFFFED7AA) : LT.rule),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(icon, size: 16, color: flood ? Colors.white : (i.severity == Severity.discussSoon ? LT.signal : LT.ink3)),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Flexible(
             child: flood
-                ? Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white))
+                ? Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white))
                 : Badge2(label, tone: i.severity == Severity.discussSoon ? BadgeTone.signal : BadgeTone.neutral),
           ),
         ]),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Text(i.finding, style: TextStyle(fontFamily: LT.body, fontSize: 15, height: 1.5, fontWeight: FontWeight.w500, color: fg)),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(i.action, style: TextStyle(fontFamily: LT.body, fontSize: 13.5, height: 1.5, color: flood ? Colors.white : LT.ink3)),
       ]),
     );

@@ -33,36 +33,36 @@ class MeScreen extends StatelessWidget {
     final initials = p.name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).take(2).map((w) => w[0].toUpperCase()).join();
     return ListView(children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+        padding: EdgeInsets.fromLTRB(20, 20, 20, 20),
         child: Row(children: [
           CircleAvatar(
             radius: 28,
             backgroundColor: LT.band,
             child: Text(initials, style: LT.label.copyWith(fontSize: 18, fontWeight: FontWeight.w600)),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(p.name, style: LT.title.copyWith(fontSize: 22)),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               if (s.isDemo)
-                const Badge2('Sample records', tone: BadgeTone.caution)
+                Badge2('Sample records', tone: BadgeTone.caution)
               else if (p.verification case final v?)
                 Badge2('Verified · ${v.method.label}', tone: BadgeTone.trace)
               else
-                const Badge2('Not verified', tone: BadgeTone.outline),
+                Badge2('Not verified', tone: BadgeTone.outline),
               if (s.lifeTrackIdOf(p.id) case final id?) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 GestureDetector(
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: id));
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('LifeTrack ID copied.')));
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('LifeTrack ID copied.')));
                   },
                   child: Text('LifeTrack ID  ${LifeTrackId.display(id)}', style: LT.small.copyWith(color: LT.ink, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
                 ),
               ] else if (s.ids != null) ...[
-                const SizedBox(height: 8),
-                const Text('LifeTrack ID: assigned when the phone reaches LifeTrack', style: LT.small),
+                SizedBox(height: 8),
+                Text('LifeTrack ID: assigned when the phone reaches LifeTrack', style: LT.small),
               ],
             ]),
           ),
@@ -71,10 +71,10 @@ class MeScreen extends StatelessWidget {
       if (!p.isVerified && !s.isDemo && s.verifier != null && p.id == s.selfPatientId)
         ShadCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Verify your profile', style: LT.label),
-            const SizedBox(height: 4),
-            const Text('This profile was made before DigiLocker verification. Verify with your Aadhaar; your name, date of birth and gender become what DigiLocker confirms.', style: LT.small),
-            const SizedBox(height: 8),
+            Text('Verify your profile', style: LT.label),
+            SizedBox(height: 4),
+            Text('This profile was made before DigiLocker verification. Verify with your Aadhaar; your name, date of birth and gender become what DigiLocker confirms.', style: LT.small),
+            SizedBox(height: 8),
             DigiLockerStep(
               purpose: 'self',
               buttonLabel: 'Verify with DigiLocker (Aadhaar)',
@@ -88,21 +88,21 @@ class MeScreen extends StatelessWidget {
       ShadCard(
         padding: EdgeInsets.zero,
         child: Column(children: [
-          _link(context, LucideIcons.heartPulse, 'Emergency ID', 'What a paramedic sees', const EmergencyScreen()),
-          _link(context, LucideIcons.idCard, 'ABHA health ID', p.abha == null ? 'Optional · not added' : '${p.abha!.display} · not verified', const AbhaScreen()),
-          _link(context, LucideIcons.bell, 'Reminders', s.reminderSettings.on ? 'On · ${s.reminderPlan().length} in the next 2 weeks' : 'Off', const RemindersScreen()),
-          _link(context, LucideIcons.cloudUpload, 'Backup', s.backupAccount == null ? 'Off · records are only on this phone' : s.lastBackupError != null ? 'On · last attempt failed' : 'On · ${s.lastBackupAt == null ? 'not yet run' : 'last ${dateTime(s.lastBackupAt!)}'}', const BackupScreen()),
-          _link(context, LucideIcons.history, 'Access log', '${s.auditEntries().length} ${s.auditEntries().length == 1 ? 'entry' : 'entries'} on this phone', const AuditScreen()),
-          _link(context, LucideIcons.scale, 'Your data and your rights', 'What is held where, and how to erase it', const DataRightsScreen(), last: true),
+          _link(context, LucideIcons.heartPulse, 'Emergency ID', 'What a paramedic sees', EmergencyScreen()),
+          _link(context, LucideIcons.idCard, 'ABHA health ID', p.abha == null ? 'Optional · not added' : '${p.abha!.display} · not verified', AbhaScreen()),
+          _link(context, LucideIcons.bell, 'Reminders', s.reminderSettings.on ? 'On · ${s.reminderPlan().length} in the next 2 weeks' : 'Off', RemindersScreen()),
+          _link(context, LucideIcons.cloudUpload, 'Backup', s.backupAccount == null ? 'Off · records are only on this phone' : s.lastBackupError != null ? 'On · last attempt failed' : 'On · ${s.lastBackupAt == null ? 'not yet run' : 'last ${dateTime(s.lastBackupAt!)}'}', BackupScreen()),
+          _link(context, LucideIcons.history, 'Access log', '${s.auditEntries().length} ${s.auditEntries().length == 1 ? 'entry' : 'entries'} on this phone', AuditScreen()),
+          _link(context, LucideIcons.scale, 'Your data and your rights', 'What is held where, and how to erase it', DataRightsScreen(), last: true),
         ]),
       ),
       if (AppLockGate.of(context) case final lock? when lock.available)
         ShadCard(
-          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+          padding: EdgeInsets.fromLTRB(16, 8, 8, 8),
           child: Row(children: [
-            const IconTile(LucideIcons.lock),
-            const SizedBox(width: 14),
-            const Expanded(
+            IconTile(LucideIcons.lock),
+            SizedBox(width: 14),
+            Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('App lock', style: LT.label),
                 SizedBox(height: 4),
@@ -118,11 +118,11 @@ class MeScreen extends StatelessWidget {
           ]),
         ),
       ShadCard(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+        padding: EdgeInsets.fromLTRB(16, 8, 8, 8),
         child: Row(children: [
-          const IconTile(LucideIcons.eyeOff),
-          const SizedBox(width: 14),
-          const Expanded(
+          IconTile(LucideIcons.eyeOff),
+          SizedBox(width: 14),
+          Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Hide from screenshots', style: LT.label),
               SizedBox(height: 4),
@@ -138,20 +138,40 @@ class MeScreen extends StatelessWidget {
           ),
         ]),
       ),
-      const Eyebrow('Family on this phone'),
       ShadCard(
-        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FamilyOverviewScreen())),
         child: Row(children: [
-          const IconTile(LucideIcons.users),
+          const IconTile(LucideIcons.sunMoon),
           const SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Family overview', style: LT.label),
-              const SizedBox(height: 4),
+              Text('Appearance', style: LT.label),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final (v, label) in const [('system', 'Follow phone'), ('light', 'Light'), ('dark', 'Dark')])
+                  Chip2(label, selected: s.themeChoice == v, onTap: () async {
+                    await s.setThemeChoice(v);
+                    appearance.value = themeModeOf(v);
+                    if (context.mounted) AppScope.changed(context);
+                  }),
+              ]),
+            ]),
+          ),
+        ]),
+      ),
+      Eyebrow('Family on this phone'),
+      ShadCard(
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => FamilyOverviewScreen())),
+        child: Row(children: [
+          IconTile(LucideIcons.users),
+          SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Family overview', style: LT.label),
+              SizedBox(height: 4),
               Text('${s.familyOnPhone().length} on this phone · you are the head of family', style: LT.small),
             ]),
           ),
-          const Icon(LucideIcons.chevronRight, color: LT.inactive),
+          Icon(LucideIcons.chevronRight, color: LT.inactive),
         ]),
       ),
       for (final f in s.familyOnPhone().where((f) => f.id != s.selfPatientId))
@@ -159,17 +179,17 @@ class MeScreen extends StatelessWidget {
           final c = s.custodyOf(f.id)!;
           return ShadCard(
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              CircleAvatar(backgroundColor: LT.raised, child: Text(FamilyBar.initials(f.name), style: const TextStyle(color: LT.ink, fontWeight: FontWeight.w600))),
-              const SizedBox(width: 14),
+              CircleAvatar(backgroundColor: LT.raised, child: Text(FamilyBar.initials(f.name), style: TextStyle(color: LT.ink, fontWeight: FontWeight.w600))),
+              SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(f.name, style: LT.label.copyWith(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(FamilyBar.authorityLine(c), style: LT.small),
                   if (c.consentedAt != null) Text('Since ${fullDate(c.consentedAt!)}', style: LT.small.copyWith(fontSize: 12)),
                   if (c.kind == CustodyKind.delegatedByAdult)
                     Padding(
-                      padding: const EdgeInsets.only(top: 8),
+                      padding: EdgeInsets.only(top: 8),
                       child: SlabButton('End management', variant: ButtonVariant.outline, onPressed: () async {
                         await s.endDelegation(f.id);
                         if (context.mounted) AppScope.changed(context);
@@ -181,23 +201,23 @@ class MeScreen extends StatelessWidget {
           );
         }(),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+        padding: EdgeInsets.fromLTRB(16, 6, 16, 6),
         child: SlabButton('Add a family member', variant: ButtonVariant.outline, icon: LucideIcons.userPlus, onPressed: () async {
-          await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AddFamilyScreen()));
+          await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AddFamilyScreen()));
           if (context.mounted) AppScope.changed(context);
         }),
       ),
-      const LinkedAdultsSection(),
+      LinkedAdultsSection(),
       if (s.demoTools) ...[
-        const Eyebrow('Demonstration'),
+        Eyebrow('Demonstration'),
         ShadCard(
           onTap: () async {
             await s.addSampleRecords();
             if (!context.mounted) return;
             AppScope.changed(context);
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sample records added or brought up to date.')));
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sample records added or brought up to date.')));
           },
-          child: const Row(children: [
+          child: Row(children: [
             IconTile(LucideIcons.sparkles),
             SizedBox(width: 14),
             Expanded(
@@ -210,7 +230,7 @@ class MeScreen extends StatelessWidget {
           ]),
         ),
       ],
-      const Eyebrow('Where your records are'),
+      Eyebrow('Where your records are'),
       Note(
         s.backupAccount != null
             ? 'On this phone, encrypted under a key in its secure hardware, and an encrypted backup with LifeTrack under account ${s.backupAccount}.'
@@ -219,7 +239,7 @@ class MeScreen extends StatelessWidget {
         margin: EdgeInsets.fromLTRB(16, 0, 16, 12),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+        padding: EdgeInsets.fromLTRB(20, 0, 20, 28),
         child: Text('LifeTrack $appVersion', style: LT.small, textAlign: TextAlign.center),
       ),
     ]);
@@ -231,19 +251,19 @@ class MeScreen extends StatelessWidget {
           if (context.mounted) AppScope.changed(context);
         },
         child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-          decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: LT.rule))),
+          padding: EdgeInsets.fromLTRB(14, 14, 14, 14),
+          decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: LT.rule))),
           child: Row(children: [
             IconTile(icon),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(title, style: LT.label),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(sub, style: LT.small),
               ]),
             ),
-            const Icon(LucideIcons.chevronRight, size: 18, color: LT.inactive),
+            Icon(LucideIcons.chevronRight, size: 18, color: LT.inactive),
           ]),
         ),
       );
@@ -327,7 +347,7 @@ class _AuditScreenState extends State<AuditScreen> {
       final d = _day(e.at, s.clock());
       if (d != day) {
         day = d;
-        rows.add(Eyebrow(d, padding: const EdgeInsets.fromLTRB(20, 18, 20, 6)));
+        rows.add(Eyebrow(d, padding: EdgeInsets.fromLTRB(20, 18, 20, 6)));
       }
       final lastOfDay = i == entries.length - 1 || _day(entries[i + 1].at, s.clock()) != d;
       final firstOfDay = rows.last is Eyebrow;
@@ -340,7 +360,7 @@ class _AuditScreenState extends State<AuditScreen> {
               Container(
                 width: 32,
                 height: 32,
-                decoration: BoxDecoration(color: _alert(e) ? const Color(0xFFFFF7ED) : LT.band, shape: BoxShape.circle),
+                decoration: BoxDecoration(color: _alert(e) ? Color(0xFFFFF7ED) : LT.band, shape: BoxShape.circle),
                 child: Icon(iconForActor(e.actorId), size: 15, color: _alert(e) ? LT.signal : LT.ink2),
               ),
               Expanded(child: Container(width: 1, color: lastOfDay ? Colors.transparent : LT.rule)),
@@ -348,14 +368,14 @@ class _AuditScreenState extends State<AuditScreen> {
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(0, 12, 20, 14),
+              padding: EdgeInsets.fromLTRB(0, 12, 20, 14),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(
                   '${describeActor(e.actorId, names)} ${_verb(e.action)}${e.dataClass == null || e.action == AuditAction.emergencyRead ? '' : ' · ${dataClassNames[e.dataClass]}'}',
                   style: LT.label.copyWith(fontSize: 14.5, color: _alert(e) ? LT.signal : LT.ink),
                 ),
-                if (e.detail != null) ...[const SizedBox(height: 4), Text(_codes[e.detail] ?? e.detail!, style: LT.small)],
-                const SizedBox(height: 4),
+                if (e.detail != null) ...[SizedBox(height: 4), Text(_codes[e.detail] ?? e.detail!, style: LT.small)],
+                SizedBox(height: 4),
                 Text(time(e.at), style: LT.small.copyWith(fontSize: 12, color: LT.ink3)),
               ]),
             ),
@@ -366,26 +386,26 @@ class _AuditScreenState extends State<AuditScreen> {
     return Scaffold(
       appBar: AppBar(),
       body: ListView(children: [
-        const Masthead(eyebrow: 'Access log', title: 'Who opened what'),
-        const Note('Every read, change and permission is recorded here, on this phone. LifeTrack has no way to edit or remove an entry; erasing your profile is the only thing that clears it.', icon: LucideIcons.history),
+        Masthead(eyebrow: 'Access log', title: 'Who opened what'),
+        Note('Every read, change and permission is recorded here, on this phone. LifeTrack has no way to edit or remove an entry; erasing your profile is the only thing that clears it.', icon: LucideIcons.history),
         SizedBox(
           height: 64,
           child: ListView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
             children: [
               for (final (v, label, _) in _views)
                 Padding(
-                  padding: const EdgeInsets.only(right: 8),
+                  padding: EdgeInsets.only(right: 8),
                   child: Chip2('$label · ${all.where((e) => e.shownIn(v)).length}', selected: _view == v, onTap: () => setState(() => _view = v)),
                 ),
             ],
           ),
         ),
-        Padding(padding: const EdgeInsets.fromLTRB(20, 4, 20, 0), child: Text(about, style: LT.small)),
-        if (entries.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Text('Nothing here yet.', style: LT.lede)),
+        Padding(padding: EdgeInsets.fromLTRB(20, 4, 20, 0), child: Text(about, style: LT.small)),
+        if (entries.isEmpty) Padding(padding: EdgeInsets.all(20), child: Text('Nothing here yet.', style: LT.lede)),
         ...rows,
-        const SizedBox(height: 28),
+        SizedBox(height: 28),
       ]),
     );
   }

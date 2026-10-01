@@ -6,6 +6,12 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.16.0 (1 Oct 2026)
+- **Dark mode**: Me → Appearance — Follow phone, Light or Dark. Switching keeps the screen
+  you are on. Dark pages and cards; hero cards lifted; primary buttons cream; lime still means
+  "now". Orange/green status text in lighter, colour-blind-checked shades; QR codes stay black
+  on white. Every main screen passes the contrast test in both modes.
+
 ### 1.15.1 (1 Oct 2026)
 - Readability: nothing dark on the black cards any more (badges such as "Course finished"
   switch to light on dark), grey labels and placeholders darkened to WCAG AA (4.5:1),
@@ -102,6 +108,13 @@ always goes up (Android refuses to install a lower one).
 - Rebuilt phase-2 app: records, insights, consent, clinical sharing with verified doctors.
 
 ## Doctor web app
+
+### 1.4.0 (1 Oct 2026)
+- **Dark mode**: My code → Appearance (Follow device, Light, Dark). The verified QR stays black
+  on white.
+- **Android app** "Doctor" (health.lifetrack.doctor) from the same code; its storage key lives
+  in the phone's keystore. Name and logo to come.
+- The session is loaded once, not on every redraw.
 
 ### 1.3.1 (1 Oct 2026)
 - Grey text and placeholders darkened to WCAG AA; contrast test added.

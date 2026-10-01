@@ -50,10 +50,10 @@ class _AbhaScreenState extends State<AbhaScreen> {
       appBar: AppBar(),
       body: ListView(children: [
         Masthead(eyebrow: 'ABHA health ID', title: p.name, description: 'Ayushman Bharat Health Account — the 14-digit health ID hospitals and labs on ABDM use.'),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         if (abha != null && !_editing) ..._show(abha) else ..._form(abha),
-        const Eyebrow("Don't have an ABHA?"),
-        const ShadCard(
+        Eyebrow("Don't have an ABHA?"),
+        ShadCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('You can use LifeTrack fully without one.', style: LT.label),
             SizedBox(height: 8),
@@ -66,7 +66,7 @@ class _AbhaScreenState extends State<AbhaScreen> {
             Text('LifeTrack never asks for your Aadhaar number.', style: LT.small),
           ]),
         ),
-        const SizedBox(height: 28),
+        SizedBox(height: 28),
       ]),
     );
   }
@@ -74,28 +74,28 @@ class _AbhaScreenState extends State<AbhaScreen> {
   List<Widget> _show(Abha a) => [
         ShadCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('ABHA number', style: LT.small),
-            const SizedBox(height: 4),
+            Text('ABHA number', style: LT.small),
+            SizedBox(height: 4),
             Text(a.display, style: LT.title.copyWith(fontSize: 24, letterSpacing: 0.5)),
             if (a.address != null) ...[
-              const SizedBox(height: 12),
-              const Text('ABHA address', style: LT.small),
-              const SizedBox(height: 4),
+              SizedBox(height: 12),
+              Text('ABHA address', style: LT.small),
+              SizedBox(height: 4),
               Text(a.address!, style: LT.label.copyWith(fontSize: 16)),
             ],
-            const SizedBox(height: 12),
-            const Badge2('Typed in · not verified with ABDM', tone: BadgeTone.caution),
+            SizedBox(height: 12),
+            Badge2('Typed in · not verified with ABDM', tone: BadgeTone.caution),
           ]),
         ),
-        const Note('LifeTrack cannot check an ABHA with ABDM yet, so check the digits against your ABHA card. The Emergency ID shows only the last four.', icon: LucideIcons.info),
+        Note('LifeTrack cannot check an ABHA with ABDM yet, so check the digits against your ABHA card. The Emergency ID shows only the last four.', icon: LucideIcons.info),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 6),
           child: SlabButton('Show QR for registration', icon: LucideIcons.qrCode, onPressed: () {
-            Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AbhaQrScreen()));
+            Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AbhaQrScreen()));
           }),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+          padding: EdgeInsets.fromLTRB(16, 6, 16, 6),
           child: SlabButton('Edit', variant: ButtonVariant.outline, icon: LucideIcons.pencil, onPressed: () {
             _number.text = a.display;
             _address.text = a.address ?? '';
@@ -103,7 +103,7 @@ class _AbhaScreenState extends State<AbhaScreen> {
           }),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+          padding: EdgeInsets.fromLTRB(16, 6, 16, 6),
           child: SlabButton('Remove from LifeTrack', variant: ButtonVariant.ghost, icon: LucideIcons.trash2, onPressed: () async {
             await AppScope.of(context).setAbha();
             if (mounted) AppScope.changed(context);
@@ -119,7 +119,7 @@ class _AbhaScreenState extends State<AbhaScreen> {
             controller: _number,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d -]')), LengthLimitingTextInputFormatter(17)],
-            decoration: const InputDecoration(hintText: 'e.g. 91-1234-5678-9012'),
+            decoration: InputDecoration(hintText: 'e.g. 91-1234-5678-9012'),
             onChanged: (_) => setState(() {}),
           ),
         ),
@@ -129,17 +129,17 @@ class _AbhaScreenState extends State<AbhaScreen> {
             controller: _address,
             keyboardType: TextInputType.emailAddress,
             autocorrect: false,
-            decoration: const InputDecoration(hintText: 'e.g. anjali.sharma@abdm'),
+            decoration: InputDecoration(hintText: 'e.g. anjali.sharma@abdm'),
           ),
         ),
-        if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 4, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
+        if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 4, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 6),
           child: SlabButton(existing == null ? 'Add ABHA' : 'Save', icon: LucideIcons.check, onPressed: Abha.parseNumber(_number.text) == null ? null : _save),
         ),
         if (existing != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+            padding: EdgeInsets.fromLTRB(16, 6, 16, 6),
             child: SlabButton('Cancel', variant: ButtonVariant.outline, onPressed: () => setState(() => _editing = false)),
           ),
       ];
@@ -171,15 +171,15 @@ class AbhaQrScreen extends StatelessWidget {
       body: ListView(children: [
         Masthead(eyebrow: 'ABHA for registration', title: p.name),
         ShadCard(
-          margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          margin: EdgeInsets.fromLTRB(16, 16, 16, 12),
           child: Column(children: [
             QrImageView(data: payload(p.name, p.dateOfBirth, p.sex.name, a), size: 250, backgroundColor: Colors.white),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(a.display, style: LT.title.copyWith(fontSize: 22, letterSpacing: 0.5)),
-            if (a.address != null) ...[const SizedBox(height: 4), Text(a.address!, style: LT.small)],
+            if (a.address != null) ...[SizedBox(height: 4), Text(a.address!, style: LT.small)],
           ]),
         ),
-        const Note(
+        Note(
           'Holds your ABHA number and address, name, date of birth and sex — nothing from your records. '
           'If their system cannot scan it, they can type the number shown.',
           icon: LucideIcons.info,

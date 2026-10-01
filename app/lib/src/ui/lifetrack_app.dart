@@ -27,8 +27,50 @@ class LifeTrackApp extends StatefulWidget {
   State<LifeTrackApp> createState() => _LifeTrackAppState();
 }
 
-class _LifeTrackAppState extends State<LifeTrackApp> {
-  late final Future<AppServices> _services = widget.boot();
+class _LifeTrackAppState extends State<LifeTrackApp> with WidgetsBindingObserver {
+  late final Future<AppServices> _services = widget.boot().then((s) {
+    appearance.value = themeModeOf(s.themeChoice);
+    return s;
+  });
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    appearance.addListener(_apply);
+    LT.dark = _resolve();
+  }
+
+  @override
+  void dispose() {
+    appearance.removeListener(_apply);
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangePlatformBrightness() => _apply();
+
+  bool _resolve() => switch (appearance.value) {
+        ThemeMode.dark => true,
+        ThemeMode.light => false,
+        ThemeMode.system => WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark,
+      };
+
+  /// Screens read [LT] directly, so a change of mode redraws every element —
+  /// keeping the open screens and their state, unlike rebuilding the app.
+  void _apply() {
+    final d = _resolve();
+    if (d == LT.dark || !mounted) return;
+    setState(() => LT.dark = d);
+    void redraw(Element e) {
+      e.markNeedsBuild();
+      e.visitChildren(redraw);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) (context as Element).visitChildren(redraw);
+    });
+  }
 
   @override
   Widget build(BuildContext context) => FutureBuilder<AppServices>(
@@ -39,7 +81,7 @@ class _LifeTrackAppState extends State<LifeTrackApp> {
         return AppScope(services: snap.data!, child: _app(_Root(unlocker: widget.unlocker)));
       }
       if (snap.hasError) return _app(_BootError(error: snap.error!));
-      return _app(const Scaffold(body: Center(child: CircularProgressIndicator())));
+      return _app(Scaffold(body: Center(child: CircularProgressIndicator())));
     },
   );
 
@@ -56,7 +98,7 @@ class _Root extends StatelessWidget {
       return OnboardingScreen(onDone: () => AppScope.changed(context));
     }
     final u = unlocker;
-    return u == null ? const HomeShell() : AppLockGate(unlocker: u, child: const HomeShell());
+    return u == null ? HomeShell() : AppLockGate(unlocker: u, child: HomeShell());
   }
 }
 
@@ -82,20 +124,20 @@ class _HomeShellState extends State<HomeShell> {
     body: SafeArea(
       bottom: false,
       child: switch (_tab) {
-        0 => const RemindersTab(),
-        1 => const RecordsScreen(),
-        2 => const InsightsScreen(),
-        3 => const ShareScreen(),
-        _ => const MeScreen(),
+        0 => RemindersTab(),
+        1 => RecordsScreen(),
+        2 => InsightsScreen(),
+        3 => ShareScreen(),
+        _ => MeScreen(),
       },
     ),
     extendBody: true,
     bottomNavigationBar: SafeArea(
       top: false,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-        padding: const EdgeInsets.all(6),
-        decoration: const ShapeDecoration(color: LT.primary, shape: StadiumBorder()),
+        margin: EdgeInsets.fromLTRB(16, 0, 16, 10),
+        padding: EdgeInsets.all(6),
+        decoration: ShapeDecoration(color: LT.primary, shape: StadiumBorder()),
         child: Row(
           children: [
             for (var i = 0; i < _tabs.length; i++)
@@ -110,21 +152,21 @@ class _HomeShellState extends State<HomeShell> {
                     behavior: HitTestBehavior.opaque,
                     onTap: () => setState(() => _tab = i),
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
+                      duration: Duration(milliseconds: 180),
                       height: 50,
-                      decoration: ShapeDecoration(color: i == _tab ? LT.accent : Colors.transparent, shape: const StadiumBorder()),
+                      decoration: ShapeDecoration(color: i == _tab ? LT.accent : Colors.transparent, shape: StadiumBorder()),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(_tabs[i].$2, size: 19, color: i == _tab ? LT.ink : LT.onDarkMuted),
+                          Icon(_tabs[i].$2, size: 19, color: i == _tab ? LT.onAccent : LT.onDarkMuted),
                           if (i == _tab) ...[
-                            const SizedBox(width: 7),
+                            SizedBox(width: 7),
                             Flexible(
                               child: Text(
                                 _tabs[i].$1,
                                 maxLines: 1,
                                 overflow: TextOverflow.clip,
-                                style: const TextStyle(fontFamily: LT.body, fontSize: 13, fontWeight: FontWeight.w600, color: LT.ink),
+                                style: TextStyle(fontFamily: LT.body, fontSize: 13, fontWeight: FontWeight.w600, color: LT.onAccent),
                               ),
                             ),
                           ],
@@ -148,12 +190,12 @@ class _BootError extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('LifeTrack could not open your records', style: LT.title),
-            const SizedBox(height: 16),
+            Text('LifeTrack could not open your records', style: LT.title),
+            SizedBox(height: 16),
             Text(
               'Nothing has been deleted. Do not reinstall the app — that would remove the key your records need.\n\n$error',
               style: LT.lede,

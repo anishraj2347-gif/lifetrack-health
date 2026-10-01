@@ -13,7 +13,7 @@ class Masthead extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+        padding: EdgeInsets.fromLTRB(20, 18, 20, 8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -22,9 +22,9 @@ class Masthead extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(eyebrow, style: LT.eyebrow),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(title, style: LT.title),
-                  if (description != null) ...[const SizedBox(height: 6), Text(description!, style: LT.small)],
+                  if (description != null) ...[SizedBox(height: 6), Text(description!, style: LT.small)],
                 ],
               ),
             ),
@@ -61,11 +61,11 @@ class SlabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final v = variant ?? (outline ? ButtonVariant.outline : (color == LT.signal ? ButtonVariant.destructive : ButtonVariant.primary));
+    final v = variant ?? (outline ? ButtonVariant.outline : (color == LT.signal || color == LT.signalFill ? ButtonVariant.destructive : ButtonVariant.primary));
     final enabled = onPressed != null;
     final (bg, fg, border) = switch (v) {
-      ButtonVariant.primary => (LT.primary, LT.onDark, null),
-      ButtonVariant.destructive => (LT.signal, Colors.white, null),
+      ButtonVariant.primary => (LT.button, LT.onButton, null),
+      ButtonVariant.destructive => (LT.signalFill, Colors.white, null),
       ButtonVariant.outline => (LT.raised, LT.ink, null),
       ButtonVariant.ghost => (Colors.transparent, LT.ink, null),
     };
@@ -76,12 +76,12 @@ class SlabButton extends StatelessWidget {
         shape: StadiumBorder(side: border == null ? BorderSide.none : BorderSide(color: border)),
         child: InkWell(
           onTap: onPressed,
-          customBorder: const StadiumBorder(),
+          customBorder: StadiumBorder(),
           child: Container(
             height: 52,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: EdgeInsets.symmetric(horizontal: 12),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              if (icon != null) ...[Icon(icon, size: 18, color: fg), const SizedBox(width: 8)],
+              if (icon != null) ...[Icon(icon, size: 18, color: fg), SizedBox(width: 8)],
               Flexible(
                 child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.body, fontSize: 14.5, fontWeight: FontWeight.w600, color: fg)),
               ),
@@ -104,14 +104,14 @@ class Chip2 extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = label.isEmpty ? label : label[0].toUpperCase() + label.substring(1);
     return Material(
-      color: selected ? LT.primary : LT.raised,
-      shape: const StadiumBorder(),
+      color: selected ? LT.button : LT.raised,
+      shape: StadiumBorder(),
       child: InkWell(
         onTap: onTap,
-        customBorder: const StadiumBorder(),
+        customBorder: StadiumBorder(),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          child: Text(text, style: TextStyle(fontFamily: LT.body, fontSize: 13.5, fontWeight: FontWeight.w500, color: selected ? LT.onDark : LT.ink)),
+          padding: EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          child: Text(text, style: TextStyle(fontFamily: LT.body, fontSize: 13.5, fontWeight: FontWeight.w500, color: selected ? LT.onButton : LT.ink)),
         ),
       ),
     );
@@ -128,16 +128,16 @@ class Badge2 extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = OnDark.of(context);
     final (bg, fg, border) = switch (tone) {
-      BadgeTone.neutral when dark => (const Color(0xFF2A2A28), LT.onDark, const Color(0xFF2A2A28)),
+      BadgeTone.neutral when dark => (LT.onDarkChip, LT.onDark, LT.onDarkChip),
       BadgeTone.outline when dark => (Colors.transparent, LT.onDark, LT.onDarkMuted),
       BadgeTone.neutral => (LT.raised, LT.ink, LT.raised),
       BadgeTone.outline => (Colors.transparent, LT.ink2, LT.rule),
-      BadgeTone.signal => (const Color(0xFFFFF7ED), LT.signal, const Color(0xFFFED7AA)),
-      BadgeTone.trace => (const Color(0xFFECFDF5), LT.trace, const Color(0xFFA7F3D0)),
+      BadgeTone.signal => (Color(0xFFFFF7ED), LT.signalFill, Color(0xFFFED7AA)),
+      BadgeTone.trace => (Color(0xFFECFDF5), LT.traceInk, Color(0xFFA7F3D0)),
       BadgeTone.caution => (LT.caution, LT.cautionInk, LT.cautionBorder),
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999), border: Border.all(color: border)),
       child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.body, fontSize: 11.5, fontWeight: FontWeight.w500, color: fg)),
     );
@@ -146,12 +146,13 @@ class Badge2 extends StatelessWidget {
 
 /// shadcn Card.
 class ShadCard extends StatelessWidget {
-  const ShadCard({super.key, required this.child, this.onTap, this.margin = const EdgeInsets.fromLTRB(16, 0, 16, 12), this.padding = const EdgeInsets.all(16), this.color = LT.surface, this.borderColor});
+  const ShadCard({super.key, required this.child, this.onTap, this.margin = const EdgeInsets.fromLTRB(16, 0, 16, 12), this.padding = const EdgeInsets.all(16), this._color, this.borderColor});
   final Widget child;
   final VoidCallback? onTap;
   final EdgeInsets margin;
   final EdgeInsets padding;
-  final Color color;
+  final Color? _color;
+  Color get color => _color ?? LT.surface;
   final Color? borderColor;
 
   @override
@@ -168,7 +169,7 @@ class ShadCard extends StatelessWidget {
               // On a black card, anything that does not set its own colour is
               // light, and badges switch to their light form.
               child: color.computeLuminance() < 0.2
-                  ? OnDark(child: DefaultTextStyle.merge(style: const TextStyle(color: LT.onDark), child: IconTheme.merge(data: const IconThemeData(color: LT.onDarkMuted), child: child)))
+                  ? OnDark(child: DefaultTextStyle.merge(style: TextStyle(color: LT.onDark), child: IconTheme.merge(data: IconThemeData(color: LT.onDarkMuted), child: child)))
                   : child,
             ),
           ),
@@ -193,11 +194,11 @@ class Note extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         margin: margin,
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(14),
         decoration: BoxDecoration(color: LT.raised, borderRadius: BorderRadius.circular(LT.radius)),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(icon, size: 16, color: LT.ink2),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(child: Text(text, style: LT.small.copyWith(color: LT.ink2))),
         ]),
       );
@@ -210,22 +211,22 @@ class CautionPanel extends StatelessWidget {
   final Widget child;
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-        padding: const EdgeInsets.all(14),
+        margin: EdgeInsets.fromLTRB(16, 0, 16, 10),
+        padding: EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: LT.caution,
           borderRadius: BorderRadius.circular(LT.radiusLg),
           border: Border.all(color: LT.cautionBorder),
         ),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Padding(padding: EdgeInsets.only(top: 1), child: Icon(LucideIcons.triangleAlert, size: 16, color: LT.cautionInk)),
-          const SizedBox(width: 10),
+          Padding(padding: EdgeInsets.only(top: 1), child: Icon(LucideIcons.triangleAlert, size: 16, color: LT.cautionInk)),
+          SizedBox(width: 10),
           Expanded(
             child: DefaultTextStyle.merge(
-              style: const TextStyle(color: LT.cautionInk),
+              style: TextStyle(color: LT.cautionInk),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(title, style: LT.label.copyWith(color: LT.cautionInk, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 child,
               ]),
             ),
@@ -242,14 +243,14 @@ class LabeledField extends StatelessWidget {
   final String? hint;
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(label, style: LT.label.copyWith(fontSize: 13.5, color: LT.ink2)),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             child,
-            if (hint != null) ...[const SizedBox(height: 6), Text(hint!, style: LT.small.copyWith(fontSize: 12.5))],
+            if (hint != null) ...[SizedBox(height: 6), Text(hint!, style: LT.small.copyWith(fontSize: 12.5))],
           ],
         ),
       );
@@ -270,10 +271,10 @@ class FieldButton extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(LT.radius),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(children: [
               Icon(icon, size: 16, color: LT.ink3),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text(text, style: LT.label.copyWith(fontSize: 15, fontWeight: FontWeight.w400, color: placeholder ? LT.ink3 : LT.ink)),
             ]),
           ),
@@ -283,16 +284,16 @@ class FieldButton extends StatelessWidget {
 
 /// Rounded square icon tile.
 class IconTile extends StatelessWidget {
-  const IconTile(this.icon, {super.key, this.color = LT.ink, this.background = LT.raised});
+  const IconTile(this.icon, {super.key, this.color, this.background});
   final IconData icon;
-  final Color color;
-  final Color background;
+  final Color? color;
+  final Color? background;
   @override
   Widget build(BuildContext context) => Container(
         width: 42,
         height: 42,
-        decoration: BoxDecoration(color: background, shape: BoxShape.circle),
-        child: Icon(icon, size: 19, color: color),
+        decoration: BoxDecoration(color: background ?? LT.raised, shape: BoxShape.circle),
+        child: Icon(icon, size: 19, color: color ?? (background == LT.accent ? LT.onAccent : LT.ink)),
       );
 }
 
@@ -305,12 +306,12 @@ class RoundButton extends StatelessWidget {
   final double size;
   @override
   Widget build(BuildContext context) => Material(
-        color: dark ? LT.primary : LT.raised,
-        shape: const CircleBorder(),
+        color: dark ? LT.button : LT.raised,
+        shape: CircleBorder(),
         child: InkWell(
           onTap: onTap,
-          customBorder: const CircleBorder(),
-          child: SizedBox(width: size, height: size, child: Icon(icon, size: 19, color: dark ? LT.onDark : LT.ink)),
+          customBorder: CircleBorder(),
+          child: SizedBox(width: size, height: size, child: Icon(icon, size: 19, color: dark ? LT.onButton : LT.ink)),
         ),
       );
 }

@@ -61,12 +61,12 @@ class ShareScreen extends StatelessWidget {
         title: 'Show a doctor your records',
         trailing: Badge2(grants.isEmpty ? 'No access' : '${grants.length} active', tone: grants.isEmpty ? BadgeTone.outline : BadgeTone.trace),
       ),
-      const SizedBox(height: 12),
+      SizedBox(height: 12),
       ShadCard(
         color: LT.primary,
-        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ShowOnPhoneScreen())),
-        child: const Row(children: [
-          IconTile(LucideIcons.smartphone, color: LT.ink, background: LT.accent),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ShowOnPhoneScreen())),
+        child: Row(children: [
+          IconTile(LucideIcons.smartphone, color: LT.onAccent, background: LT.accent),
           SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -81,10 +81,10 @@ class ShareScreen extends StatelessWidget {
       if (sharing != null) ...[
         ShadCard(
           onTap: () async {
-            await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DoctorShareScreen()));
+            await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => DoctorShareScreen()));
             if (context.mounted) AppScope.changed(context);
           },
-          child: const Row(children: [
+          child: Row(children: [
             IconTile(LucideIcons.qrCode),
             SizedBox(width: 14),
             Expanded(
@@ -98,7 +98,7 @@ class ShareScreen extends StatelessWidget {
           ]),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+          padding: EdgeInsets.fromLTRB(16, 6, 16, 6),
           child: SlabButton('Check for updates', variant: ButtonVariant.outline, icon: LucideIcons.inbox, onPressed: () async {
             final msg = ScaffoldMessenger.of(context);
             try {
@@ -119,14 +119,14 @@ class ShareScreen extends StatelessWidget {
           }),
         ),
       ] else
-        const Note('Sharing with a doctor\'s device is not set up in this build. "Show on my phone" works without it.', icon: LucideIcons.cloudOff),
-      const TestsYouHaveCard(margin: EdgeInsets.fromLTRB(16, 0, 16, 12)),
+        Note('Sharing with a doctor\'s device is not set up in this build. "Show on my phone" works without it.', icon: LucideIcons.cloudOff),
+      TestsYouHaveCard(margin: EdgeInsets.fromLTRB(16, 0, 16, 12)),
       if (sharing != null) const _Requests(),
-      const Eyebrow('Who has access now'),
+      Eyebrow('Who has access now'),
       if (grants.isEmpty)
-        const ShadCard(
+        ShadCard(
           child: Row(children: [
-            IconTile(LucideIcons.shieldCheck, color: LT.trace, background: Color(0xFFECFDF5)),
+            IconTile(LucideIcons.shieldCheck, color: LT.traceInk, background: Color(0xFFECFDF5)),
             SizedBox(width: 14),
             Expanded(child: Text('Nobody has access right now.', style: LT.label)),
           ]),
@@ -135,17 +135,17 @@ class ShareScreen extends StatelessWidget {
         ShadCard(
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             IconTile(iconForActor(g.grantedToActorId)),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(describeActor(g.grantedToActorId, s.doctorNames()), style: LT.label),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(g.levels.isNotEmpty ? levelsLabel(g.levels) : g.scopes.map((c) => dataClassNames[c]).join(', '), style: LT.small),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Badge2('Until ${dateTime(g.expiresAt)}', tone: BadgeTone.outline),
               ]),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             SizedBox(
               width: 92,
               child: SlabButton('End', variant: ButtonVariant.outline, onPressed: () async {
@@ -159,7 +159,7 @@ class ShareScreen extends StatelessWidget {
             ),
           ]),
         ),
-      const SizedBox(height: 28),
+      SizedBox(height: 28),
     ]);
   }
 }
@@ -175,34 +175,34 @@ class _Requests extends StatelessWidget {
     return FutureBuilder<List<PendingRequest>>(
       future: s.pendingRequests(),
       builder: (context, snap) {
-        final list = snap.data ?? const <PendingRequest>[];
-        if (list.isEmpty) return const SizedBox.shrink();
+        final list = snap.data ?? <PendingRequest>[];
+        if (list.isEmpty) return SizedBox.shrink();
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Eyebrow('Doctors asking for access'),
+          Eyebrow('Doctors asking for access'),
           for (final p in list)
             ShadCard(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  const IconTile(LucideIcons.stethoscope),
-                  const SizedBox(width: 14),
+                  IconTile(LucideIcons.stethoscope),
+                  SizedBox(width: 14),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(p.doctor.name, style: LT.label.copyWith(fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text('${p.doctor.speciality} · ${p.doctor.registrationNo}', style: LT.small),
                     ]),
                   ),
-                  const Badge2('Verified', tone: BadgeTone.trace),
+                  Badge2('Verified', tone: BadgeTone.trace),
                 ]),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Text('Asks for: ${levelsLabel(p.levels)}', style: LT.label),
                 if (p.request.note != null && p.request.note!.trim().isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text('"${p.request.note!.trim()}"', style: LT.small),
                 ],
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text('Request ends ${dateTime(p.request.expiresAt.toLocal())}', style: LT.small.copyWith(fontSize: 12, color: LT.ink3)),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Row(children: [
                   Expanded(
                     child: SlabButton('Review', icon: LucideIcons.eye, onPressed: () async {
@@ -210,7 +210,7 @@ class _Requests extends StatelessWidget {
                       if (context.mounted) AppScope.changed(context);
                     }),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: SlabButton('Decline', variant: ButtonVariant.outline, onPressed: () async {
                       final messenger = ScaffoldMessenger.of(context);
@@ -218,7 +218,7 @@ class _Requests extends StatelessWidget {
                         await s.declineRequest(p);
                         messenger.showSnackBar(SnackBar(content: Text('Declined. ${p.doctor.name} has been told.')));
                       } on Object {
-                        messenger.showSnackBar(const SnackBar(content: Text('Declined here, but the doctor could not be told yet.')));
+                        messenger.showSnackBar(SnackBar(content: Text('Declined here, but the doctor could not be told yet.')));
                       }
                       if (context.mounted) AppScope.changed(context);
                     }),

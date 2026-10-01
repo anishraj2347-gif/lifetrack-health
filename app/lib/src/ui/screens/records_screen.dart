@@ -61,24 +61,24 @@ class _RecordsScreenState extends State<RecordsScreen> {
       final m = monthYear(r.date);
       if (m != month) {
         month = m;
-        children.add(Eyebrow(m, padding: const EdgeInsets.fromLTRB(20, 18, 20, 10)));
+        children.add(Eyebrow(m, padding: EdgeInsets.fromLTRB(20, 18, 20, 10)));
       }
       children.add(_RecordCard(record: r));
     }
 
     final name = s.currentPatient?.name ?? '';
-    final trends = _query.isEmpty && _filter == null ? TrendCard.all(all) : const <TrendSeries>[];
+    final trends = _query.isEmpty && _filter == null ? TrendCard.all(all) : <TrendSeries>[];
     String key(TrendSeries t) => '${t.analyte}|${t.unit}';
     final pid = s.currentPatientId;
     final big = trends.where((t) => _shown != null && _shown!.$1 == pid && _shown!.$2 == key(t)).firstOrNull ?? trends.firstOrNull;
     void openTrend(TrendSeries t) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TestTrendScreen(analyte: t.analyte, unit: t.unit)));
     return Column(children: [
-      const FamilyBar(),
+      FamilyBar(),
       Masthead(eyebrow: 'Records', title: name),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
         child: TextField(
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             prefixIcon: Icon(LucideIcons.search, size: 18, color: LT.ink3),
             hintText: 'Search records, doctors, hospitals',
           ),
@@ -87,11 +87,11 @@ class _RecordsScreenState extends State<RecordsScreen> {
       ),
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 2),
         child: Row(children: [
           for (final (label, kind) in [('All', null), ('Prescriptions', RecordKind.prescription), ('Reports', RecordKind.report), ('Scans', RecordKind.scan), ('Notes', RecordKind.note)])
             Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: EdgeInsets.only(right: 8),
               child: Chip2(label, selected: _filter == kind, onTap: () => setState(() => _filter = kind)),
             ),
         ]),
@@ -99,17 +99,17 @@ class _RecordsScreenState extends State<RecordsScreen> {
       Expanded(
         child: shown.isEmpty
             ? ListView(children: [
-                if (all.isEmpty) const VitalsCard(),
+                if (all.isEmpty) VitalsCard(),
                 Padding(
-                  padding: const EdgeInsets.all(32),
+                  padding: EdgeInsets.all(32),
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    const IconTile(LucideIcons.fileText, color: LT.ink3),
-                    const SizedBox(height: 14),
+                    IconTile(LucideIcons.fileText, color: LT.ink3),
+                    SizedBox(height: 14),
                     Text(all.isEmpty ? 'No records yet' : 'Nothing matches', style: LT.label),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(all.isEmpty ? 'Add your first prescription or report.' : 'Try another search or filter.', style: LT.small, textAlign: TextAlign.center),
                     if (all.isEmpty && AppScope.of(context).demoTools) ...[
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       SlabButton('Add sample records', variant: ButtonVariant.outline, icon: LucideIcons.sparkles, onPressed: () async {
                         await AppScope.of(context).addSampleRecords();
                         if (context.mounted) AppScope.changed(context);
@@ -118,12 +118,12 @@ class _RecordsScreenState extends State<RecordsScreen> {
                   ]),
                 ),
               ])
-            : ListView(padding: const EdgeInsets.only(top: 6, bottom: 8), children: [
+            : ListView(padding: EdgeInsets.only(top: 6, bottom: 8), children: [
                 if (trends.isNotEmpty) ...[
                   Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                    padding: EdgeInsets.only(top: 8),
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 220),
+                      duration: Duration(milliseconds: 220),
                       child: TrendCard(key: ValueKey(key(big!)), series: big, onTap: () => openTrend(big)),
                     ),
                   ),
@@ -137,16 +137,16 @@ class _RecordsScreenState extends State<RecordsScreen> {
                   final n = TestHistory(all).count;
                   return QuickTiles(
                     testsCount: n,
-                    onTests: n == 0 ? null : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TestsYouHaveScreen())),
+                    onTests: n == 0 ? null : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TestsYouHaveScreen())),
                   );
                 }),
                 ...children,
               ]),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 96),
         child: SlabButton('Add record', icon: LucideIcons.plus, onPressed: () async {
-          await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AddRecordScreen()));
+          await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AddRecordScreen()));
           if (context.mounted) AppScope.changed(context);
         }),
       ),
@@ -168,23 +168,23 @@ class _RecordCard extends StatelessWidget {
       RecordKind.scan => null,
     };
     return ShadCard(
-      padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
+      padding: EdgeInsets.fromLTRB(14, 14, 16, 14),
       onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RecordScreen(recordId: r.id))),
       child: Row(children: [
         IconTile(iconForKind(r.kind)),
-        const SizedBox(width: 14),
+        SizedBox(width: 14),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text([kindLabel(r.kind), ?r.doctor].join(' · '), style: LT.small.copyWith(fontSize: 11.5), maxLines: 1, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 2),
+            SizedBox(height: 2),
             Text(r.title, style: LT.label.copyWith(fontSize: 15.5, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
             if (meta != null || r.facility != null) ...[
-              const SizedBox(height: 2),
+              SizedBox(height: 2),
               Text([?meta, ?r.facility].join(' · '), style: LT.small, maxLines: 1, overflow: TextOverflow.ellipsis),
             ],
           ]),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Text(r.date.day.toString().padLeft(2, '0'), style: LT.data.copyWith(fontSize: 17)),
           Text(shortMonth(r.date), style: LT.small.copyWith(fontSize: 11)),

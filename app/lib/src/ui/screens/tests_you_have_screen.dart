@@ -30,7 +30,7 @@ class TestsYouHaveScreen extends StatelessWidget {
     int days(HealthRecord r) => now.difference(r.effectiveDate).inDays;
 
     Widget original(HealthRecord r) => r.attachmentId == null
-        ? const SizedBox.shrink()
+        ? SizedBox.shrink()
         : Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
@@ -39,7 +39,7 @@ class TestsYouHaveScreen extends StatelessWidget {
                 final pages = await s.originals(r);
                 if (context.mounted) await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => OriginalsViewer(title: r.title, pages: pages)));
               },
-              icon: const Icon(LucideIcons.fileText, size: 16),
+              icon: Icon(LucideIcons.fileText, size: 16),
               label: Text(r.originalFormat == 'pdf' ? 'Open the PDF pages' : 'Open the original'),
             ),
           );
@@ -48,12 +48,12 @@ class TestsYouHaveScreen extends StatelessWidget {
       appBar: AppBar(),
       body: ListView(children: [
         Masthead(eyebrow: 'Tests you already have', title: p.name, description: '${h.count} test${h.count == 1 ? '' : 's'} on this phone'),
-        const Note(
+        Note(
           'Show this to your doctor before a test is ordered again. Each result shows how old it is, which lab did it, and where it came from — whether it is recent enough is for your doctor to decide.',
           icon: LucideIcons.info,
         ),
-        const SizedBox(height: 12),
-        if (h.isEmpty) const Note('No test results yet. Add a report from Records — a photo or the lab\'s PDF.', icon: LucideIcons.fileText),
+        SizedBox(height: 12),
+        if (h.isEmpty) Note('No test results yet. Add a report from Records — a photo or the lab\'s PDF.', icon: LucideIcons.fileText),
         for (final t in h.series)
           ShadCard(
             onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TestTrendScreen(analyte: t.analyte, unit: t.latest.$2.unit))),
@@ -61,11 +61,11 @@ class TestsYouHaveScreen extends StatelessWidget {
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(child: Text(analyteName(t.analyte), style: LT.label.copyWith(fontWeight: FontWeight.w600))),
                 Badge2(ageOf(days(t.latest.$1)), tone: BadgeTone.outline),
-                const Padding(padding: EdgeInsets.only(left: 4), child: Icon(LucideIcons.chevronRight, size: 18, color: LT.inactive)),
+                Padding(padding: EdgeInsets.only(left: 4), child: Icon(LucideIcons.chevronRight, size: 18, color: LT.inactive)),
               ]),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text('${fmt(t.latest.$2.value)} ${t.latest.$2.unit}', style: LT.title.copyWith(fontSize: 22)),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 [
                   fullDate(t.latest.$1.effectiveDate),
@@ -76,18 +76,18 @@ class TestsYouHaveScreen extends StatelessWidget {
               ),
               original(t.latest.$1),
               if (t.points.length > 1) ...[
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text('Earlier', style: LT.small.copyWith(fontWeight: FontWeight.w600)),
                 for (final (r, x) in t.points.skip(1).take(4))
                   Padding(
-                    padding: const EdgeInsets.only(top: 3),
+                    padding: EdgeInsets.only(top: 3),
                     child: Text('${fmt(x.value)} ${x.unit} · ${fullDate(r.effectiveDate)}${r.labName == null ? '' : ' · ${r.labName}'}', style: LT.small),
                   ),
               ],
             ]),
           ),
         if (h.documents.isNotEmpty) ...[
-          const Eyebrow('Scans and reports without typed values'),
+          Eyebrow('Scans and reports without typed values'),
           for (final r in h.documents)
             ShadCard(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -95,13 +95,13 @@ class TestsYouHaveScreen extends StatelessWidget {
                   Expanded(child: Text(r.title, style: LT.label.copyWith(fontWeight: FontWeight.w600))),
                   Badge2(ageOf(days(r)), tone: BadgeTone.outline),
                 ]),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text([fullDate(r.effectiveDate), ?(r.labName ?? r.facility), _source(r)].join(' · '), style: LT.small),
                 original(r),
               ]),
             ),
         ],
-        const SizedBox(height: 28),
+        SizedBox(height: 28),
       ]),
     );
   }
@@ -116,22 +116,22 @@ class TestsYouHaveCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final h = TestHistory(s.records());
-    if (h.isEmpty) return const SizedBox.shrink();
+    if (h.isEmpty) return SizedBox.shrink();
     final names = [for (final t in h.series.take(3)) analyteName(t.analyte), if (h.series.length < 3) ...h.documents.take(3 - h.series.length).map((d) => d.title)];
     return ShadCard(
       margin: margin,
-      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TestsYouHaveScreen())),
+      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TestsYouHaveScreen())),
       child: Row(children: [
-        const IconTile(LucideIcons.flaskConical),
-        const SizedBox(width: 14),
+        IconTile(LucideIcons.flaskConical),
+        SizedBox(width: 14),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Tests you already have · ${h.count}', style: LT.label),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text('${names.join(', ')}${h.count > names.length ? '…' : ''} — show your doctor before a repeat', style: LT.small),
           ]),
         ),
-        const Icon(LucideIcons.chevronRight, color: LT.inactive),
+        Icon(LucideIcons.chevronRight, color: LT.inactive),
       ]),
     );
   }

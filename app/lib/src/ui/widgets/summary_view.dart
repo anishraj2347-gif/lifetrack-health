@@ -40,34 +40,34 @@ class SummaryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final b = bundle;
-    final allergies = (b['allergies'] as List?) ?? const [];
-    final conditions = (b['conditions'] as List?) ?? const [];
-    final meds = (b['medicines'] as Map?) ?? const {};
-    final tests = (b['latestTests'] as List?) ?? const [];
+    final allergies = (b['allergies'] as List?) ?? [];
+    final conditions = (b['conditions'] as List?) ?? [];
+    final meds = (b['medicines'] as Map?) ?? {};
+    final tests = (b['latestTests'] as List?) ?? [];
     final family = (b['familyIllnesses'] as Map?)?['items'] as List?;
-    final withheld = (b['withheld'] as List?) ?? const [];
+    final withheld = (b['withheld'] as List?) ?? [];
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (withheld.isNotEmpty)
         Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-          padding: const EdgeInsets.all(12),
+          margin: EdgeInsets.fromLTRB(16, 0, 16, 10),
+          padding: EdgeInsets.all(12),
           decoration: BoxDecoration(color: LT.caution, borderRadius: BorderRadius.circular(LT.radius), border: Border.all(color: LT.cautionBorder)),
           child: Text('Patient shared selected items. Not shared: ${withheld.join(', ')}.', style: LT.small.copyWith(color: LT.cautionInk)),
         ),
       for (final a in allergies)
         Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-          decoration: BoxDecoration(color: LT.signal, borderRadius: BorderRadius.circular(LT.radius)),
+          margin: EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: EdgeInsets.fromLTRB(14, 12, 14, 12),
+          decoration: BoxDecoration(color: LT.signalFill, borderRadius: BorderRadius.circular(LT.radius)),
           child: Text('Allergy: ${(a as Map)['substance']}${a['reaction'] == null ? '' : ' — ${a['reaction']}'}',
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
         ),
       _block('Active medicines', [
-        for (final m in (meds['active'] as List?) ?? const [])
+        for (final m in (meds['active'] as List?) ?? [])
           _line('${(m as Map)['title']}${m['dose'] == null ? '' : ' · ${m['dose']}'}',
               m['patientConfirmedAt'] != null ? 'Patient confirmed still taking' : 'Not confirmed by patient'),
-        for (final m in (meds['endedRecently'] as List?) ?? const [])
+        for (final m in (meds['endedRecently'] as List?) ?? [])
           _line('${(m as Map)['title']}', 'Course ended ${(m['endsOn'] as String?)?.substring(0, 10) ?? ''}', quiet: true),
       ]),
       _block('Conditions', [
@@ -87,7 +87,7 @@ class SummaryView extends StatelessWidget {
               if (prev != null) 'was ${fmt(prev['value'])} (${(prev['sampledOn'] as String).substring(0, 7)})',
             ].join(' · ');
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: EdgeInsets.symmetric(vertical: 8),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -98,7 +98,7 @@ class SummaryView extends StatelessWidget {
                       GestureDetector(
                         onTap: () => onOpenOriginal!(m['recordId'] as String),
                         child: Padding(
-                          padding: const EdgeInsets.only(top: 4),
+                          padding: EdgeInsets.only(top: 4),
                           child: Text('View original report', style: LT.small.copyWith(color: LT.ink, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
                         ),
                       ),
@@ -118,20 +118,20 @@ class SummaryView extends StatelessWidget {
   }
 
   Widget _block(String title, List<Widget> children) => children.isEmpty
-      ? const SizedBox.shrink()
+      ? SizedBox.shrink()
       : ShadCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title, style: LT.small.copyWith(fontWeight: FontWeight.w600, color: LT.ink2)),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             ...children,
           ]),
         );
 
   Widget _line(String main, String sub, {bool quiet = false}) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: EdgeInsets.symmetric(vertical: 6),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(main, style: LT.label.copyWith(fontWeight: FontWeight.w600, color: quiet ? LT.ink3 : LT.ink)),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           if (sub.isNotEmpty) Text(sub, style: LT.small.copyWith(fontSize: 12)),
         ]),
       );

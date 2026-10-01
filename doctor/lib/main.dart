@@ -9,18 +9,68 @@ import 'theme.dart';
 
 const _relay = String.fromEnvironment('LT_RELAY_URL', defaultValue: 'http://127.0.0.1:8787');
 
-void main() => runApp(const DoctorApp());
+void main() => runApp(DoctorApp());
 
-class DoctorApp extends StatelessWidget {
+class DoctorApp extends StatefulWidget {
   const DoctorApp({super.key});
+  @override
+  State<DoctorApp> createState() => _DoctorAppState();
+}
+
+class _DoctorAppState extends State<DoctorApp> with WidgetsBindingObserver {
+  // Loaded once — not on every redraw.
+  late final Future<DoctorSession> _session = DoctorSession.load(Uri.parse(_relay)).then((s) {
+    appearance.value = themeModeOf(s.themeChoice);
+    return s;
+  });
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    appearance.addListener(_apply);
+    DT.dark = _resolve();
+  }
+
+  @override
+  void dispose() {
+    appearance.removeListener(_apply);
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangePlatformBrightness() => _apply();
+
+  bool _resolve() => switch (appearance.value) {
+        ThemeMode.dark => true,
+        ThemeMode.light => false,
+        ThemeMode.system => WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark,
+      };
+
+  /// Screens read [DT] directly, so a change of mode redraws every element,
+  /// keeping what is open.
+  void _apply() {
+    final d = _resolve();
+    if (d == DT.dark || !mounted) return;
+    setState(() => DT.dark = d);
+    void redraw(Element e) {
+      e.markNeedsBuild();
+      e.visitChildren(redraw);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) (context as Element).visitChildren(redraw);
+    });
+  }
+
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'LifeTrack for doctors',
     debugShowCheckedModeBanner: false,
     theme: DT.theme(),
     home: FutureBuilder<DoctorSession>(
-      future: DoctorSession.load(Uri.parse(_relay)),
-      builder: (c, s) => s.hasData ? Shell(session: s.data!) : const Scaffold(body: Center(child: CircularProgressIndicator())),
+      future: _session,
+      builder: (c, s) => s.hasData ? Shell(session: s.data!) : Scaffold(body: Center(child: CircularProgressIndicator())),
     ),
   );
 }
@@ -40,7 +90,7 @@ class _ShellState extends State<Shell> {
   @override
   void initState() {
     super.initState();
-    _poll = Timer.periodic(const Duration(seconds: 4), (_) => _tick());
+    _poll = Timer.periodic(Duration(seconds: 4), (_) => _tick());
     _tick();
   }
 
@@ -81,22 +131,22 @@ class _ShellState extends State<Shell> {
 
   Widget _waiting() => Center(
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 520),
+      constraints: BoxConstraints(maxWidth: 520),
       child: Card0(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(s.state == EnrolmentState.pending ? 'Waiting for your licence check' : 'Not approved', style: DT.h1),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(s.note ?? 'A LifeTrack reviewer checks your registration with your medical council before you can see any patient record.', style: DT.muted),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text('${s.profile['name']} · ${s.registrationNo} · ${s.profile['council']}', style: DT.body),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Row(
               children: [
                 Pill('Check again', onTap: _tick),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Pill(
                   'Start over',
                   dark: false,
@@ -152,13 +202,13 @@ class _ShellState extends State<Shell> {
                 child: Column(children: [
                   if (_openKey == null)
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
+                      padding: EdgeInsets.fromLTRB(24, 18, 24, 0),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: SegmentedButton<int>(
                           segments: [
-                            ButtonSegment(value: 0, label: Text('Patients · ${s.patients.length}'), icon: const Icon(Icons.people_outline)),
-                            ButtonSegment(value: 1, label: Text('Prescriptions · ${s.prescriptions.length}'), icon: const Icon(Icons.receipt_long_outlined)),
+                            ButtonSegment(value: 0, label: Text('Patients · ${s.patients.length}'), icon: Icon(Icons.people_outline)),
+                            ButtonSegment(value: 1, label: Text('Prescriptions · ${s.prescriptions.length}'), icon: Icon(Icons.receipt_long_outlined)),
                           ],
                           selected: {_tab == 2 ? 0 : _tab},
                           onSelectionChanged: (v) => setState(() => _tab = v.first),
@@ -180,9 +230,9 @@ class _ShellState extends State<Shell> {
                   selectedIndex: _tab,
                   onDestinationSelected: (i) => setState(() => _tab = i),
                   destinations: [
-                    NavigationDestination(icon: Badge(isLabelVisible: s.inbox.isNotEmpty, label: Text('${s.inbox.length}'), child: const Icon(Icons.people_outline)), label: 'Patients'),
-                    const NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Prescriptions'),
-                    const NavigationDestination(icon: Icon(Icons.qr_code_2), label: 'My code'),
+                    NavigationDestination(icon: Badge(isLabelVisible: s.inbox.isNotEmpty, label: Text('${s.inbox.length}'), child: Icon(Icons.people_outline)), label: 'Patients'),
+                    NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Prescriptions'),
+                    NavigationDestination(icon: Icon(Icons.qr_code_2), label: 'My code'),
                   ],
                 ),
         );
@@ -208,27 +258,27 @@ class _EnrolScreenState extends State<EnrolScreen> {
   @override
   Widget build(BuildContext context) => Center(
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 520),
+      constraints: BoxConstraints(maxWidth: 520),
       child: ListView(
         shrinkWrap: true,
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20),
         children: [
           Text('LifeTrack for doctors', style: DT.muted),
           Text('Verify your licence', style: DT.h1),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Your registration is checked with your medical council before you can see any patient record. This browser makes its own keys; only their public halves are sent.',
             style: DT.muted,
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Field('Full name', _name, hint: 'Dr. R. Mehta'),
           Field('Speciality', _spec, hint: 'Cardiology'),
           Field('Medical council', _council, hint: 'Delhi Medical Council'),
           Field('Registration number', _reg, hint: 'DMC-12345'),
           if (_error != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(_error!, style: const TextStyle(color: DT.signal)),
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text(_error!, style: TextStyle(color: DT.signal)),
             ),
           Pill(
             _busy ? 'Sending…' : 'Send for licence check',
@@ -265,7 +315,7 @@ class Countdown extends StatefulWidget {
 }
 
 class _CountdownState extends State<Countdown> {
-  late final Timer _t = Timer.periodic(const Duration(seconds: 30), (_) => setState(() {}));
+  late final Timer _t = Timer.periodic(Duration(seconds: 30), (_) => setState(() {}));
   @override
   void dispose() {
     _t.cancel();
@@ -277,11 +327,11 @@ class _CountdownState extends State<Countdown> {
     final d = widget.until.difference(DateTime.now());
     final txt = d.isNegative ? 'Closed' : '${d.inHours}:${(d.inMinutes % 60).toString().padLeft(2, '0')} left';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: const ShapeDecoration(color: DT.accent, shape: StadiumBorder()),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: ShapeDecoration(color: DT.accent, shape: StadiumBorder()),
       child: Text(
         txt,
-        style: const TextStyle(fontWeight: FontWeight.w600, color: DT.ink),
+        style: TextStyle(fontWeight: FontWeight.w600, color: DT.onAccent),
       ),
     );
   }
@@ -333,11 +383,11 @@ class _RequestByIdCardState extends State<RequestByIdCard> {
     return Card0(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Request access by LifeTrack ID', style: DT.h2),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text('For a patient who is not in front of you. They approve on their phone.', style: DT.muted),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Field('LifeTrack ID (12 digits)', _id, hint: '1482 0937 5516'),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Wrap(spacing: 8, children: [
           for (final e in _labels.entries)
             FilterChip(
@@ -346,19 +396,19 @@ class _RequestByIdCardState extends State<RequestByIdCard> {
               onSelected: (v) => setState(() => v ? _levels.add(e.key) : _levels.remove(e.key)),
             ),
         ]),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Field('Reason (optional)', _note, hint: 'Follow-up for diabetes'),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Align(
           alignment: Alignment.centerLeft,
           child: FilledButton(onPressed: _busy || _levels.isEmpty ? null : _send, child: Text(_busy ? 'Sending…' : 'Send request')),
         ),
         if (_msg != null) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(_msg!, style: TextStyle(color: _ok ? DT.trace : DT.signal)),
         ],
         for (final r in s.sent.take(5)) ...[
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text('${r.declined ? 'Declined' : 'Sent'} · ${r.lifeTrackId.substring(0, 4)} ${r.lifeTrackId.substring(4, 8)} ${r.lifeTrackId.substring(8)} · ${r.levels.map((l) => _labels[l]).join(', ')}',
               style: TextStyle(fontSize: 12.5, color: r.declined ? DT.signal : DT.ink3)),
         ],

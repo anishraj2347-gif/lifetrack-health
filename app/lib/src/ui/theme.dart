@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Warm-grey clinical dashboard: black pills, large soft cards, one lime
 /// accent. Poppins throughout, bundled.
@@ -19,25 +20,61 @@ import 'package:flutter/material.dart';
 /// Pure red (#DC2626) was rejected: under protanopia it darkens onto the green
 /// (ΔE 11.6). The amber border #FDE68A was rejected next to lime (ΔE 14.4).
 /// Re-run the measurement before changing any of these.
+/// Dark mode (1 Oct 2026): every surface and ink has a dark value; [dark]
+/// says which is in force and the app root rebuilds everything when it
+/// changes. Lime and the fill-only colours are the same in both modes.
+/// Dark text variants of the semantic colours, measured the same way:
+///
+///   trace  #10B981 emerald-500 · signal #F97316 orange-500 (text on dark)
+///   worst pair 38.9 under protanopia (deutan 55.6); vs lime ≥ 26.7;
+///   ≥ 5.3:1 on every dark surface. Fills stay #C2410C (white 5.2:1).
+/// Follow phone, light or dark — the patient's choice (Me → Appearance).
+/// The app root listens and redraws everything when it changes.
+final appearance = ValueNotifier<ThemeMode>(ThemeMode.system);
+
+ThemeMode themeModeOf(String choice) => switch (choice) { 'light' => ThemeMode.light, 'dark' => ThemeMode.dark, _ => ThemeMode.system };
+
 abstract final class LT {
-  static const ground = Color(0xFFE3E3DC); // page
-  static const surface = Color(0xFFF4F4EF); // light card
-  static const raised = Color(0xFFFBFBF8); // pills, inputs, icon circles
-  static const band = surface; // muted panels
-  static const rule = Color(0xFFD4D3CC);
-  static const ink = Color(0xFF0E0E0E);
-  static const ink2 = Color(0xFF45443F);
-  static const ink3 = Color(0xFF64635D); // 4.7:1 on ground, 5.5:1 on surface (WCAG AA, contrast_test)
-  static const inactive = Color(0xFFA9A8A1);
-  static const primary = Color(0xFF0E0E0E);
-  static const onDark = Color(0xFFF4F4EF);
-  static const onDarkMuted = Color(0xFF9A9A94);
+  /// Set by the app root from the patient's choice and the phone's setting.
+  static bool dark = false;
+
+  static Color _p(int light, int darkValue) => Color(dark ? darkValue : light);
+
+  static Color get ground => _p(0xFFE3E3DC, 0xFF121210); // page
+  static Color get surface => _p(0xFFF4F4EF, 0xFF1D1D1A); // card
+  static Color get raised => _p(0xFFFBFBF8, 0xFF272724); // pills, inputs, icon circles
+  static Color get band => surface; // muted panels
+  static Color get rule => _p(0xFFD4D3CC, 0xFF3A3935);
+  static Color get ink => _p(0xFF0E0E0E, 0xFFF2F2EC);
+  static Color get ink2 => _p(0xFF45443F, 0xFFD0CFC8);
+  static Color get ink3 => _p(0xFF64635D, 0xFFA6A59E); // ≥ 4.5:1 on ground and cards (contrast_test)
+  static Color get inactive => _p(0xFFA9A8A1, 0xFF6E6D67);
+
+  /// Hero cards and the bottom bar: black in light mode, lifted in dark.
+  static Color get primary => _p(0xFF0E0E0E, 0xFF2E2E2A);
+  static Color get onDark => _p(0xFFF4F4EF, 0xFFF2F2EC);
+  static Color get onDarkMuted => _p(0xFF9A9A94, 0xFFA6A59E);
+
+  /// A chip or empty dot sitting on a hero card.
+  static Color get onDarkChip => _p(0xFF2A2A28, 0xFF45453F);
+
+  /// Primary buttons: black on the light page, cream on the dark one.
+  static Color get button => _p(0xFF0E0E0E, 0xFFF2F2EC);
+  static Color get onButton => _p(0xFFF4F4EF, 0xFF121210);
 
   /// Selection / "now" only.
   static const accent = Color(0xFFEEF36A);
 
-  static const trace = Color(0xFF065F46);
-  static const signal = Color(0xFFC2410C);
+  /// Anything drawn on lime.
+  static const onAccent = Color(0xFF0E0E0E);
+
+  /// Text and icons on the page.
+  static Color get trace => _p(0xFF065F46, 0xFF10B981);
+  static Color get signal => _p(0xFFC2410C, 0xFFF97316);
+
+  /// On their own pale fills (badges, tiles) — the same in both modes.
+  static const traceInk = Color(0xFF065F46);
+  static const signalFill = Color(0xFFC2410C); // also the fill behind white text
   static const caution = Color(0xFFFEF3C7);
   static const cautionBorder = Color(0xFFE3C878);
   static const cautionInk = Color(0xFF78350F);
@@ -49,40 +86,43 @@ abstract final class LT {
   static const body = 'Poppins';
   static const mono = 'Poppins';
 
-  static const eyebrow = TextStyle(fontFamily: body, fontSize: 12.5, fontWeight: FontWeight.w500, color: ink3);
-  static const title = TextStyle(fontFamily: display, fontSize: 26, fontWeight: FontWeight.w600, height: 1.15, letterSpacing: -0.6, color: ink);
-  static const hero = TextStyle(fontFamily: display, fontSize: 30, fontWeight: FontWeight.w600, height: 1.12, letterSpacing: -0.8, color: ink);
-  static const lede = TextStyle(fontFamily: body, fontSize: 14.5, height: 1.55, color: ink3);
-  static const label = TextStyle(fontFamily: body, fontSize: 15, fontWeight: FontWeight.w500, color: ink, letterSpacing: -0.1);
-  static const small = TextStyle(fontFamily: body, fontSize: 12.5, height: 1.5, color: ink3);
-  static const data = TextStyle(fontFamily: mono, fontSize: 14.5, fontWeight: FontWeight.w600, color: ink, fontFeatures: [FontFeature.tabularFigures()]);
+  static TextStyle get eyebrow => TextStyle(fontFamily: body, fontSize: 12.5, fontWeight: FontWeight.w500, color: ink3);
+  static TextStyle get title => TextStyle(fontFamily: display, fontSize: 26, fontWeight: FontWeight.w600, height: 1.15, letterSpacing: -0.6, color: ink);
+  static TextStyle get hero => TextStyle(fontFamily: display, fontSize: 30, fontWeight: FontWeight.w600, height: 1.12, letterSpacing: -0.8, color: ink);
+  static TextStyle get lede => TextStyle(fontFamily: body, fontSize: 14.5, height: 1.55, color: ink3);
+  static TextStyle get label => TextStyle(fontFamily: body, fontSize: 15, fontWeight: FontWeight.w500, color: ink, letterSpacing: -0.1);
+  static TextStyle get small => TextStyle(fontFamily: body, fontSize: 12.5, height: 1.5, color: ink3);
+  static TextStyle get data => TextStyle(fontFamily: mono, fontSize: 14.5, fontWeight: FontWeight.w600, color: ink, fontFeatures: [FontFeature.tabularFigures()]);
 
   static ThemeData theme() {
-    const none = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(radius)), borderSide: BorderSide(color: raised));
+    final none = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(radius)), borderSide: BorderSide(color: raised));
+    final scheme = (dark ? ColorScheme.dark() : ColorScheme.light()).copyWith(
+      primary: button,
+      onPrimary: onButton,
+      secondary: accent,
+      onSecondary: onAccent,
+      error: signal,
+      surface: surface,
+      onSurface: ink,
+      outline: rule,
+    );
     return ThemeData(
       useMaterial3: true,
+      brightness: dark ? Brightness.dark : Brightness.light,
       scaffoldBackgroundColor: ground,
       fontFamily: body,
       splashFactory: NoSplash.splashFactory,
-      colorScheme: const ColorScheme.light(
-        primary: primary,
-        onPrimary: onDark,
-        secondary: accent,
-        onSecondary: ink,
-        error: signal,
-        surface: surface,
-        onSurface: ink,
-        outline: rule,
-      ),
+      colorScheme: scheme,
       dividerColor: rule,
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: ground,
         foregroundColor: ink,
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
+        systemOverlayStyle: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       ),
-      inputDecorationTheme: const InputDecorationTheme(
+      inputDecorationTheme: InputDecorationTheme(
         isDense: true,
         filled: true,
         fillColor: raised,
@@ -96,17 +136,29 @@ abstract final class LT {
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
       checkboxTheme: CheckboxThemeData(
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(6))),
-        side: const BorderSide(color: primary, width: 1.3),
-        checkColor: const WidgetStatePropertyAll(accent),
-        fillColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? primary : Colors.transparent),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(6))),
+        side: BorderSide(color: ink, width: 1.3),
+        checkColor: WidgetStatePropertyAll(dark ? onAccent : accent),
+        fillColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? (dark ? accent : primary) : Colors.transparent),
       ),
-      datePickerTheme: const DatePickerThemeData(backgroundColor: surface, surfaceTintColor: Colors.transparent),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(color: primary),
-      snackBarTheme: const SnackBarThemeData(
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? (dark ? onAccent : onDark) : ink3),
+        trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? (dark ? accent : primary) : raised),
+        trackOutlineColor: WidgetStatePropertyAll(rule),
+      ),
+      textTheme: ThemeData(brightness: dark ? Brightness.dark : Brightness.light).textTheme.apply(fontFamily: body, bodyColor: ink, displayColor: ink),
+      iconTheme: IconThemeData(color: ink),
+      dialogTheme: DialogThemeData(backgroundColor: surface, surfaceTintColor: Colors.transparent),
+      bottomSheetTheme: BottomSheetThemeData(backgroundColor: surface, surfaceTintColor: Colors.transparent),
+      popupMenuTheme: PopupMenuThemeData(color: raised, surfaceTintColor: Colors.transparent, textStyle: TextStyle(fontFamily: body, color: ink)),
+      datePickerTheme: DatePickerThemeData(backgroundColor: surface, surfaceTintColor: Colors.transparent),
+      timePickerTheme: TimePickerThemeData(backgroundColor: surface),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: ink),
+      textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: ink)),
+      snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: primary,
-        contentTextStyle: TextStyle(fontFamily: body, color: onDark),
+        backgroundColor: button,
+        contentTextStyle: TextStyle(fontFamily: body, color: onButton),
         shape: StadiumBorder(),
       ),
     );

@@ -41,7 +41,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final st = s.reminderSettings;
-    final plan = st.on ? s.reminderPlan().take(5).toList() : const <PlannedReminder>[];
+    final plan = st.on ? s.reminderPlan().take(5).toList() : <PlannedReminder>[];
     return Scaffold(
       appBar: AppBar(),
       body: ListView(children: [
@@ -50,16 +50,16 @@ class _RemindersScreenState extends State<RemindersScreen> {
           title: st.on ? 'Reminders are on' : 'Remind me',
           trailing: Badge2(st.on ? 'On' : 'Off', tone: st.on ? BadgeTone.trace : BadgeTone.outline),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         if (s.reminderScheduler == null)
-          const Note('Reminders are not available in this build.', icon: LucideIcons.bellOff)
+          Note('Reminders are not available in this build.', icon: LucideIcons.bellOff)
         else ...[
           ShadCard(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+            padding: EdgeInsets.fromLTRB(16, 8, 8, 8),
             child: Row(children: [
-              const IconTile(LucideIcons.bell),
-              const SizedBox(width: 14),
-              const Expanded(
+              IconTile(LucideIcons.bell),
+              SizedBox(width: 14),
+              Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('Remind me', style: LT.label),
                   SizedBox(height: 4),
@@ -69,8 +69,8 @@ class _RemindersScreenState extends State<RemindersScreen> {
               Switch(value: st.on, onChanged: (v) => _set(st.copyWith(on: v))),
             ]),
           ),
-          if (_note != null) Padding(padding: const EdgeInsets.fromLTRB(20, 4, 20, 8), child: Text(_note!, style: LT.small.copyWith(color: LT.signal))),
-          const Eyebrow('When'),
+          if (_note != null) Padding(padding: EdgeInsets.fromLTRB(20, 4, 20, 8), child: Text(_note!, style: LT.small.copyWith(color: LT.signal))),
+          Eyebrow('When'),
           ShadCard(
             padding: EdgeInsets.zero,
             child: Column(children: [
@@ -88,9 +88,9 @@ class _RemindersScreenState extends State<RemindersScreen> {
             ]),
           ),
           ShadCard(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+            padding: EdgeInsets.fromLTRB(16, 8, 8, 8),
             child: Row(children: [
-              const Expanded(
+              Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('Show medicine names', style: LT.label),
                   SizedBox(height: 4),
@@ -101,18 +101,18 @@ class _RemindersScreenState extends State<RemindersScreen> {
             ]),
           ),
           if (st.on) ...[
-            const Eyebrow('Coming up'),
-            if (plan.isEmpty) const Note('Nothing to remind yet: no prescription with a dose, and no reminders of your own.', icon: LucideIcons.info, margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
+            Eyebrow('Coming up'),
+            if (plan.isEmpty) Note('Nothing to remind yet: no prescription with a dose, and no reminders of your own.', icon: LucideIcons.info, margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
             for (final r in plan)
               ShadCard(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('${r.slot.label} · ${dateTime(r.at)}', style: LT.small),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(r.body(showNames: true, selfPatientId: s.selfPatientId), style: LT.label),
                 ]),
               ),
           ],
-          const SizedBox(height: 28),
+          SizedBox(height: 28),
         ],
       ]),
     );
@@ -128,26 +128,26 @@ class TodaysMedicines extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final doses = s.todaysDoses();
-    if (doses.isEmpty) return const SizedBox.shrink();
+    if (doses.isEmpty) return SizedBox.shrink();
     final st = s.reminderSettings;
     return ShadCard(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      margin: EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Expanded(child: Text("Today's medicines", style: LT.label)),
+          Expanded(child: Text("Today's medicines", style: LT.label)),
           if (!st.on && s.reminderScheduler != null)
             TextButton.icon(
               onPressed: () async {
-                await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const RemindersScreen()));
+                await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RemindersScreen()));
                 if (context.mounted) AppScope.changed(context);
               },
-              icon: const Icon(LucideIcons.bell, size: 16),
-              label: const Text('Remind me'),
+              icon: Icon(LucideIcons.bell, size: 16),
+              label: Text('Remind me'),
             ),
         ]),
         for (final slot in DoseSlot.values)
           if (doses.where((d) => d.$1 == slot).toList() case final list when list.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text('${slot.label} · ${hm(st.times[slot]!)}', style: LT.small.copyWith(fontWeight: FontWeight.w600)),
             for (final (_, r, n) in list)
               CheckboxListTile(
@@ -158,7 +158,7 @@ class TodaysMedicines extends StatelessWidget {
                 title: Text('${r.title}${n > 1 ? ' ×$n' : ''}', style: LT.label),
                 secondary: IconButton(
                   tooltip: 'Edit ${r.title}',
-                  icon: const Icon(LucideIcons.pencil, size: 17, color: LT.ink3),
+                  icon: Icon(LucideIcons.pencil, size: 17, color: LT.ink3),
                   onPressed: () async {
                     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RecordScreen(recordId: r.id)));
                     if (context.mounted) AppScope.changed(context);
@@ -186,7 +186,7 @@ class RemindersTab extends StatelessWidget {
   }
 
   Future<void> _settings(BuildContext context) async {
-    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const RemindersScreen()));
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RemindersScreen()));
     if (context.mounted) AppScope.changed(context);
   }
 
@@ -198,33 +198,33 @@ class RemindersTab extends StatelessWidget {
     final available = s.reminderScheduler != null;
     final doses = s.todaysDoses();
     final today = s.todaysCustom();
-    final mine = p == null ? const <CustomReminder>[] : s.customRemindersOf(p.id);
+    final mine = p == null ? <CustomReminder>[] : s.customRemindersOf(p.id);
     final child = p != null && p.ageAt(s.clock()) < 18;
-    final coming = st.on ? s.reminderPlan().take(6).toList() : const <PlannedReminder>[];
+    final coming = st.on ? s.reminderPlan().take(6).toList() : <PlannedReminder>[];
     final times = [
       for (final slot in DoseSlot.values)
         if (doses.any((d) => d.$1 == slot)) '${slot.label} ${hm(st.times[slot]!)}',
     ];
     return Column(children: [
-      const FamilyBar(),
+      FamilyBar(),
       Masthead(
         eyebrow: 'Reminders',
         title: p?.name ?? '',
         trailing: available ? Badge2(st.on ? 'On' : 'Off', tone: st.on ? BadgeTone.trace : BadgeTone.outline) : null,
       ),
       Expanded(
-        child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 96), children: [
+        child: ListView(padding: EdgeInsets.only(top: 6, bottom: 96), children: [
           if (available)
             ShadCard(
-              margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              margin: EdgeInsets.fromLTRB(16, 8, 16, 12),
               onTap: () => _settings(context),
               child: Row(children: [
                 IconTile(st.on ? LucideIcons.bellRing : LucideIcons.bellOff),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(st.on ? 'Reminders are on' : 'Reminders are off', style: LT.label),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       st.on
                           ? (times.isEmpty ? 'Times, and whether names show on the lock screen' : times.join(' · '))
@@ -233,16 +233,16 @@ class RemindersTab extends StatelessWidget {
                     ),
                   ]),
                 ),
-                const Icon(LucideIcons.chevronRight, color: LT.inactive),
+                Icon(LucideIcons.chevronRight, color: LT.inactive),
               ]),
             ),
-          const TodaysMedicines(),
+          TodaysMedicines(),
           if (today.isNotEmpty)
             ShadCard(
-              margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              margin: EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text("Today's reminders", style: LT.label),
-                const SizedBox(height: 4),
+                Text("Today's reminders", style: LT.label),
+                SizedBox(height: 4),
                 for (final (h, m, c) in today)
                   CheckboxListTile(
                     dense: true,
@@ -258,9 +258,9 @@ class RemindersTab extends StatelessWidget {
                   ),
               ]),
             ),
-          if (child) const VaccinationsCard(),
+          if (child) VaccinationsCard(),
           if (doses.isEmpty && today.isEmpty && !child)
-            const Note(
+            Note(
               'Nothing for today. Medicines with a dose in Records show here, and so do reminders you make below.',
               icon: LucideIcons.pill,
             ),
@@ -270,33 +270,33 @@ class RemindersTab extends StatelessWidget {
               onTap: () => _open(context, c),
               child: Row(children: [
                 IconTile(c.paused ? LucideIcons.pause : LucideIcons.alarmClock, color: c.paused ? LT.ink3 : LT.ink),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(c.title, style: LT.label.copyWith(color: c.paused ? LT.ink3 : null)),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text('${c.paused ? 'Paused · ' : ''}${c.times.map(hm).join(', ')} · ${c.scheduleLabel(fullDate)}', style: LT.small),
                   ]),
                 ),
-                const Icon(LucideIcons.chevronRight, color: LT.inactive),
+                Icon(LucideIcons.chevronRight, color: LT.inactive),
               ]),
             ),
           if (p != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 4),
               child: SlabButton('Create a reminder', variant: ButtonVariant.outline, icon: LucideIcons.plus, onPressed: () => _open(context, null)),
             ),
           if (coming.isNotEmpty) ...[
-            const Eyebrow('Coming up'),
+            Eyebrow('Coming up'),
             for (final r in coming)
               ShadCard(
                 child: Row(children: [
                   Icon(r.vaccine != null ? LucideIcons.syringe : r.custom != null ? LucideIcons.alarmClock : switch (r.slot) { DoseSlot.morning => LucideIcons.sunrise, DoseSlot.afternoon => LucideIcons.sun, DoseSlot.night => LucideIcons.moon }, size: 18, color: LT.ink2),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('${r.title} · ${dateTime(r.at)}', style: LT.small),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(r.body(showNames: true, selfPatientId: s.selfPatientId), style: LT.label),
                     ]),
                   ),

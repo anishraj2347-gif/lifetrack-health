@@ -70,10 +70,10 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
             ? 'A newborn without Aadhaar: from the birth certificate in your DigiLocker. Any other child: with their own Aadhaar (Baal Aadhaar) through DigiLocker.'
             : 'Hand the phone to them. They sign in to their own DigiLocker with their Aadhaar.',
       ),
-      const SizedBox(height: 12),
+      SizedBox(height: 12),
       if (child && v == null)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: Wrap(spacing: 8, runSpacing: 8, children: [
             Chip2('Newborn · birth certificate', selected: _newborn, onTap: () => setState(() => _newborn = true)),
             Chip2('Has Aadhaar', selected: !_newborn, onTap: () => setState(() => _newborn = false)),
@@ -86,9 +86,9 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
         onVerified: (x) => setState(() => _verified = x),
       ),
       if (v != null) _rolePicker(child),
-      if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
+      if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+        padding: EdgeInsets.fromLTRB(16, 20, 16, 28),
         child: SlabButton(child ? 'Add child' : 'Next: their consent', onPressed: !ready ? null : (child ? _save : () => setState(() {
               _name.text = v.name;
               _consentStep = true;
@@ -110,17 +110,17 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
       );
 
   Widget _choose() => ListView(children: [
-        const Masthead(eyebrow: 'Family', title: 'Who are you adding?', description: 'Their records will be kept on this phone, encrypted like yours.'),
-        const SizedBox(height: 12),
+        Masthead(eyebrow: 'Family', title: 'Who are you adding?', description: 'Their records will be kept on this phone, encrypted like yours.'),
+        SizedBox(height: 12),
         _option(LucideIcons.baby, 'A child under 18', 'You are their parent. You add their records and can show them to a doctor.', () => setState(() => _who = _Who.child)),
         _option(LucideIcons.handHeart, 'An adult who wants me to manage', 'For example a parent without a smartphone. They agree in person, and can stop it at any time.',
             () => setState(() => _who = _Who.delegating)),
         if (AppScope.of(context).links != null)
           _option(LucideIcons.link, 'An adult with their own phone', 'They keep their own records and you are linked by invite. Linking never gives you their records.', () async {
-            await Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => const FamilyInviteScreen()));
+            await Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => FamilyInviteScreen()));
           })
         else
-          const Note('Linking an adult with their own phone needs the relay, which is not set up in this build.', icon: LucideIcons.cloudOff),
+          Note('Linking an adult with their own phone needs the relay, which is not set up in this build.', icon: LucideIcons.cloudOff),
       ]);
 
   /// Who they are to the head of family (you), grouped by generation.
@@ -133,7 +133,7 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
       hint: child ? 'A child under 18 is added by their parent. A younger sister or a grandchild is added by their own parent, on that parent\'s phone.' : null,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         for (final g in gens) ...[
-          if (gens.length > 1) Padding(padding: const EdgeInsets.only(top: 6, bottom: 6), child: Text(_generationLabel(g), style: LT.small.copyWith(fontWeight: FontWeight.w600))),
+          if (gens.length > 1) Padding(padding: EdgeInsets.only(top: 6, bottom: 6), child: Text(_generationLabel(g), style: LT.small.copyWith(fontWeight: FontWeight.w600))),
           Wrap(spacing: 8, runSpacing: 8, children: [
             for (final r in roles.where((r) => r.generation == g)) Chip2(r.label, selected: _relation.text == r.name, onTap: () => setState(() => _relation.text = r.name)),
           ]),
@@ -154,15 +154,15 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
         onTap: onTap,
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           IconTile(icon),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(title, style: LT.label.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(body, style: LT.small),
             ]),
           ),
-          const Icon(LucideIcons.chevronRight, color: LT.inactive),
+          Icon(LucideIcons.chevronRight, color: LT.inactive),
         ]),
       );
 
@@ -171,7 +171,7 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
     final ready = _name.text.trim().isNotEmpty && _dob != null && _relation.text.trim().isNotEmpty && (!child || _parent);
     return ListView(children: [
       Masthead(eyebrow: child ? 'Add a child' : 'Add an adult who wants you to manage', title: child ? 'Your child' : 'Who asked you?'),
-      const SizedBox(height: 16),
+      SizedBox(height: 16),
       LabeledField(label: 'Full name', child: TextField(controller: _name, textCapitalization: TextCapitalization.words, onChanged: (_) => setState(() {}))),
       LabeledField(
         label: 'Date of birth',
@@ -194,18 +194,18 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
       if (child)
         ShadCard(
           onTap: () => setState(() => _parent = !_parent),
-          padding: const EdgeInsets.fromLTRB(8, 4, 12, 4),
+          padding: EdgeInsets.fromLTRB(8, 4, 12, 4),
           child: Row(children: [
             Checkbox(value: _parent, onChanged: (v) => setState(() => _parent = v ?? false)),
-            const Expanded(child: Text('I am this child\'s parent.', style: TextStyle(fontSize: 14))),
+            Expanded(child: Text('I am this child\'s parent.', style: TextStyle(fontSize: 14))),
           ]),
         ),
       if (child)
-        const Note('Only a parent can add a child. Proof of parenthood (DigiLocker) is not connected yet, so this is recorded as your declaration. At 18 your child decides for themselves.',
+        Note('Only a parent can add a child. Proof of parenthood (DigiLocker) is not connected yet, so this is recorded as your declaration. At 18 your child decides for themselves.',
             icon: LucideIcons.info),
-      if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
+      if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+        padding: EdgeInsets.fromLTRB(16, 20, 16, 28),
         child: SlabButton(child ? 'Add child' : 'Next: their consent', onPressed: !ready ? null : (child ? _save : () => setState(() => _consentStep = true))),
       ),
     ]);
@@ -218,23 +218,23 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
     return ListView(children: [
       Masthead(eyebrow: 'Hand the phone to ${_name.text.trim()}', title: 'Please read this yourself'),
       ShadCard(
-        margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        margin: EdgeInsets.fromLTRB(16, 16, 16, 12),
         color: LT.raised,
-        child: Text(statement, style: const TextStyle(fontSize: 20, height: 1.5, fontWeight: FontWeight.w500, color: LT.ink)),
+        child: Text(statement, style: TextStyle(fontSize: 20, height: 1.5, fontWeight: FontWeight.w500, color: LT.ink)),
       ),
       LabeledField(
         label: 'If you agree, type your name',
         hint: 'Exactly as: ${_name.text.trim()}',
-        child: TextField(controller: _typed, textCapitalization: TextCapitalization.words, style: const TextStyle(fontSize: 18), onChanged: (_) => setState(() {})),
+        child: TextField(controller: _typed, textCapitalization: TextCapitalization.words, style: TextStyle(fontSize: 18), onChanged: (_) => setState(() {})),
       ),
-      const Note('This is recorded as consent given in person on this phone. A one-time code to your own number is not connected yet.', icon: LucideIcons.info),
-      if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
+      Note('This is recorded as consent given in person on this phone. A one-time code to your own number is not connected yet.', icon: LucideIcons.info),
+      if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+        padding: EdgeInsets.fromLTRB(16, 20, 16, 10),
         child: SlabButton('I agree', icon: LucideIcons.check, onPressed: _typed.text.trim().isEmpty ? null : _save),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+        padding: EdgeInsets.fromLTRB(16, 0, 16, 28),
         child: SlabButton('I do not agree', variant: ButtonVariant.outline, onPressed: () => Navigator.of(context).pop()),
       ),
     ]);

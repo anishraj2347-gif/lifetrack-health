@@ -54,7 +54,7 @@ class PatientEntry {
         firstSeen: DateTime.parse(j['firstSeen']! as String),
         lastShared: DateTime.parse(j['lastShared']! as String),
         shares: (j['shares'] as int?) ?? 1,
-        levels: [for (final l in (j['levels'] as List?) ?? const []) l as String],
+        levels: [for (final l in (j['levels'] as List?) ?? []) l as String],
       );
 }
 

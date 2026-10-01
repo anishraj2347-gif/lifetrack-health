@@ -30,11 +30,11 @@ class FamilyBar extends StatelessWidget {
           height: 84,
           child: ListView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            padding: EdgeInsets.fromLTRB(20, 14, 20, 0),
             children: [
               for (final p in family)
                 Padding(
-                  padding: const EdgeInsets.only(right: 8),
+                  padding: EdgeInsets.only(right: 8),
                   child: Semantics(
                     button: true,
                     selected: p.id == current,
@@ -59,10 +59,10 @@ class FamilyBar extends StatelessWidget {
                             ),
                             child: Text(
                               initials(p.name),
-                              style: const TextStyle(fontWeight: FontWeight.w600, color: LT.ink),
+                              style: TextStyle(fontWeight: FontWeight.w600, color: p.id == current ? LT.onAccent : LT.ink),
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           // Initials collide within a family (Aarav and Anjali
                           // Sharma are both "AS"); the first name does not.
                           SizedBox(
@@ -85,14 +85,14 @@ class FamilyBar extends StatelessWidget {
                 button: true,
                 excludeSemantics: true,
                 child: Padding(
-                  padding: const EdgeInsets.only(right: 8),
+                  padding: EdgeInsets.only(right: 8),
                   child: Align(
                     alignment: Alignment.topCenter,
                     child: RoundButton(
                       LucideIcons.users,
                       dark: false,
                       onTap: () async {
-                        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FamilyOverviewScreen()));
+                        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => FamilyOverviewScreen()));
                         if (context.mounted) AppScope.changed(context);
                       },
                     ),
@@ -108,7 +108,7 @@ class FamilyBar extends StatelessWidget {
                   child: RoundButton(
                     LucideIcons.plus,
                     onTap: () async {
-                      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AddFamilyScreen()));
+                      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AddFamilyScreen()));
                       if (context.mounted) AppScope.changed(context);
                     },
                   ),
@@ -119,15 +119,15 @@ class FamilyBar extends StatelessWidget {
         ),
         if (c != null && c.kind != CustodyKind.self)
           Container(
-            margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+            margin: EdgeInsets.fromLTRB(16, 10, 16, 0),
+            padding: EdgeInsets.fromLTRB(14, 10, 14, 10),
             decoration: BoxDecoration(color: LT.primary, borderRadius: BorderRadius.circular(LT.radius)),
             child: Row(
               children: [
-                const Icon(LucideIcons.users, size: 16, color: LT.accent),
-                const SizedBox(width: 10),
+                Icon(LucideIcons.users, size: 16, color: LT.accent),
+                SizedBox(width: 10),
                 Expanded(
-                  child: Text(authorityLine(c), style: const TextStyle(color: LT.onDark, fontSize: 12.5, height: 1.4)),
+                  child: Text(authorityLine(c), style: TextStyle(color: LT.onDark, fontSize: 12.5, height: 1.4)),
                 ),
               ],
             ),
