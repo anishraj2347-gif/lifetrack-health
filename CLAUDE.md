@@ -149,6 +149,10 @@ copy predate the claim fixes; the app's wording is authoritative).
     end it. `AppServices.actingGrantor()` is the only place that decides; every share and the
     Insights grant go through it. Parent verification (DigiLocker) and OTP confirmation are not
     connected, and the UI says "declared" / "agreed in person", never "verified".
+    - 14a. **Family roles** (1 Oct 2026): the phone owner is the head of family; `Custody.relation`
+      holds a `FamilyRole` name — who the person is to the head. A role is a label for the
+      overview and never widens authority: a child under 18 is added only as the head's son or
+      daughter (enforced in `addChild` and `setRole`); adults take any adult role.
 15. No doctor capability (e.g. prescribing) before registry verification. On the patient's
     phone this means: no grant to a doctor, and no inbound prescription accepted, unless the
     doctor's device certificate verifies against the pinned registry key.
