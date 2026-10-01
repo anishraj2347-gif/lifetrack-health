@@ -182,6 +182,9 @@ copy predate the claim fixes; the app's wording is authoritative).
   lime accent) after a Dribbble reference the user supplied; components are native, in
   `lib/src/ui/widgets/parts.dart`. Lime means "selected / now" only — never a health status.
   Do not add the `shadcn_ui` package: it pulls in `http` and `extended_image` (network-capable).
+- **Bump the version with every update** (user rule, 1 Oct 2026): `app/pubspec.yaml` and/or
+  `doctor/pubspec.yaml`, feature → middle number, fix → last; build number always rises; add a
+  line to `CHANGELOG.md` in the same commit.
 - Semantic colours are CVD-checked (see `lib/src/ui/theme.dart`); re-measure before changing one.
 
 ### Project state (29 Sep 2026)

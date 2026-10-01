@@ -15,6 +15,7 @@ import '../widgets/parts.dart';
 import 'data_rights_screen.dart';
 import 'abha_screen.dart';
 import 'add_family_screen.dart';
+import '../../app/app_version.dart';
 import 'backup_screens.dart';
 import 'reminders_screen.dart';
 import 'emergency_screen.dart';
@@ -156,7 +157,11 @@ class MeScreen extends StatelessWidget {
             ? 'On this phone, encrypted under a key in its secure hardware, and an encrypted backup with LifeTrack under account ${s.backupAccount}.'
             : 'On this phone only, encrypted under a key in its secure hardware. Backup is off, so there is no copy anywhere else — if this phone is lost or reset, these records are gone.',
         icon: s.backupAccount != null ? LucideIcons.cloudCheck : LucideIcons.cloudOff,
-        margin: EdgeInsets.fromLTRB(16, 0, 16, 28),
+        margin: EdgeInsets.fromLTRB(16, 0, 16, 12),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+        child: Text('LifeTrack $appVersion', style: LT.small, textAlign: TextAlign.center),
       ),
     ]);
   }
