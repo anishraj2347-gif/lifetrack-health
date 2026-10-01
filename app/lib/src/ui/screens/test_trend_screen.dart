@@ -81,7 +81,7 @@ class TestTrendScreen extends StatelessWidget {
                 [
                   fullDate(r.effectiveDate),
                   ?(r.labName ?? r.facility),
-                  if (r.doctor != null) 'Dr: ${r.doctor}',
+                  if (r.doctor case final d?) d.toLowerCase().startsWith('dr') ? d : 'Dr. $d',
                 ].join(' · '),
                 style: LT.small,
               ),

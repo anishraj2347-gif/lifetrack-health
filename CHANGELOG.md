@@ -6,6 +6,9 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.10.1 (1 Oct 2026)
+- Results over time: the doctor's name no longer reads "Dr: Dr. …".
+
 ### 1.10.0 (1 Oct 2026)
 - Every test with more than two results gets a trend on Records automatically (the most
   recent as the big card, others as tiles). Tap one for every result: value, date, how long
