@@ -1,6 +1,7 @@
 import '../model/clinical_profile.dart';
 import '../model/custody.dart';
 import '../model/health_record.dart';
+import '../model/vital_reading.dart';
 import '../model/patient.dart';
 import 'sealed_store.dart';
 
@@ -9,24 +10,27 @@ import 'sealed_store.dart';
 /// The whole set is rewritten on every change; [ByteStore.write]'s atomicity
 /// contract is what makes that safe.
 class RecordRepository {
-  RecordRepository._(this._store, this._records, this._patients, this._profiles, this._custody);
+  RecordRepository._(this._store, this._records, this._patients, this._profiles, this._custody, this._vitals);
 
   static const recordsBlob = 'records';
   static const patientsBlob = 'patients';
   static const profilesBlob = 'clinical_profiles';
   static const custodyBlob = 'custody';
+  static const vitalsBlob = 'vitals';
 
   final SealedStore _store;
   final List<HealthRecord> _records;
   final Map<String, Patient> _patients;
   final Map<String, ClinicalProfile> _profiles;
   final Map<String, Custody> _custody;
+  final List<VitalReading> _vitals;
 
   static Future<RecordRepository> open(SealedStore store) async {
     final r = await store.read(recordsBlob) as List?;
     final p = await store.read(patientsBlob) as List?;
     final c = (await store.read(profilesBlob) as Map?)?.cast<String, Object?>() ?? const {};
     final k = (await store.read(custodyBlob) as List?) ?? const [];
+    final v = (await store.read(vitalsBlob) as List?) ?? const [];
     return RecordRepository._(
       store,
       [for (final e in r ?? const []) HealthRecord.fromJson((e as Map).cast<String, Object?>())],
@@ -36,6 +40,7 @@ class RecordRepository {
       },
       {for (final MapEntry(:key, :value) in c.entries) key: ClinicalProfile.fromJson((value! as Map).cast())},
       {for (final e in k) (e as Map)['patientId']! as String: Custody.fromJson(e.cast())},
+      [for (final e in v) VitalReading.fromJson((e as Map).cast())],
     );
   }
 
@@ -85,6 +90,21 @@ class RecordRepository {
     await _flush();
   }
 
+  /// Home readings for [patientId], newest first.
+  List<VitalReading> vitalsOf(String patientId) => [for (final v in _vitals) if (v.patientId == patientId) v]..sort((a, b) => b.at.compareTo(a.at));
+
+  Future<void> addVital(VitalReading v) async {
+    _vitals
+      ..removeWhere((x) => x.id == v.id)
+      ..add(v);
+    await _store.write(vitalsBlob, [for (final x in _vitals) x.toJson()]);
+  }
+
+  Future<void> removeVital(String id) async {
+    _vitals.removeWhere((x) => x.id == id);
+    await _store.write(vitalsBlob, [for (final x in _vitals) x.toJson()]);
+  }
+
   Future<void> remove(String id) async {
     _records.removeWhere((r) => r.id == id);
     await _flush();
@@ -92,6 +112,8 @@ class RecordRepository {
 
   Future<void> eraseFor(String patientId) async {
     _records.removeWhere((r) => r.patientId == patientId);
+    _vitals.removeWhere((v) => v.patientId == patientId);
+    await _store.write(vitalsBlob, [for (final x in _vitals) x.toJson()]);
     _patients.remove(patientId);
     _profiles.remove(patientId);
     _custody.remove(patientId);

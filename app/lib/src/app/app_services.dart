@@ -29,6 +29,7 @@ import '../share/clinical_share_service.dart';
 import '../crypto/shamir.dart';
 import '../crypto/vault_codec.dart';
 import '../export/record_export.dart';
+import '../model/vital_reading.dart';
 import '../reminders/reminder_plan.dart';
 import '../vaccines/uip_schedule.dart';
 import '../model/abha.dart';
@@ -429,6 +430,24 @@ class AppServices {
     final cutoff = _day(clock().subtract(const Duration(days: 60)));
     _doseLog.removeWhere((k, _) => k.compareTo(cutoff) < 0);
     await sealed.write(_doseLogBlob, _doseLog);
+  }
+
+  // ---- home readings (BP & sugar diary) ----------------------------------
+
+  List<VitalReading> vitalsOf(String patientId) => repository.vitalsOf(patientId);
+
+  /// Saves a reading for the profile on screen. Stays on this phone unless
+  /// the patient shares home readings or backs up personal data (#6).
+  Future<void> addVital(VitalReading v) async {
+    await repository.addVital(v);
+    await audit.append(AuditEntry(at: clock(), actorId: actingGrantor(), patientId: v.patientId, action: AuditAction.edit, dataClass: DataClass.vitals, detail: 'home reading added: ${v.display}'));
+    await _backUpQuietly();
+  }
+
+  Future<void> deleteVital(VitalReading v) async {
+    await repository.removeVital(v.id);
+    await audit.append(AuditEntry(at: clock(), actorId: actingGrantor(), patientId: v.patientId, action: AuditAction.edit, dataClass: DataClass.vitals, detail: 'home reading deleted: ${v.display}'));
+    await _backUpQuietly();
   }
 
   /// Corrects a record the patient entered. Signed records are refused:
@@ -979,6 +998,7 @@ class AppServices {
     await audit.append(AuditEntry(at: at, actorId: grantor, patientId: id, action: AuditAction.export, detail: 'records, Emergency ID, originals and access log'));
     final records = repository.recordsOf(id);
     return RecordExport(
+      vitals: repository.vitalsOf(id),
       patient: repository.patient(id)!,
       records: records,
       profile: repository.profileOf(id),
@@ -1054,6 +1074,8 @@ class AppServices {
       'records': [for (final r in records) r.toJson()],
       'lifetrackIds': ids?.export() ?? const {},
       'vaccinations': _vaccines,
+      // Home readings, like notes, only when the patient opted in (#6).
+      if (includeNotes) 'vitals': [for (final p in patients) for (final v in repository.vitalsOf(p.id)) v.toJson()],
       'originals': {
         for (final r in records)
           if (r.attachmentId != null)
@@ -1161,6 +1183,9 @@ class AppServices {
     }
     final records = [for (final r in (b['records']! as List).cast<Map>()) HealthRecord.fromJson(r.cast())];
     await repository.addAll(records);
+    for (final v in (b['vitals'] as List?) ?? const []) {
+      await repository.addVital(VitalReading.fromJson((v as Map).cast()));
+    }
     if (b['vaccinations'] is Map) {
       _vaccines = (b['vaccinations']! as Map).cast<String, Object?>();
       await sealed.write(_vaccinesBlob, _vaccines);

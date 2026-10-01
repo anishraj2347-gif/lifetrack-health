@@ -8,6 +8,7 @@ import '../emergency/emergency_card.dart';
 import '../model/clinical_profile.dart';
 import '../model/health_record.dart';
 import '../model/patient.dart';
+import '../model/vital_reading.dart';
 
 /// Everything held about one person, as one zip they can keep or send on:
 /// `summary.html` to read or print, `records.json` for another app, and the
@@ -19,6 +20,7 @@ class RecordExport {
     required this.profile,
     required this.emergency,
     required this.audit,
+    this.vitals = const [],
     required this.originals,
     required this.at,
   });
@@ -28,6 +30,9 @@ class RecordExport {
   final ClinicalProfile profile;
   final EmergencyCard emergency;
   final List<AuditEntry> audit;
+
+  /// Home BP and sugar readings, newest first.
+  final List<VitalReading> vitals;
 
   /// Original pages by record id.
   final Map<String, List<Uint8List>> originals;
@@ -68,6 +73,7 @@ class RecordExport {
               if (originals[r.id] != null) 'originals': [for (var i = 0; i < originals[r.id]!.length; i++) 'originals/${r.id}-page${i + 1}.jpg'],
             },
         ],
+        'homeReadings': [for (final v in vitals) v.toJson()],
         'accessLog': [for (final e in audit) e.toJson()],
       };
 
@@ -149,6 +155,12 @@ class RecordExport {
         b.write('<div><a href="originals/${h(r.id)}-page${i + 1}.jpg">Original, page ${i + 1}</a></div>');
       }
       b.write('</div>');
+    }
+    if (vitals.isNotEmpty) {
+      b.write('<h2>Home readings</h2>');
+      for (final v in vitals) {
+        b.write('<div>${d(v.at)} ${v.at.toIso8601String().substring(11, 16)} · ${h(v.display)}</div>');
+      }
     }
     b.write('<p class="m">The access log, and every field above in machine-readable form, is in records.json.</p></body></html>');
     return b.toString();

@@ -57,6 +57,7 @@ class SummaryPanel extends StatelessWidget {
     final withheld = (b['withheld'] as List?) ?? const [];
     final meds = (b['medicines'] as Map?) ?? const {};
     final family = (b['familyIllnesses'] as Map?)?['items'] as List?;
+    final home = (b['homeReadings'] as Map?)?['items'] as List?;
     final docs = b['documents'] as List?;
     final originals = ((b['originals'] as Map?) ?? const {})
         .cast<String, Object?>();
@@ -85,6 +86,7 @@ class SummaryPanel extends StatelessWidget {
         (((meds['endedRecently'] as List?) ?? const []).isEmpty) &&
         ((b['latestTests'] as List?) ?? const []).isEmpty &&
         (family == null || family.isEmpty) &&
+        (home == null || home.isEmpty) &&
         (docs == null || docs.isEmpty);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -169,6 +171,17 @@ class SummaryPanel extends StatelessWidget {
               );
             }(),
         ]),
+        if (home != null)
+          _card('Home readings · measured by the patient, last 30 days', [
+            if (home.isEmpty) _row('None recorded in the last 30 days', '', quiet: true),
+            for (final v in home.cast<Map>())
+              _row(
+                v['kind'] == 'bloodPressure'
+                    ? 'BP ${v['sys']}/${v['dia']} mmHg${v['pulse'] == null ? '' : ' · pulse ${v['pulse']}'}'
+                    : 'Sugar ${fmt(v['glucose'])} mg/dL${v['context'] == null ? '' : ' · ${const {'fasting': 'fasting', 'afterMeal': 'after a meal', 'random': 'random', 'bedtime': 'bedtime'}[v['context']]}'}',
+                (v['at'] as String).substring(0, 16).replaceFirst('T', ' '),
+              ),
+          ]),
         if (family != null)
           _card('Family illnesses · patient-reported', [
             for (final f in family)

@@ -1,6 +1,7 @@
 import '../audit/audit_log.dart';
 import '../model/clinical_profile.dart';
 import '../model/health_record.dart';
+import '../model/vital_reading.dart';
 import '../storage/record_repository.dart';
 import 'consent_store.dart';
 import 'consent_token.dart';
@@ -35,6 +36,20 @@ class RecordAccess {
       familyIllnesses: dataClass == DataClass.familyHistory ? p.familyIllnesses : const [],
       updatedAt: p.updatedAt,
     );
+  }
+
+  /// Home BP and sugar readings, through the same authorize + audit
+  /// sequence; [from] narrows to recent ones.
+  Future<List<VitalReading>> readVitals({
+    required String tokenId,
+    required String actorId,
+    required String patientId,
+    required GrantPurpose purpose,
+    required DateTime at,
+    DateTime? from,
+  }) async {
+    await _authorizeAndAudit(tokenId: tokenId, actorId: actorId, patientId: patientId, dataClass: DataClass.vitals, purpose: purpose, at: at);
+    return [for (final v in repository.vitalsOf(patientId)) if (from == null || !v.at.isBefore(from)) v];
   }
 
   Future<List<HealthRecord>> read({

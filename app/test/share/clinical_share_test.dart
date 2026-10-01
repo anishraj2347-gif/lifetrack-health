@@ -11,6 +11,7 @@ import 'package:lifetrack/src/consent/consent_token.dart';
 import 'package:lifetrack/src/consent/record_access.dart';
 import 'package:lifetrack/src/model/clinical_profile.dart';
 import 'package:lifetrack/src/model/health_record.dart';
+import 'package:lifetrack/src/model/vital_reading.dart';
 import 'package:lifetrack/src/share/clinical_share_service.dart';
 import 'package:lifetrack/src/share/relay.dart';
 import 'package:lifetrack/src/share/reply_identity.dart';
@@ -460,5 +461,31 @@ void main() {
     expect(r.grant.grantorId, 'patient:parent-1');
     expect(audit.entriesFor('p1').where((e) => e.action == AuditAction.clinicalShare).single.actorId, 'patient:parent-1');
     expect((await pickUpAndOpen(d))['sharedBy'], 'Ramesh Sharma (parent)');
+  });
+
+  group('home readings', () {
+    VitalReading bp(String id, DateTime at) => VitalReading(id: id, patientId: 'p1', at: at, kind: VitalKind.bloodPressure, systolic: 132, diastolic: 84, pulse: 76);
+
+    test('reach a doctor only when the patient ticks them; only the last 30 days; the read is logged', () async {
+      await repo.addVital(bp('v-old', now.subtract(const Duration(days: 45))));
+      await repo.addVital(bp('v-new', now.subtract(const Duration(days: 3))));
+      await repo.addVital(VitalReading(id: 'g1', patientId: 'p1', at: now.subtract(const Duration(days: 1)), kind: VitalKind.glucose, glucose: 112, context: GlucoseContext.fasting));
+      final d = await doctor();
+      final cert = await service.scan(d.qr, now);
+
+      await service.share(patientId: 'p1', doctor: cert, levels: {AccessLevel.summary}, at: now);
+      expect((await pickUpAndOpen(d)).containsKey('homeReadings'), isFalse);
+      expect(audit.entriesFor('p1').where((e) => e.dataClass == DataClass.vitals), isEmpty);
+
+      await service.share(patientId: 'p1', doctor: cert, levels: {AccessLevel.summary, AccessLevel.homeReadings}, at: now.add(const Duration(minutes: 1)));
+      final envs = relay.pickUp(await RelayApi.doctorMailbox(cert.encryptionKey), now.add(const Duration(minutes: 1)));
+      final shares = [for (final e in envs) await ShareEnvelope.open(e, d.enc, now.add(const Duration(minutes: 1)))];
+      final b = shares.firstWhere((x) => x['homeReadings'] != null);
+      final items = ((b['homeReadings']! as Map)['items']! as List).cast<Map>();
+      expect(items.map((i) => i['kind']).toSet(), {'bloodPressure', 'glucose'});
+      expect(items, hasLength(2), reason: 'the 45-day-old reading stays home');
+      expect((b['homeReadings']! as Map)['measuredBy'], 'patient');
+      expect(audit.entriesFor('p1').where((e) => e.dataClass == DataClass.vitals && e.actorId.startsWith('doctor:')), isNotEmpty);
+    });
   });
 }

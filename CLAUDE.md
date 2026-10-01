@@ -145,7 +145,7 @@ copy predate the claim fixes; the app's wording is authoritative).
     phone this means: no grant to a doctor, and no inbound prescription accepted, unless the
     doctor's device certificate verifies against the pinned registry key.
 16. Access levels are presets over data classes plus an optional filter — Summary (default),
-    All my reports, Family illnesses. A level never widens `authorize`; the patient may always
+    All my reports, Family illnesses, Home readings (vitals, last 30 days; off unless ticked). A level never widens `authorize`; the patient may always
     grant less. Results show their age, never "valid" or "expired".
 17. **LifeTrack ID** (1 Oct 2026): 12 digits shown `XXXX XXXX XXXX`, Verhoeff check digit,
     random, one per profile, unique by server registration. Always starts with **1** so it can

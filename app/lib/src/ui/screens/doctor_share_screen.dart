@@ -162,6 +162,7 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
           child: Chip2('Last 2 years only', selected: _lastTwoYears, onTap: () => setState(() => _lastTwoYears = !_lastTwoYears)),
         ),
       _level(AccessLevel.familyIllnesses, 'Family illnesses', 'What you have told LifeTrack about your family, marked "patient-reported"'),
+      _level(AccessLevel.homeReadings, 'Home BP & sugar readings', 'What you measured at home in the last 30 days, marked "measured at home"'),
       if (active.isNotEmpty) ...[
         const Eyebrow('Are you still taking these?'),
         for (final r in active)
@@ -232,5 +233,6 @@ String levelsLabel(Set<AccessLevel> l) => [
       if (l.contains(AccessLevel.summary)) 'Summary',
       if (l.contains(AccessLevel.allReports)) 'All reports',
       if (l.contains(AccessLevel.familyIllnesses)) 'Family illnesses',
+      if (l.contains(AccessLevel.homeReadings)) 'Home readings',
     ].join(' · ');
 

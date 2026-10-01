@@ -89,9 +89,9 @@ class _BackupScreenState extends State<BackupScreen> {
             Checkbox(value: _notes, onChanged: (v) => setState(() => _notes = v ?? false)),
             const Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Include personal notes', style: LT.label),
+                Text('Include personal notes and home readings', style: LT.label),
                 SizedBox(height: 4),
-                Text('Off by default. Notes otherwise stay on this phone only.', style: LT.small),
+                Text('Off by default. Otherwise they stay on this phone only.', style: LT.small),
               ]),
             ),
           ]),
@@ -139,9 +139,9 @@ class _BackupScreenState extends State<BackupScreen> {
           child: Row(children: [
             const Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Include personal notes', style: LT.label),
+                Text('Include personal notes and home readings', style: LT.label),
                 SizedBox(height: 4),
-                Text('Otherwise notes stay on this phone only', style: LT.small),
+                Text('Otherwise they stay on this phone only', style: LT.small),
               ]),
             ),
             Switch(value: s.backupIncludesNotes, onChanged: _busy ? null : (v) => _run(() => s.setBackupIncludesNotes(v))),

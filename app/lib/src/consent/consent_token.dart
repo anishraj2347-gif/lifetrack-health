@@ -21,6 +21,9 @@ enum AccessLevel {
 
   /// Family illnesses as the patient knows them ("patient-reported").
   familyIllnesses,
+
+  /// Blood pressure and sugar the patient measured at home, last 30 days.
+  homeReadings,
 }
 
 Set<DataClass> scopesFor(Set<AccessLevel> levels) => {
@@ -35,6 +38,7 @@ Set<DataClass> scopesFor(Set<AccessLevel> levels) => {
               DataClass.scans,
             },
           AccessLevel.familyIllnesses => const {DataClass.familyHistory},
+          AccessLevel.homeReadings => const {DataClass.vitals},
         },
     };
 

@@ -4,6 +4,7 @@ import '../consent/consent_token.dart';
 import '../model/clinical_profile.dart';
 import '../model/health_record.dart';
 import '../model/patient.dart';
+import '../model/vital_reading.dart';
 
 /// Builds what a doctor receives, on the patient's phone, from data already
 /// released through `RecordAccess` (so every part of it was authorized and
@@ -32,6 +33,7 @@ abstract final class ShareBundle {
     required List<HealthRecord> prescriptions,
     required List<HealthRecord> reports,
     required List<HealthRecord> scans,
+    List<VitalReading> homeReadings = const [],
     DateTime? profileUpdatedAt,
   }) {
     final f = filter ?? const RecordFilter();
@@ -72,6 +74,15 @@ abstract final class ShareBundle {
           for (final r in [...reports, ...prescriptions, ...scans]..sort((a, b) => b.effectiveDate.compareTo(a.effectiveDate)))
             if (admit(r)) _document(r, at),
         ],
+      if (levels.contains(AccessLevel.homeReadings))
+        'homeReadings': {
+          'measuredBy': 'patient',
+          'days': 30,
+          'items': [
+            for (final v in homeReadings)
+              {'at': v.at.toIso8601String(), 'kind': v.kind.name, 'sys': v.systolic, 'dia': v.diastolic, 'pulse': v.pulse, 'glucose': v.glucose, 'context': v.context?.name},
+          ],
+        },
       if (levels.contains(AccessLevel.familyIllnesses))
         'familyIllnesses': {
           'reportedBy': 'patient',

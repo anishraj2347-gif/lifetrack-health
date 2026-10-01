@@ -156,6 +156,10 @@ class ClinicalShareService {
       prescriptions: [for (final r in released.values) if (r.kind == RecordKind.prescription) r],
       reports: [for (final r in released.values) if (r.kind == RecordKind.report) r],
       scans: [for (final r in released.values) if (r.kind == RecordKind.scan) r],
+      homeReadings: scopes.contains(DataClass.vitals)
+          ? await access.readVitals(
+              tokenId: grant.id, actorId: actor, patientId: patientId, purpose: GrantPurpose.clinicalConsult, at: at, from: at.subtract(const Duration(days: 30)))
+          : const [],
       profileUpdatedAt: repository.profileOf(patientId).updatedAt,
     )
       ..['replyTo'] = (await replyIdentity(patientId)).replyTo

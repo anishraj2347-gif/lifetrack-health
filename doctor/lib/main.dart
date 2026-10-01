@@ -552,7 +552,7 @@ class _RequestByIdCardState extends State<RequestByIdCard> {
   String? _msg;
   bool _ok = false;
 
-  static const _labels = {'summary': 'Summary', 'allReports': 'All reports', 'familyIllnesses': 'Family illnesses'};
+  static const _labels = {'summary': 'Summary', 'allReports': 'All reports', 'familyIllnesses': 'Family illnesses', 'homeReadings': 'Home readings'};
 
   Future<void> _send() async {
     setState(() {
