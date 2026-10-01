@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:cryptography/cryptography.dart';
 
@@ -7,7 +8,8 @@ import 'local_cipher.dart';
 /// AES-256-GCM with a key held in memory — tests, and anywhere without
 /// WebCrypto. Same 'lt1:' format as the browser's.
 class MemoryCipher implements LocalCipher {
-  MemoryCipher([SecretKey? key]) : _key = key ?? SecretKey(List<int>.generate(32, (i) => (i * 37 + 11) % 256));
+  MemoryCipher([SecretKey? key]) : _key = key ?? SecretKey(List<int>.generate(32, (_) => _rng.nextInt(256)));
+  static final _rng = Random.secure();
   SecretKey _key;
   final _aes = AesGcm.with256bits();
 
