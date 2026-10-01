@@ -107,6 +107,36 @@ abstract final class DemoData {
       report('demo-hba1c-2025-07', 'HbA1c', DateTime(2025, 7, 2), 'Dr. S. Iyer', 'Fortis', const [
         LabResult(analyte: 'hba1c', value: 6.8, unit: '%'),
       ]),
+      // More history, so some tests have three results (a trend) and some two.
+      report('demo-lipid-2025-09', 'Lipid panel', DateTime(2025, 9, 15), 'Dr. R. Mehta', 'Apollo Diagnostics', const [
+        LabResult(analyte: 'total_cholesterol', value: 228, unit: 'mg/dL', printedHigh: 200),
+        LabResult(analyte: 'ldl', value: 148, unit: 'mg/dL', printedHigh: 100),
+        LabResult(analyte: 'hdl', value: 48, unit: 'mg/dL', printedLow: 50),
+        LabResult(analyte: 'triglycerides', value: 162, unit: 'mg/dL', printedHigh: 150),
+      ]),
+      report('demo-lipid-2026-09', 'Lipid panel', DateTime(2026, 9, 22), 'Dr. R. Mehta', 'Apollo Diagnostics', const [
+        LabResult(analyte: 'total_cholesterol', value: 198, unit: 'mg/dL', printedHigh: 200),
+        LabResult(analyte: 'ldl', value: 118, unit: 'mg/dL', printedHigh: 100),
+        LabResult(analyte: 'hdl', value: 55, unit: 'mg/dL', printedLow: 50),
+        LabResult(analyte: 'triglycerides', value: 128, unit: 'mg/dL', printedHigh: 150),
+      ]),
+      report('demo-glucose-2025-07', 'Fasting glucose', DateTime(2025, 7, 2), 'Dr. S. Iyer', 'Fortis', const [
+        LabResult(analyte: 'glucose_fasting', value: 118, unit: 'mg/dL', printedLow: 70, printedHigh: 100),
+      ]),
+      report('demo-glucose-2026-09', 'Fasting glucose', DateTime(2026, 9, 8), 'Dr. S. Iyer', 'Thyrocare', const [
+        LabResult(analyte: 'glucose_fasting', value: 104, unit: 'mg/dL', printedLow: 70, printedHigh: 100),
+      ]),
+      report('demo-thyroid-2025-12', 'Thyroid (TSH)', DateTime(2025, 12, 12), 'Dr. S. Iyer', 'Thyrocare', const [
+        LabResult(analyte: 'tsh', value: 3.1, unit: 'mIU/L', printedLow: 0.4, printedHigh: 4.0),
+      ]),
+      report('demo-cbc-2026-06', 'Complete blood count', DateTime(2026, 6, 14), 'Dr. S. Iyer', 'Fortis', const [
+        LabResult(analyte: 'haemoglobin', value: 12.1, unit: 'g/dL', printedLow: 12, printedHigh: 15),
+        LabResult(analyte: 'vitamin_d', value: 31, unit: 'ng/mL'),
+        LabResult(analyte: 'tsh', value: 2.6, unit: 'mIU/L', printedLow: 0.4, printedHigh: 4.0),
+      ]),
+      report('demo-creatinine-2026-09', 'Creatinine', DateTime(2026, 9, 8), 'Dr. S. Iyer', 'Thyrocare', const [
+        LabResult(analyte: 'creatinine', value: 0.8, unit: 'mg/dL'),
+      ], photo: false),
     ];
   }
 }

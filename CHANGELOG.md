@@ -6,6 +6,13 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.11.0 (1 Oct 2026)
+- Sample data has more history: six tests with three results (HbA1c, total cholesterol, LDL,
+  HDL, triglycerides, fasting glucose) and four with two (TSH, haemoglobin, vitamin D,
+  creatinine). Demo builds: Me → Add sample records adds or updates them in place.
+- Fix: sharing All my reports with a test filter sent every report in the date range; now only
+  reports carrying a chosen test travel (prescriptions and scans stay home).
+
 ### 1.10.1 (1 Oct 2026)
 - Results over time: the doctor's name no longer reads "Dr: Dr. …".
 

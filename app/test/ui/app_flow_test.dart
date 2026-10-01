@@ -57,7 +57,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Lipid panel'));
     await tester.pumpAndSettle();
-    expect(find.text('132 mg/dL'), findsOneWidget);
+    expect(find.text('118 mg/dL'), findsOneWidget);
     expect(find.textContaining('Turn on Insights'), findsOneWidget);
     expect(find.textContaining('above the reference range'), findsNothing);
   });
@@ -70,8 +70,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Turn on for 24 hours'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.textContaining('LDL cholesterol was 132 mg/dL'), 300, scrollable: find.byType(Scrollable).first);
-    expect(find.textContaining('LDL cholesterol was 132 mg/dL'), findsOneWidget);
+    await tester.scrollUntilVisible(find.textContaining('LDL cholesterol was 118 mg/dL'), 300, scrollable: find.byType(Scrollable).first);
+    expect(find.textContaining('LDL cholesterol was 118 mg/dL'), findsOneWidget);
     await tester.scrollUntilVisible(find.textContaining('could not be compared'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.textContaining('could not be compared'), findsOneWidget);
     expect(find.textContaining('Nothing in your records stands out'), findsNothing);

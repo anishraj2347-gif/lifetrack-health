@@ -151,6 +151,28 @@ class MeScreen extends StatelessWidget {
         }),
       ),
       const LinkedAdultsSection(),
+      if (s.demoTools) ...[
+        const Eyebrow('Demonstration'),
+        ShadCard(
+          onTap: () async {
+            await s.addSampleRecords();
+            if (!context.mounted) return;
+            AppScope.changed(context);
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sample records added or brought up to date.')));
+          },
+          child: const Row(children: [
+            IconTile(LucideIcons.sparkles),
+            SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Add sample records', style: LT.label),
+                SizedBox(height: 4),
+                Text('Demo builds only. Adds the sample reports to this profile, or updates them; your own records are untouched.', style: LT.small),
+              ]),
+            ),
+          ]),
+        ),
+      ],
       const Eyebrow('Where your records are'),
       Note(
         s.backupAccount != null

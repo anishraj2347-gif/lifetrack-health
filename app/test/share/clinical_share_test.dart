@@ -220,6 +220,20 @@ void main() {
       expect([for (final doc in b['documents']! as List) (doc as Map)['title']], ['HbA1c']);
     });
 
+    test('with a test filter, prescriptions and scans from the same months stay home', () async {
+      final d = await doctor();
+      await service.share(
+        patientId: 'p1',
+        doctor: await service.scan(d.qr, now),
+        levels: {AccessLevel.allReports},
+        filter: RecordFilter(from: DateTime(2026, 1, 1), analytes: const {'hba1c'}),
+        at: now,
+      );
+      final b = await pickUpAndOpen(d);
+      // Metformin (March) and the chest X-ray (January) fall in the dates but carry no HbA1c.
+      expect([for (final doc in b['documents']! as List) (doc as Map)['title']], ['HbA1c', 'HbA1c']);
+    });
+
     test('every part is audited, and the share is logged before it leaves', () async {
       final d = await doctor();
       final cert = await service.scan(d.qr, now);
@@ -420,15 +434,15 @@ void main() {
     test('the latest tests carry their photographed originals; unreleased records never do', () async {
       final svc = withOriginals({
         'demo-photo-demo-hba1c-2026-09': [Uint8List.fromList(List.filled(1000, 1))],
-        'demo-photo-demo-lipid-2026-03': [Uint8List.fromList(List.filled(1000, 2)), Uint8List.fromList(List.filled(1000, 3))],
+        'demo-photo-demo-lipid-2026-09': [Uint8List.fromList(List.filled(1000, 2)), Uint8List.fromList(List.filled(1000, 3))],
         'demo-photo-xray': [Uint8List.fromList(List.filled(1000, 4))],
       });
       final d = await doctor();
       await svc.share(patientId: 'p1', doctor: await svc.scan(d.qr, now), levels: {AccessLevel.summary}, at: now);
       final b = await pickUpAndOpen(d);
       final originals = (b['originals']! as Map).cast<String, Object?>();
-      expect(originals.keys, containsAll(['demo-hba1c-2026-09', 'demo-lipid-2026-03']));
-      expect((originals['demo-lipid-2026-03']! as List), hasLength(2));
+      expect(originals.keys, containsAll(['demo-hba1c-2026-09', 'demo-lipid-2026-09']));
+      expect((originals['demo-lipid-2026-09']! as List), hasLength(2));
       expect(originals.containsKey('demo-xray-2026-01'), isFalse, reason: 'scans are not in the Summary level');
       expect(b['originalsOmitted'], 0);
     });
@@ -437,8 +451,8 @@ void main() {
       final big = Uint8List(ClinicalShareService.originalsBudget ~/ 2 + 10);
       final svc = withOriginals({
         'demo-photo-demo-hba1c-2026-09': [big],
-        'demo-photo-demo-lipid-2026-03': [big],
-        'demo-photo-demo-glucose-2026-03': [big],
+        'demo-photo-demo-lipid-2026-09': [big],
+        'demo-photo-demo-glucose-2026-09': [big],
       });
       final d = await doctor();
       await svc.share(patientId: 'p1', doctor: await svc.scan(d.qr, now), levels: {AccessLevel.summary}, at: now);

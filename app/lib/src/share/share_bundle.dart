@@ -38,6 +38,10 @@ abstract final class ShareBundle {
   }) {
     final f = filter ?? const RecordFilter();
     bool admit(HealthRecord r) => f.admitsDate(r.effectiveDate);
+    // With a test filter, only reports carrying one of those tests travel;
+    // prescriptions and scans carry no tests, so they stay home.
+    final only = f.analytes == null || f.analytes!.isEmpty ? null : f.analytes!;
+    bool admitDocument(HealthRecord r) => admit(r) && (only == null || r.results.any((x) => only.contains(x.analyte)));
 
     final activeMeds = [for (final r in prescriptions) if (r.isActiveAt(at)) r];
     final recentlyEnded = [
@@ -72,7 +76,7 @@ abstract final class ShareBundle {
       if (levels.contains(AccessLevel.allReports))
         'documents': [
           for (final r in [...reports, ...prescriptions, ...scans]..sort((a, b) => b.effectiveDate.compareTo(a.effectiveDate)))
-            if (admit(r)) _document(r, at),
+            if (admitDocument(r)) _document(r, at),
         ],
       if (levels.contains(AccessLevel.homeReadings))
         'homeReadings': {
