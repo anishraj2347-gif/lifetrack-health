@@ -993,6 +993,18 @@ class AppServices {
     ));
   }
 
+  /// Doctors this phone has shared with: registration number → name, as
+  /// their verified certificate showed it (from the grant entries in the log).
+  Map<String, String> doctorNames() {
+    final re = RegExp(r'^(.+?) \(([^()]+)\) · ');
+    return {
+      for (final p in familyOnPhone())
+        for (final e in audit.entriesFor(p.id))
+          if (e.action == AuditAction.grantIssued)
+            if (re.firstMatch(e.detail ?? '') case final m?) m.group(2)!: m.group(1)!,
+    };
+  }
+
   List<AuditEntry> auditEntries() => currentPatientId == null ? const [] : audit.entriesFor(currentPatientId!);
 
   // ---- linked adults (P7) -------------------------------------------------

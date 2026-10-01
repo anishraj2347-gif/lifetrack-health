@@ -317,6 +317,7 @@ class _AuditScreenState extends State<AuditScreen> {
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
+    final names = s.doctorNames();
     final all = s.auditEntries();
     final entries = [for (final e in all) if (e.shownIn(_view)) e];
     final about = _views.firstWhere((v) => v.$1 == _view).$3;
@@ -350,12 +351,12 @@ class _AuditScreenState extends State<AuditScreen> {
               padding: const EdgeInsets.fromLTRB(0, 12, 20, 14),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(
-                  '${describeActor(e.actorId)} ${_verb(e.action)}${e.dataClass == null || e.action == AuditAction.emergencyRead ? '' : ' · ${dataClassNames[e.dataClass]}'}',
+                  '${describeActor(e.actorId, names)} ${_verb(e.action)}${e.dataClass == null || e.action == AuditAction.emergencyRead ? '' : ' · ${dataClassNames[e.dataClass]}'}',
                   style: LT.label.copyWith(fontSize: 14.5, color: _alert(e) ? LT.signal : LT.ink),
                 ),
                 if (e.detail != null) ...[const SizedBox(height: 4), Text(_codes[e.detail] ?? e.detail!, style: LT.small)],
                 const SizedBox(height: 4),
-                Text(time(e.at), style: LT.small.copyWith(fontSize: 12, color: LT.inactive)),
+                Text(time(e.at), style: LT.small.copyWith(fontSize: 12, color: LT.ink3)),
               ]),
             ),
           ),

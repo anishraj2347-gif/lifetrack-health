@@ -143,8 +143,8 @@ class PrescriptionCard extends StatelessWidget {
           child: Column(children: [
             Icon(icon, size: 18, color: count > 0 ? LT.accent : LT.inactive),
             const SizedBox(height: 6),
-            Text('$count', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: count > 0 ? LT.onDark : LT.inactive)),
-            Text(label, style: TextStyle(fontSize: 11.5, color: count > 0 ? LT.onDarkMuted : LT.inactive)),
+            Text('$count', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: count > 0 ? LT.onDark : LT.ink3)),
+            Text(label, style: TextStyle(fontSize: 11.5, color: count > 0 ? LT.onDarkMuted : LT.ink3)),
           ]),
         ),
       );

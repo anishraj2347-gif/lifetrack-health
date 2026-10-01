@@ -27,7 +27,7 @@ abstract final class LT {
   static const rule = Color(0xFFD4D3CC);
   static const ink = Color(0xFF0E0E0E);
   static const ink2 = Color(0xFF45443F);
-  static const ink3 = Color(0xFF7F7E78);
+  static const ink3 = Color(0xFF64635D); // 4.7:1 on ground, 5.5:1 on surface (WCAG AA, contrast_test)
   static const inactive = Color(0xFFA9A8A1);
   static const primary = Color(0xFF0E0E0E);
   static const onDark = Color(0xFFF4F4EF);
@@ -86,7 +86,7 @@ abstract final class LT {
         isDense: true,
         filled: true,
         fillColor: raised,
-        hintStyle: TextStyle(color: inactive),
+        hintStyle: TextStyle(color: ink3),
         border: none,
         enabledBorder: none,
         focusedBorder: OutlineInputBorder(

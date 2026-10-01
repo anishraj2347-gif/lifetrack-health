@@ -11,10 +11,15 @@ import 'doctor_share_screen.dart';
 import 'show_on_phone_screen.dart';
 import 'tests_you_have_screen.dart';
 
-String describeActor(String actorId) {
+/// [doctorNames] maps a doctor's registration number to the name their
+/// verified certificate showed when the patient shared with them.
+String describeActor(String actorId, [Map<String, String> doctorNames = const {}]) {
   if (actorId == Actors.planeA) return 'On-device insights';
   if (actorId == Actors.cloud) return 'Cloud analysis';
-  if (actorId.startsWith('doctor:')) return 'Doctor · ${actorId.substring(7)}';
+  if (actorId.startsWith('doctor:')) {
+    final reg = actorId.substring(7);
+    return doctorNames[reg] == null ? 'Doctor · $reg' : '${doctorNames[reg]} · $reg';
+  }
   if (actorId.startsWith('patient:')) return 'You';
   if (actorId.startsWith('unauthenticated:')) return 'Someone without your PIN';
   if (actorId.startsWith('family:')) return actorId.substring(7);
@@ -109,7 +114,7 @@ class ShareScreen extends StatelessWidget {
               ));
               if (context.mounted) AppScope.changed(context);
             } on Object catch (e) {
-              msg.showSnackBar(SnackBar(content: Text('Could not check: $e')));
+              msg.showSnackBar(SnackBar(content: Text('Could not check. ${plainError(e)}')));
             }
           }),
         ),
@@ -133,7 +138,7 @@ class ShareScreen extends StatelessWidget {
             const SizedBox(width: 14),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(describeActor(g.grantedToActorId), style: LT.label),
+                Text(describeActor(g.grantedToActorId, s.doctorNames()), style: LT.label),
                 const SizedBox(height: 4),
                 Text(g.levels.isNotEmpty ? levelsLabel(g.levels) : g.scopes.map((c) => dataClassNames[c]).join(', '), style: LT.small),
                 const SizedBox(height: 8),
@@ -196,7 +201,7 @@ class _Requests extends StatelessWidget {
                   Text('"${p.request.note!.trim()}"', style: LT.small),
                 ],
                 const SizedBox(height: 4),
-                Text('Request ends ${dateTime(p.request.expiresAt.toLocal())}', style: LT.small.copyWith(fontSize: 12, color: LT.inactive)),
+                Text('Request ends ${dateTime(p.request.expiresAt.toLocal())}', style: LT.small.copyWith(fontSize: 12, color: LT.ink3)),
                 const SizedBox(height: 12),
                 Row(children: [
                   Expanded(

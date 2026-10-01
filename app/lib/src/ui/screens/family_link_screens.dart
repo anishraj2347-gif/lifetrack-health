@@ -117,7 +117,7 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
     } on LinkRefused catch (e) {
       setState(() => _error = e.message);
     } on Object catch (e) {
-      setState(() => _error = 'Could not reach the relay: $e');
+      setState(() => _error = plainError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -263,7 +263,7 @@ class _LinkedAdultScreenState extends State<LinkedAdultScreen> {
     try {
       await f();
     } on Object catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not reach the relay: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(plainError(e))));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

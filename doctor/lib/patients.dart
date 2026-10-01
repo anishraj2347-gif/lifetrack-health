@@ -319,7 +319,7 @@ class _PatientScreenState extends State<PatientScreen> {
           ]),
         ),
         LayoutBuilder(builder: (c, box) {
-          final wide = box.maxWidth > 900;
+          final wide = box.maxWidth > 820; // fits beside the 340 px side panel on a 1280 px laptop
           final left = sh != null ? SummaryPanel(bundle: sh.bundle) : _ClosedCard(session: s, lifeTrackId: ltId, onSent: widget.onChanged);
           final right = Column(children: [
             if (sh != null)

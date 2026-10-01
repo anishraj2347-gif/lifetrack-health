@@ -6,6 +6,15 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.15.1 (1 Oct 2026)
+- Readability: nothing dark on the black cards any more (badges such as "Course finished"
+  switch to light on dark), grey labels and placeholders darkened to WCAG AA (4.5:1),
+  disabled buttons stay readable. A contrast test checks every main screen.
+- Doctors show by name ("Dr. Priya Nair · DMC-67890") in Who has access and the access log.
+- Errors read in plain words ("LifeTrack's server could not be reached…"), not exception text.
+- Family overview: "Open now" readable on the head's black card. Results over time: buttons
+  wrap instead of overflowing on large text.
+
 ### 1.15.0 (1 Oct 2026)
 - **Family overview** (family bar → people icon, or Me): the phone owner is the head of family;
   grandparents and parents above, the head's own generation (spouse, brothers, sisters), then
@@ -93,6 +102,10 @@ always goes up (Android refuses to install a lower one).
 - Rebuilt phase-2 app: records, insights, consent, clinical sharing with verified doctors.
 
 ## Doctor web app
+
+### 1.3.1 (1 Oct 2026)
+- Grey text and placeholders darkened to WCAG AA; contrast test added.
+- The patient page shows the summary and the prescription side by side on a 1280 px laptop.
 
 ### 1.3.0 (1 Oct 2026)
 - **My patients**: everyone who has shared with you — open shares first with time left, then

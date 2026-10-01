@@ -50,7 +50,7 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
     } on CustodyRefused catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } on Object catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Could not export: $e')));
+      messenger.showSnackBar(SnackBar(content: Text('Could not export. ${plainError(e)}')));
     } finally {
       // share_plus has copied it into this app's private cache (cleared on the
       // next share), so this copy is not needed.

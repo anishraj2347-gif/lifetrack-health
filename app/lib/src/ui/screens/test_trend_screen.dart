@@ -88,7 +88,7 @@ class TestTrendScreen extends StatelessWidget {
               const SizedBox(height: 2),
               Text('${SummaryView.sourceBadge(r.provenance.name, r.originalFormat).$1} · ${r.title}', style: LT.small),
               const SizedBox(height: 6),
-              Row(children: [
+              Wrap(spacing: 16, children: [
                 TextButton.icon(
                   style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
                   onPressed: () => openRecord(r),
@@ -96,7 +96,6 @@ class TestTrendScreen extends StatelessWidget {
                   label: const Text('Open report'),
                 ),
                 if (r.attachmentId != null) ...[
-                  const SizedBox(width: 16),
                   TextButton.icon(
                     style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
                     onPressed: () => openOriginal(r),

@@ -84,7 +84,7 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
       setState(() => _receipt = r);
       AppScope.changed(context);
     } on Object catch (e) {
-      setState(() => _error = 'Could not send: $e');
+      setState(() => _error = 'Not sent. ${plainError(e)}');
     } finally {
       if (mounted) setState(() => _busy = false);
     }

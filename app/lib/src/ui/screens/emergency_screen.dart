@@ -149,7 +149,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
       await f.writeAsBytes(img!.buffer.asUint8List(), flush: true);
       await SharePlus.instance.share(ShareParams(files: [XFile(f.path, mimeType: 'image/png')], text: 'Emergency ID — $name. Scan with any phone camera.'));
     } on Object catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+      messenger.showSnackBar(SnackBar(content: Text('Could not save. ${plainError(e)}')));
     } finally {
       await deleteQuietly('${(await getTemporaryDirectory()).path}/emergency-id.png');
     }

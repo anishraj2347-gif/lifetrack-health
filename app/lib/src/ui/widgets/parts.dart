@@ -70,7 +70,7 @@ class SlabButton extends StatelessWidget {
       ButtonVariant.ghost => (Colors.transparent, LT.ink, null),
     };
     return Opacity(
-      opacity: enabled ? 1 : 0.5,
+      opacity: enabled ? 1 : 0.65, // disabled stays readable (contrast_test)
       child: Material(
         color: bg,
         shape: StadiumBorder(side: border == null ? BorderSide.none : BorderSide(color: border)),
@@ -126,7 +126,10 @@ class Badge2 extends StatelessWidget {
   final BadgeTone tone;
   @override
   Widget build(BuildContext context) {
+    final dark = OnDark.of(context);
     final (bg, fg, border) = switch (tone) {
+      BadgeTone.neutral when dark => (const Color(0xFF2A2A28), LT.onDark, const Color(0xFF2A2A28)),
+      BadgeTone.outline when dark => (Colors.transparent, LT.onDark, LT.onDarkMuted),
       BadgeTone.neutral => (LT.raised, LT.ink, LT.raised),
       BadgeTone.outline => (Colors.transparent, LT.ink2, LT.rule),
       BadgeTone.signal => (const Color(0xFFFFF7ED), LT.signal, const Color(0xFFFED7AA)),
@@ -158,9 +161,27 @@ class ShadCard extends StatelessWidget {
           color: color,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(LT.radiusLg), side: borderColor == null ? BorderSide.none : BorderSide(color: borderColor!)),
           clipBehavior: Clip.antiAlias,
-          child: InkWell(onTap: onTap, child: Padding(padding: padding, child: child)),
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: padding,
+              // On a black card, anything that does not set its own colour is
+              // light, and badges switch to their light form.
+              child: color.computeLuminance() < 0.2
+                  ? OnDark(child: DefaultTextStyle.merge(style: const TextStyle(color: LT.onDark), child: IconTheme.merge(data: const IconThemeData(color: LT.onDarkMuted), child: child)))
+                  : child,
+            ),
+          ),
         ),
       );
+}
+
+/// Marks a dark surface, so parts placed on it (badges) use light colours.
+class OnDark extends InheritedWidget {
+  const OnDark({super.key, required super.child});
+  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<OnDark>() != null;
+  @override
+  bool updateShouldNotify(OnDark oldWidget) => false;
 }
 
 /// shadcn Alert, neutral.
@@ -253,7 +274,7 @@ class FieldButton extends StatelessWidget {
             child: Row(children: [
               Icon(icon, size: 16, color: LT.ink3),
               const SizedBox(width: 10),
-              Text(text, style: LT.label.copyWith(fontSize: 15, fontWeight: FontWeight.w400, color: placeholder ? LT.inactive : LT.ink)),
+              Text(text, style: LT.label.copyWith(fontSize: 15, fontWeight: FontWeight.w400, color: placeholder ? LT.ink3 : LT.ink)),
             ]),
           ),
         ),
@@ -302,3 +323,15 @@ String fullDate(DateTime d) => '${d.day} ${_monthNames[d.month - 1].substring(0,
 String dateTime(DateTime d) => '${fullDate(d)}, ${time(d)}';
 
 String time(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+/// An error in words a patient can act on — never a stack of exception names.
+String plainError(Object e) {
+  final t = '$e';
+  if (RegExp(r'SocketException|ClientException|Connection (refused|reset|closed)|Failed host lookup|TimeoutException|HandshakeException').hasMatch(t)) {
+    return 'LifeTrack\'s server could not be reached. Check the internet connection and try again.';
+  }
+  if (e is FormatException) return e.message;
+  if (e is ArgumentError && e.message != null) return '${e.message}';
+  if (e is StateError) return e.message;
+  return 'Something went wrong. Please try again.';
+}

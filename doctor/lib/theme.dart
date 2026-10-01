@@ -6,7 +6,7 @@ abstract final class DT {
   static const surface = Color(0xFFF4F4EF);
   static const raised = Color(0xFFFBFBF8);
   static const ink = Color(0xFF0E0E0E);
-  static const ink3 = Color(0xFF6B6A64);
+  static const ink3 = Color(0xFF64635D); // 4.7:1 on ground (contrast_test)
   static const onDark = Color(0xFFF4F4EF);
   static const onDarkMuted = Color(0xFF9A9A94);
   static const accent = Color(0xFFEEF36A);
@@ -100,7 +100,7 @@ class Field extends StatelessWidget {
           controller: controller,
           minLines: 1,
           maxLines: maxLines,
-          decoration: InputDecoration(hintText: hint == null ? null : 'e.g. $hint', hintStyle: TextStyle(color: DT.ink3.withValues(alpha: 0.6))),
+          decoration: InputDecoration(hintText: hint == null ? null : 'e.g. $hint', hintStyle: const TextStyle(color: DT.ink3)),
         ),
       ],
     ),

@@ -134,7 +134,7 @@ class _MemberCard extends StatelessWidget {
               Text('${head ? 'Head of family · you' : role!.label} · $sexAge', style: LT.small.copyWith(color: muted)),
             ]),
           ),
-          if (viewing) const Padding(padding: EdgeInsets.only(left: 6), child: Badge2('Open now', tone: BadgeTone.outline)),
+          if (viewing) Padding(padding: const EdgeInsets.only(left: 6), child: _Pill('Open now', dark: head, lime: true)),
           if (!head)
             PopupMenuButton<String>(
               tooltip: 'More',
@@ -185,13 +185,16 @@ class _MemberCard extends StatelessWidget {
 }
 
 class _Pill extends StatelessWidget {
-  const _Pill(this.text, {required this.dark});
+  const _Pill(this.text, {required this.dark, this.lime = false});
   final String text;
   final bool dark;
+
+  /// Lime means "now" in this app — the profile currently open.
+  final bool lime;
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: ShapeDecoration(color: dark ? const Color(0xFF2A2A28) : LT.raised, shape: const StadiumBorder()),
-        child: Text(text, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: dark ? LT.onDark : LT.ink2)),
+        decoration: ShapeDecoration(color: lime ? LT.accent : dark ? const Color(0xFF2A2A28) : LT.raised, shape: const StadiumBorder()),
+        child: Text(text, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: lime ? LT.ink : dark ? LT.onDark : LT.ink2)),
       );
 }
