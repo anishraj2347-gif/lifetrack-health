@@ -118,6 +118,7 @@ class HealthRecord {
     this.instructions,
     this.timing,
     this.prescriberRegistration,
+    this.originalFormat,
   });
 
   final String id;
@@ -161,6 +162,10 @@ class HealthRecord {
   /// The prescriber's registration number, from a verified signature.
   final String? prescriberRegistration;
 
+  /// `pdf` when the original pages came from the lab's PDF rather than a
+  /// photo; null for photos and records without an original.
+  final String? originalFormat;
+
   DataClass get dataClass => dataClassOf(kind);
 
   /// Every field carried over; only [source] and [patientConfirmedAt] ever
@@ -185,6 +190,7 @@ class HealthRecord {
         instructions: instructions,
         timing: timing,
         prescriberRegistration: prescriberRegistration,
+        originalFormat: originalFormat,
       );
 
   DateTime get effectiveDate => sampleDate ?? date;
@@ -229,6 +235,7 @@ class HealthRecord {
         if (instructions != null) 'instructions': instructions,
         if (timing != null) 'timing': timing,
         if (prescriberRegistration != null) 'prescriberReg': prescriberRegistration,
+        if (originalFormat != null) 'originalFormat': originalFormat,
       };
 
   static HealthRecord fromJson(Map<String, Object?> j) => HealthRecord(
@@ -254,6 +261,7 @@ class HealthRecord {
         instructions: j['instructions'] as String?,
         timing: j['timing'] as String?,
         prescriberRegistration: j['prescriberReg'] as String?,
+        originalFormat: j['originalFormat'] as String?,
       );
 
   static DateTime? _date(Object? v) => v == null ? null : DateTime.parse(v as String);

@@ -22,9 +22,9 @@ class SummaryView extends StatelessWidget {
               ? '${(days / 30.4).round()} months ago'
               : '${(days / 365).round()} years ago';
 
-  static (String, BadgeTone) sourceBadge(String s) => switch (s) {
+  static (String, BadgeTone) sourceBadge(String s, [String? original]) => switch (s) {
         'signed' => ('Lab / doctor signed', BadgeTone.trace),
-        'photoOfReport' => ('Photo of report', BadgeTone.neutral),
+        'photoOfReport' => (original == 'pdf' ? 'PDF of report' : 'Photo of report', BadgeTone.neutral),
         _ => ('Patient-typed', BadgeTone.outline),
       };
 
@@ -82,7 +82,7 @@ class SummaryView extends StatelessWidget {
         for (final t in tests)
           () {
             final m = t as Map;
-            final (label, tone) = sourceBadge(m['source'] as String);
+            final (label, tone) = sourceBadge(m['source'] as String, m['original'] as String?);
             final prev = m['previous'] as Map?;
             final range = m['printedRange'] as Map?;
             final sub = [

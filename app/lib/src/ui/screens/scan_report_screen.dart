@@ -1,7 +1,9 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -55,6 +57,37 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
     }
   }
 
+  bool _fromPdf = false;
+  bool _converting = false;
+
+  /// A PDF the lab sent: each page becomes an image, then goes through the
+  /// same clean-and-encrypt path as a photo. At most 12 pages.
+  Future<void> _pdf() async {
+    final files = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: const ['pdf']);
+    if (files.isEmpty) return;
+    final bytes = await files.first.xFile.readAsBytes();
+    if (bytes.length > 25 * 1024 * 1024) {
+      setState(() => _error = 'That PDF is over 25 MB. Ask the lab for the report alone.');
+      return;
+    }
+    setState(() {
+      _converting = true;
+      _error = null;
+    });
+    try {
+      var n = 0;
+      await for (final page in Printing.raster(bytes, dpi: 150)) {
+        if (n++ >= 12) break;
+        _pages.add(await page.toPng());
+      }
+      _fromPdf = true;
+    } on Object {
+      _error = 'This PDF could not be opened. If it has a password, open it once in another app and save a copy without one.';
+    } finally {
+      if (mounted) setState(() => _converting = false);
+    }
+  }
+
   Future<void> _gallery() async {
     final xs = await _picker.pickMultiImage();
     for (final x in xs) {
@@ -94,6 +127,7 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
           date: _sampled ?? DateTime.now(),
           sampleDate: _kind == RecordKind.report ? _sampled : null,
           source: RecordSource.smartCapture,
+          originalFormat: _fromPdf ? 'pdf' : null,
           labName: _lab.text.trim().isEmpty ? null : _lab.text.trim(),
           facility: _lab.text.trim().isEmpty ? null : _lab.text.trim(),
           doctor: _doctor.text.trim().isEmpty ? null : _doctor.text.trim(),
@@ -126,6 +160,11 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
             Expanded(child: SlabButton('From photos', icon: LucideIcons.images, variant: ButtonVariant.outline, onPressed: _gallery)),
           ]),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: SlabButton(_converting ? 'Opening the PDF…' : 'From a PDF the lab sent', icon: LucideIcons.fileText, variant: ButtonVariant.outline, onPressed: _converting ? null : _pdf),
+        ),
+        if (_error != null && !_details) Padding(padding: const EdgeInsets.fromLTRB(20, 10, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
         const SizedBox(height: 16),
         if (_pages.isEmpty)
           const Note('Tip: lay the report flat in good light, fill the frame, one photo per page. A WhatsApp photo of a report works too.', icon: LucideIcons.lightbulb)

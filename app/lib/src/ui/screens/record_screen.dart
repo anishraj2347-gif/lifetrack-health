@@ -129,7 +129,7 @@ class _RecordScreenState extends State<RecordScreen> {
                   if (r.dose != null) _meta(LucideIcons.pill, 'Dose (morning–afternoon–night)', r.dose!.display),
                   _meta(LucideIcons.fileCheck, 'Source', switch (r.source) {
                     RecordSource.typedByPatient => 'Typed in by you, no original attached',
-                    RecordSource.smartCapture => 'Photo of the original, values confirmed by you',
+                    RecordSource.smartCapture => r.originalFormat == 'pdf' ? 'PDF from the lab, values confirmed by you' : 'Photo of the original, values confirmed by you',
                     RecordSource.doctorIssued => 'Signed by a verified doctor',
                     RecordSource.labSigned => 'Delivered by the lab',
                     RecordSource.restoredFromBackup => 'Restored from your backup',

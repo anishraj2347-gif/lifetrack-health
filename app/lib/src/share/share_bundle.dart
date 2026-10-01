@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../consent/consent_token.dart';
 import '../model/clinical_profile.dart';
 import '../model/health_record.dart';
@@ -92,6 +94,10 @@ abstract final class ShareBundle {
       };
 
   /// Latest result per test, with the previous one for context.
+  /// For tests: the "latest tests" section as a doctor receives it.
+  @visibleForTesting
+  static List<Map<String, Object?>> latestTestsForTest(List<HealthRecord> reports, DateTime at) => _latestTests(reports, const RecordFilter(), at);
+
   static List<Map<String, Object?>> _latestTests(List<HealthRecord> reports, RecordFilter f, DateTime at) {
     final series = <String, List<(HealthRecord, LabResult)>>{};
     for (final r in reports) {
@@ -117,6 +123,7 @@ abstract final class ShareBundle {
             'source': rec.provenance.name,
             'recordId': rec.id,
             'hasOriginal': rec.attachmentId != null,
+            if (rec.originalFormat != null) 'original': rec.originalFormat,
             if (prev != null) 'previous': {'value': prev.$2.value, 'unit': prev.$2.unit, 'sampledOn': prev.$1.effectiveDate.toIso8601String()},
           };
         }(),
@@ -133,6 +140,7 @@ abstract final class ShareBundle {
         'lab': r.labName,
         'source': r.provenance.name,
         'hasOriginal': r.attachmentId != null,
+        if (r.originalFormat != null) 'original': r.originalFormat,
         'results': [for (final res in r.results) res.toJson()],
       };
 }

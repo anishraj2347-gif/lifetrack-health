@@ -111,7 +111,7 @@ class SummaryPanel extends StatelessWidget {
             final name = '${_names[m['analyte']] ?? m['analyte']}';
             final src = switch (m['source']) {
               'signed' => 'Lab / doctor signed',
-              'photoOfReport' => 'Photo of report',
+              'photoOfReport' => m['original'] == 'pdf' ? 'PDF of report' : 'Photo of report',
               _ => 'Patient-typed, no source',
             };
             return _row(

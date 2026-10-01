@@ -305,6 +305,7 @@ class AppServices {
       labName: draft.labName,
       sampleDate: draft.sampleDate,
       attachmentId: attachmentId,
+      originalFormat: draft.originalFormat,
     );
     await addRecord(r);
     return r;
