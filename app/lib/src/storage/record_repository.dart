@@ -85,6 +85,11 @@ class RecordRepository {
     await _flush();
   }
 
+  Future<void> remove(String id) async {
+    _records.removeWhere((r) => r.id == id);
+    await _flush();
+  }
+
   Future<void> eraseFor(String patientId) async {
     _records.removeWhere((r) => r.patientId == patientId);
     _patients.remove(patientId);

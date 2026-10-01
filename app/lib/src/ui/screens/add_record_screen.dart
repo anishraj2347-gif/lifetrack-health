@@ -12,7 +12,10 @@ import 'records_screen.dart' show kindLabel;
 import 'scan_report_screen.dart';
 
 class AddRecordScreen extends StatefulWidget {
-  const AddRecordScreen({super.key});
+  const AddRecordScreen({super.key, this.editing});
+
+  /// When set, the form corrects this record instead of adding one.
+  final HealthRecord? editing;
   @override
   State<AddRecordScreen> createState() => _AddRecordScreenState();
 }
@@ -34,6 +37,31 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   final _results = <_ResultRow>[];
   String? _error;
 
+  @override
+  void initState() {
+    super.initState();
+    final r = widget.editing;
+    if (r == null) return;
+    _kind = r.kind;
+    _title.text = r.title;
+    _doctor.text = r.doctor ?? '';
+    _facility.text = r.facility ?? '';
+    _ingredient.text = r.ingredient ?? '';
+    _date = r.date;
+    if (r.dose case final d?) {
+      _dose
+        ..[0] = d.morning
+        ..[1] = d.afternoon
+        ..[2] = d.night;
+    }
+    for (final x in r.results) {
+      final row = _ResultRow()..analyte = x.analyte;
+      row.value.text = x.value == x.value.roundToDouble() ? x.value.toStringAsFixed(0) : '${x.value}';
+      row.unit.text = x.unit;
+      _results.add(row);
+    }
+  }
+
   Future<void> _save() async {
     final s = AppScope.of(context);
     if (_title.text.trim().isEmpty) {
@@ -50,19 +78,33 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
       results.add(LabResult(analyte: row.analyte!, value: v, unit: row.unit.text.trim()));
     }
     final rng = Random.secure();
-    await s.addRecord(HealthRecord(
-      id: 'r-${List.generate(8, (_) => rng.nextInt(256).toRadixString(16).padLeft(2, '0')).join()}',
-      patientId: s.currentPatientId!,
+    final old = widget.editing;
+    final record = HealthRecord(
+      id: old?.id ?? 'r-${List.generate(8, (_) => rng.nextInt(256).toRadixString(16).padLeft(2, '0')).join()}',
+      patientId: old?.patientId ?? s.currentPatientId!,
       kind: _kind,
       title: _title.text.trim(),
       date: _date,
-      source: RecordSource.typedByPatient,
+      source: old?.source ?? RecordSource.typedByPatient,
+      attachmentId: old?.attachmentId,
+      labName: old?.labName,
+      sampleDate: old?.sampleDate,
+      endDate: old?.endDate,
+      patientConfirmedAt: old?.patientConfirmedAt,
+      instructions: old?.instructions,
+      timing: old?.timing,
+      prescriberRegistration: old?.prescriberRegistration,
       doctor: _doctor.text.trim().isEmpty ? null : _doctor.text.trim(),
       facility: _facility.text.trim().isEmpty ? null : _facility.text.trim(),
       dose: _kind == RecordKind.prescription ? Dose(morning: _dose[0], afternoon: _dose[1], night: _dose[2]) : null,
       ingredient: _kind == RecordKind.prescription && _ingredient.text.trim().isNotEmpty ? _ingredient.text.trim().toLowerCase() : null,
       results: _kind == RecordKind.report ? results : const [],
-    ));
+    );
+    if (old == null) {
+      await s.addRecord(record);
+    } else {
+      await s.updateRecord(record);
+    }
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -70,8 +112,8 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(),
         body: ListView(children: [
-          const Masthead(eyebrow: 'Add record', title: 'Type it in'),
-          ShadCard(
+          Masthead(eyebrow: widget.editing == null ? 'Add record' : 'Edit record', title: widget.editing == null ? 'Type it in' : 'Correct it'),
+          if (widget.editing == null) ShadCard(
             margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
             color: LT.primary,
             onTap: () async {
@@ -91,13 +133,13 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               Icon(LucideIcons.chevronRight, color: LT.onDarkMuted),
             ]),
           ),
-          const Eyebrow('Or type it in'),
+          if (widget.editing == null) const Eyebrow('Or type it in'),
           const Note('Copy values exactly as printed, including the unit. LifeTrack compares only what matches its ranges; anything else is shown as not checked.', icon: LucideIcons.info),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
             child: Wrap(spacing: 8, runSpacing: 8, children: [
               for (final k in RecordKind.values)
-                Chip2(kindLabel(k), selected: _kind == k, onTap: () => setState(() => _kind = k)),
+                Chip2(kindLabel(k), selected: _kind == k, onTap: widget.editing != null ? null : () => setState(() => _kind = k)),
             ]),
           ),
           LabeledField(label: 'What is it', child: TextField(controller: _title, decoration: const InputDecoration(hintText: 'e.g. Metformin 500 mg'))),

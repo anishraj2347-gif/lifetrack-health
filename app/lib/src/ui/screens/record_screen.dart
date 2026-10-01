@@ -5,6 +5,7 @@ import '../../ai/insight.dart';
 import '../../ai/plane_a/reference_ranges.dart' show analyteName;
 import '../../model/health_record.dart';
 import '../app_scope.dart';
+import 'add_record_screen.dart';
 import '../theme.dart';
 import '../widgets/insight_card.dart';
 import '../widgets/parts.dart';
@@ -50,7 +51,42 @@ class _RecordScreenState extends State<RecordScreen> {
     final unchecked = _run?.unresolved.where((u) => u.recordId == r.id).toList() ?? const <NotChecked>[];
 
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(actions: [
+        PopupMenuButton<String>(
+          tooltip: 'More',
+          icon: const Icon(LucideIcons.ellipsisVertical),
+          onSelected: (v) async {
+            if (v == 'edit') {
+              await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AddRecordScreen(editing: r)));
+              if (context.mounted) AppScope.changed(context);
+            } else if (v == 'delete') {
+              final yes = await showDialog<bool>(
+                context: context,
+                builder: (c) => AlertDialog(
+                  title: Text('Delete "${r.title}"?'),
+                  content: Text(r.attachmentId == null
+                      ? 'It is removed from this phone and, at the next backup, from your backup. Anything already shared with a doctor is not recalled by this.'
+                      : 'It and its original pages are removed from this phone and, at the next backup, from your backup. Anything already shared with a doctor is not recalled by this.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('Keep')),
+                    TextButton(onPressed: () => Navigator.of(c).pop(true), child: const Text('Delete')),
+                  ],
+                ),
+              );
+              if (yes != true || !context.mounted) return;
+              await s.deleteRecord(r);
+              if (!context.mounted) return;
+              AppScope.changed(context);
+              Navigator.of(context).pop();
+            }
+          },
+          itemBuilder: (_) => [
+            if (r.editable) const PopupMenuItem(value: 'edit', child: Text('Edit'))
+            else const PopupMenuItem(enabled: false, value: 'signed', child: Text('Signed — can\'t be edited')),
+            const PopupMenuItem(value: 'delete', child: Text('Delete')),
+          ],
+        ),
+      ]),
       body: ListView(
         children: [
           Padding(

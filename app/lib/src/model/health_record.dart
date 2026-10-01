@@ -198,6 +198,10 @@ class HealthRecord {
     return Provenance.patientTyped;
   }
 
+  /// A signed record is the lab's or doctor's statement; the patient may
+  /// remove it but never change it.
+  bool get editable => provenance != Provenance.signed;
+
   /// A prescription is active until its end date. Whether the patient still
   /// takes it is a separate fact ([patientConfirmedAt]), shown beside it.
   bool isActiveAt(DateTime at) => kind == RecordKind.prescription && (endDate == null || at.isBefore(endDate!));

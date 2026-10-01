@@ -306,6 +306,41 @@ class AppServices {
   /// The patient's own originals — their phone, their data, no grant.
   Future<List<Uint8List>> originals(HealthRecord r) async => r.attachmentId == null ? const [] : attachments.load(r.attachmentId!);
 
+  /// Corrects a record the patient entered. Signed records are refused:
+  /// their content is the lab's or doctor's, not the patient's to change.
+  Future<void> updateRecord(HealthRecord r) async {
+    final old = repository.recordsOf(r.patientId).where((x) => x.id == r.id).firstOrNull ?? (throw StateError('No such record.'));
+    if (!old.editable) throw StateError('A signed record cannot be changed.');
+    await repository.add(r);
+    await audit.append(AuditEntry(
+      at: clock(),
+      actorId: actingGrantor(),
+      patientId: r.patientId,
+      action: AuditAction.edit,
+      dataClass: r.dataClass,
+      detail: 'corrected "${old.title}"${old.title == r.title ? '' : ' → "${r.title}"'}',
+    ));
+    if (r.kind == RecordKind.prescription) await _tellLinkedFamily(r.patientId);
+    await _backUpQuietly();
+  }
+
+  /// Removes a record and its original pages from this phone (and from the
+  /// backup on the next run). Shares already sent are not recalled by this.
+  Future<void> deleteRecord(HealthRecord r) async {
+    await repository.remove(r.id);
+    if (r.attachmentId != null) await attachments.delete(r.attachmentId!);
+    await audit.append(AuditEntry(
+      at: clock(),
+      actorId: actingGrantor(),
+      patientId: r.patientId,
+      action: AuditAction.edit,
+      dataClass: r.dataClass,
+      detail: 'deleted "${r.title}"',
+    ));
+    if (r.kind == RecordKind.prescription) await _tellLinkedFamily(r.patientId);
+    await _backUpQuietly();
+  }
+
   /// Demo builds only (`LT_DEMO_TOOLS=true`): shows the add-sample button.
   bool demoTools = false;
 
