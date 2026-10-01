@@ -114,9 +114,15 @@ class TestTrendScreen extends StatelessWidget {
 }
 
 /// Tiles on Records for the other tests with a trend, under the big card.
+/// Tapping one puts it in the big card ([onSelect]); without [onSelect] it
+/// opens that test's history.
 class MoreTrends extends StatelessWidget {
-  const MoreTrends({super.key, required this.series});
+  const MoreTrends({super.key, required this.series, this.onSelect, this.latest});
   final List<TrendSeries> series;
+  final ValueChanged<TrendSeries>? onSelect;
+
+  /// The most recently measured test, marked so it can be found again.
+  final TrendSeries? latest;
 
   @override
   Widget build(BuildContext context) {
@@ -130,12 +136,14 @@ class MoreTrends extends StatelessWidget {
               child: ShadCard(
                 margin: EdgeInsets.zero,
                 padding: const EdgeInsets.all(14),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TestTrendScreen(analyte: t.analyte, unit: t.unit))),
+                onTap: onSelect != null
+                    ? () => onSelect!(t)
+                    : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TestTrendScreen(analyte: t.analyte, unit: t.unit))),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     const Icon(LucideIcons.chartLine, size: 18, color: LT.ink),
                     const Spacer(),
-                    Text('${t.points.length}×', style: LT.small),
+                    Text('${identical(t, latest) ? 'Latest · ' : ''}${t.points.length}×', style: LT.small),
                   ]),
                   const SizedBox(height: 8),
                   Text(analyteName(t.analyte), style: LT.label, maxLines: 1, overflow: TextOverflow.ellipsis),

@@ -6,6 +6,10 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.12.0 (1 Oct 2026)
+- Records: tapping a trend tile shows that test in the big black card (the latest is marked
+  "Latest" among the tiles); tapping the big card opens every result.
+
 ### 1.11.0 (1 Oct 2026)
 - Sample data has more history: six tests with three results (HbA1c, total cholesterol, LDL,
   HDL, triglycerides, fasting glucose) and four with two (TSH, haemoglobin, vitamin D,

@@ -60,7 +60,19 @@ void main() {
     expect(find.byType(MoreTrends), findsOneWidget);
     expect(find.textContaining('tap for every result'), findsOneWidget);
 
+    TrendCard big() => tester.widget<TrendCard>(find.byType(TrendCard));
+    expect(big().analyte, 'ldl', reason: 'the most recently measured test');
+
+    // A tile puts its test in the big card; the latest moves to the tiles, marked.
     await tester.tap(find.text('HbA1c'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TestTrendScreen), findsNothing);
+    expect(big().analyte, 'hba1c');
+    expect(find.text('Latest · 3×'), findsOneWidget);
+    expect(find.text('LDL cholesterol'), findsOneWidget, reason: 'now a tile');
+
+    // Tapping the big card opens that test's every result.
+    await tester.tap(find.byType(TrendCard));
     await tester.pumpAndSettle();
     expect(find.byType(TestTrendScreen), findsOneWidget);
     expect(find.text('Open report'), findsNWidgets(2), reason: 'two on screen; the third is below');
@@ -72,5 +84,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(RecordScreen), findsOneWidget);
     expect(find.text('Report 3'), findsWidgets);
+
+    // Back on Records, the chosen test is still in the big card.
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(big().analyte, 'hba1c');
   });
 }

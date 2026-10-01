@@ -38,6 +38,10 @@ class _RecordsScreenState extends State<RecordsScreen> {
   RecordKind? _filter;
   String _query = '';
 
+  /// The test in the big trend card: (profile, analyte|unit). Null shows the
+  /// most recently measured.
+  (String, String)? _shown;
+
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
@@ -64,6 +68,9 @@ class _RecordsScreenState extends State<RecordsScreen> {
 
     final name = s.currentPatient?.name ?? '';
     final trends = _query.isEmpty && _filter == null ? TrendCard.all(all) : const <TrendSeries>[];
+    String key(TrendSeries t) => '${t.analyte}|${t.unit}';
+    final pid = s.currentPatientId;
+    final big = trends.where((t) => _shown != null && _shown!.$1 == pid && _shown!.$2 == key(t)).firstOrNull ?? trends.firstOrNull;
     void openTrend(TrendSeries t) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TestTrendScreen(analyte: t.analyte, unit: t.unit)));
     return Column(children: [
       const FamilyBar(),
@@ -113,8 +120,18 @@ class _RecordsScreenState extends State<RecordsScreen> {
               ])
             : ListView(padding: const EdgeInsets.only(top: 6, bottom: 8), children: [
                 if (trends.isNotEmpty) ...[
-                  Padding(padding: const EdgeInsets.only(top: 8), child: TrendCard(series: trends.first, onTap: () => openTrend(trends.first))),
-                  MoreTrends(series: trends.skip(1).toList()),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      child: TrendCard(key: ValueKey(key(big!)), series: big, onTap: () => openTrend(big)),
+                    ),
+                  ),
+                  MoreTrends(
+                    series: [for (final t in trends) if (!identical(t, big)) t],
+                    latest: trends.first,
+                    onSelect: (t) => setState(() => _shown = (pid!, key(t))),
+                  ),
                 ],
                 Builder(builder: (context) {
                   final n = TestHistory(all).count;
