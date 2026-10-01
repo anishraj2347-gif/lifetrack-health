@@ -29,6 +29,7 @@ import '../share/clinical_share_service.dart';
 import '../crypto/shamir.dart';
 import '../crypto/vault_codec.dart';
 import '../export/record_export.dart';
+import '../reminders/reminder_plan.dart';
 import '../model/abha.dart';
 import '../family/family_link.dart';
 import '../identity/identity_verifier.dart';
@@ -177,6 +178,7 @@ class AppServices {
     IdentityVerifier Function()? verifierOverride,
     bool identityRequired = false,
     bool demoTools = false,
+    ReminderScheduler? reminderScheduler,
   }) async {
     final now = clock ?? DateTime.now;
     final sealed = SealedStore(bytes, deviceKey);
@@ -204,9 +206,12 @@ class AppServices {
     services.backupEnabled = backupEnabled;
     services.identityRequired = identityRequired;
     services.demoTools = demoTools;
+    services.reminderScheduler = reminderScheduler;
+    services._doseLog = ((await sealed.read(_doseLogBlob) as Map?) ?? {}).cast<String, Object?>();
     services._backup = ((await sealed.read(_backupBlob) as Map?) ?? {}).cast<String, Object?>();
     consent.evictFinished(now());
     await services._settleOwner();
+    unawaited(services.refreshReminders());
     if (share != null && share.isComplete) {
       final tokens = _SealedTokens(sealed);
       services.sharing = ClinicalShareService(
@@ -306,6 +311,80 @@ class AppServices {
   /// The patient's own originals — their phone, their data, no grant.
   Future<List<Uint8List>> originals(HealthRecord r) async => r.attachmentId == null ? const [] : attachments.load(r.attachmentId!);
 
+  // ---- medicine reminders -------------------------------------------------
+
+  /// Puts reminders on the phone; null in tests and builds without them.
+  ReminderScheduler? reminderScheduler;
+
+  ReminderSettings get reminderSettings =>
+      settings['reminders'] is Map ? ReminderSettings.fromJson((settings['reminders']! as Map).cast()) : const ReminderSettings();
+
+  /// Saves the patient's choice. Turning reminders on asks the phone for
+  /// permission to notify; refused, they stay off and this returns false.
+  Future<bool> setReminders(ReminderSettings next) async {
+    if (next.on && !reminderSettings.on) {
+      final ok = await reminderScheduler?.requestPermission() ?? false;
+      if (!ok) return false;
+    }
+    settings['reminders'] = next.toJson();
+    await _saveSettings();
+    await refreshReminders();
+    return true;
+  }
+
+  /// The next fortnight's reminders, from every profile on this phone.
+  List<PlannedReminder> reminderPlan() => planReminders(
+        people: [for (final p in familyOnPhone()) (p, repository.recordsOf(p.id))],
+        settings: reminderSettings,
+        now: clock(),
+      );
+
+  /// Re-plans after anything that could change a dose. Never throws.
+  Future<void> refreshReminders() async {
+    final sched = reminderScheduler;
+    if (sched == null) return;
+    try {
+      final st = reminderSettings;
+      await sched.replaceAll(st.on ? reminderPlan() : const [], showNames: st.showNames, selfPatientId: selfPatientId);
+    } on Object {
+      // The schedule stays as it was; the next change tries again.
+    }
+  }
+
+  static const _doseLogBlob = 'dose_log';
+  Map<String, Object?> _doseLog = {};
+  static String _day(DateTime d) => d.toIso8601String().substring(0, 10);
+
+  /// Today's doses for the profile on screen: (slot, record, how many).
+  List<(DoseSlot, HealthRecord, int)> todaysDoses() {
+    final id = currentPatientId;
+    if (id == null) return const [];
+    final now = clock();
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59);
+    return [
+      for (final slot in DoseSlot.values)
+        for (final r in repository.recordsOf(id))
+          if (r.kind == RecordKind.prescription && r.dose != null && r.isActiveAt(now) && !r.date.isAfter(endOfDay) && slot.countIn(r.dose!) > 0)
+            (slot, r, slot.countIn(r.dose!)),
+    ];
+  }
+
+  bool takenToday(DoseSlot slot, String recordId) =>
+      (((_doseLog[_day(clock())] as Map?)?[slot.name] as List?) ?? const []).contains(recordId);
+
+  /// Ticks a dose taken (or not). Kept on this phone only, for 60 days.
+  Future<void> markTaken(DoseSlot slot, String recordId, bool taken) async {
+    final day = _day(clock());
+    final d = ((_doseLog[day] as Map?) ?? {}).cast<String, Object?>();
+    final list = ((d[slot.name] as List?) ?? const []).cast<String>().toSet();
+    taken ? list.add(recordId) : list.remove(recordId);
+    d[slot.name] = list.toList();
+    _doseLog[day] = d;
+    final cutoff = _day(clock().subtract(const Duration(days: 60)));
+    _doseLog.removeWhere((k, _) => k.compareTo(cutoff) < 0);
+    await sealed.write(_doseLogBlob, _doseLog);
+  }
+
   /// Corrects a record the patient entered. Signed records are refused:
   /// their content is the lab's or doctor's, not the patient's to change.
   Future<void> updateRecord(HealthRecord r) async {
@@ -320,7 +399,10 @@ class AppServices {
       dataClass: r.dataClass,
       detail: 'corrected "${old.title}"${old.title == r.title ? '' : ' → "${r.title}"'}',
     ));
-    if (r.kind == RecordKind.prescription) await _tellLinkedFamily(r.patientId);
+    if (r.kind == RecordKind.prescription) {
+      await _tellLinkedFamily(r.patientId);
+      await refreshReminders();
+    }
     await _backUpQuietly();
   }
 
@@ -337,7 +419,10 @@ class AppServices {
       dataClass: r.dataClass,
       detail: 'deleted "${r.title}"',
     ));
-    if (r.kind == RecordKind.prescription) await _tellLinkedFamily(r.patientId);
+    if (r.kind == RecordKind.prescription) {
+      await _tellLinkedFamily(r.patientId);
+      await refreshReminders();
+    }
     await _backUpQuietly();
   }
 
@@ -351,6 +436,7 @@ class AppServices {
     await repository.addAll(DemoData.records(id));
     await repository.saveProfile(id, DemoData.profile(clock()));
     await _saveDemoOriginals(id);
+    await refreshReminders();
     await audit.append(AuditEntry(at: clock(), actorId: 'patient:$id', patientId: id, action: AuditAction.edit, detail: 'Sample records added for a demonstration'));
     await _backUpQuietly();
   }
@@ -654,7 +740,10 @@ class AppServices {
       dataClass: r.dataClass,
       detail: 'added "${r.title}"',
     ));
-    if (r.kind == RecordKind.prescription) await _tellLinkedFamily(r.patientId);
+    if (r.kind == RecordKind.prescription) {
+      await _tellLinkedFamily(r.patientId);
+      await refreshReminders();
+    }
     await _backUpQuietly();
   }
 
@@ -799,7 +888,10 @@ class AppServices {
       refused += r;
       if (a.isNotEmpty && p.id == selfPatientId) await _tellLinkedFamily(p.id);
     }
-    if (added > 0) await _backUpQuietly();
+    if (added > 0) {
+      await _backUpQuietly();
+      await refreshReminders();
+    }
     return (added, handled, refused);
   }
 
@@ -1037,6 +1129,7 @@ class AppServices {
     };
     await _saveBackup();
     await assignLifeTrackIds(); // the same IDs now point at this phone
+    await refreshReminders();
     await audit.append(AuditEntry(
       at: at,
       actorId: Actors.patient(self),
@@ -1096,13 +1189,16 @@ class AppServices {
       await _saveSettings();
       await flush();
       await _backUpQuietly();
+      await refreshReminders();
       return;
     }
     settings.remove('currentPatientId');
     settings.remove('selfPatientId');
     settings.remove('demo');
+    settings.remove('reminders');
     await _saveSettings();
     await flush();
+    await refreshReminders();
   }
 
   static String _randomId() {

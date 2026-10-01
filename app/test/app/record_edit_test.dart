@@ -83,7 +83,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(LifeTrackApp(boot: () async => s));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Telmisartan 40 mg'));
+    await tester.tap(find.text('Telmisartan 40 mg').last); // the list row, below Today's medicines
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('More'));
     await tester.pumpAndSettle();

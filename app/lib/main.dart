@@ -4,6 +4,7 @@ import 'src/app/app_services.dart';
 import 'src/app/storage_wiring.dart';
 import 'src/crypto/device_key_store.dart';
 import 'src/crypto/key_derivation.dart';
+import 'src/reminders/local_notification_scheduler.dart';
 import 'src/security/unlocker.dart';
 import 'src/share/http_relay_client.dart';
 import 'src/ui/lifetrack_app.dart';
@@ -24,6 +25,7 @@ void main() {
       // Every profile verified through DigiLocker (user decision, 1 Oct 2026).
       identityRequired: const String.fromEnvironment('LT_IDENTITY') == 'required',
       demoTools: const bool.fromEnvironment('LT_DEMO_TOOLS'),
+      reminderScheduler: LocalNotificationScheduler(),
       kdf: KdfParams.production,
       cloudFactory: defaultCloud,
       share: const ShareConfig(

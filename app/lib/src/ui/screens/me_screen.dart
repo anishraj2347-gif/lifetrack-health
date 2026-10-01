@@ -16,6 +16,7 @@ import 'data_rights_screen.dart';
 import 'abha_screen.dart';
 import 'add_family_screen.dart';
 import 'backup_screens.dart';
+import 'reminders_screen.dart';
 import 'emergency_screen.dart';
 import 'family_link_screens.dart';
 import 'share_screen.dart' show describeActor, dataClassNames, iconForActor;
@@ -87,6 +88,7 @@ class MeScreen extends StatelessWidget {
         child: Column(children: [
           _link(context, LucideIcons.heartPulse, 'Emergency ID', 'What a paramedic sees', const EmergencyScreen()),
           _link(context, LucideIcons.idCard, 'ABHA health ID', p.abha == null ? 'Optional · not added' : '${p.abha!.display} · not verified', const AbhaScreen()),
+          _link(context, LucideIcons.bell, 'Medicine reminders', s.reminderSettings.on ? 'On · ${s.reminderPlan().length} in the next 2 weeks' : 'Off', const RemindersScreen()),
           _link(context, LucideIcons.cloudUpload, 'Backup', s.backupAccount == null ? 'Off · records are only on this phone' : s.lastBackupError != null ? 'On · last attempt failed' : 'On · ${s.lastBackupAt == null ? 'not yet run' : 'last ${dateTime(s.lastBackupAt!)}'}', const BackupScreen()),
           _link(context, LucideIcons.history, 'Access log', '${s.auditEntries().length} ${s.auditEntries().length == 1 ? 'entry' : 'entries'} on this phone', const AuditScreen()),
           _link(context, LucideIcons.scale, 'Your data and your rights', 'What is held where, and how to erase it', const DataRightsScreen(), last: true),

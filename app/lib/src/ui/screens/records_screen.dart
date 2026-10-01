@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../model/health_record.dart';
 import '../app_scope.dart';
+import 'reminders_screen.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
 import '../widgets/family_bar.dart';
@@ -106,6 +107,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                 ),
               )
             : ListView(padding: const EdgeInsets.only(top: 6, bottom: 8), children: [
+                const TodaysMedicines(),
                 if (trend != null) Padding(padding: const EdgeInsets.only(top: 8), child: trend),
                 ...children,
               ]),
