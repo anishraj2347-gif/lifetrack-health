@@ -6,6 +6,10 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.18.0 (2 Oct 2026)
+- **Light/dark in one tap**: a sun/moon button beside the tab bar on every main screen
+  switches between light and dark, and remembers. "Follow phone" stays on Me → Appearance.
+
 ### 1.17.0 (2 Oct 2026)
 - **Scan a report or prescription**: add pages from the camera, photos, any file (PDF or
   photo), or share straight to LifeTrack from WhatsApp, Gmail or Files. LifeTrack reads them

@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lifetrack/src/app/app_services.dart';
 import 'package:lifetrack/src/crypto/key_derivation.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
+import 'package:lifetrack/src/ui/app_scope.dart';
 import 'package:lifetrack/src/ui/lifetrack_app.dart';
+import 'package:lifetrack/src/ui/theme.dart';
 import 'package:lifetrack/src/vault/backup_vault.dart';
 
 void main() {
@@ -44,6 +46,22 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Records'));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('the sun/moon button beside the tabs switches light and dark, and remembers', (tester) async {
+    await onboardWithSamples(tester);
+    final start = LT.dark;
+    await tester.tap(find.bySemanticsLabel(start ? 'Switch to light mode' : 'Switch to dark mode'));
+    await tester.pumpAndSettle();
+    expect(LT.dark, !start);
+    expect(find.bySemanticsLabel(start ? 'Switch to dark mode' : 'Switch to light mode'), findsOneWidget);
+    final s = AppScope.of(tester.element(find.byType(HomeShell)));
+    expect(s.themeChoice, start ? 'light' : 'dark');
+    await tester.tap(find.bySemanticsLabel(start ? 'Switch to dark mode' : 'Switch to light mode'));
+    await tester.pumpAndSettle();
+    expect(LT.dark, start);
+    appearance.value = ThemeMode.system;
+    LT.dark = false;
+  });
 
   testWidgets('sample onboarding lands on the timeline', (tester) async {
     await onboardWithSamples(tester);

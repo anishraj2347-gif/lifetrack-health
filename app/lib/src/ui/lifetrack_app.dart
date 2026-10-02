@@ -160,8 +160,19 @@ class _HomeShellState extends State<HomeShell> {
     extendBody: true,
     bottomNavigationBar: SafeArea(
       top: false,
-      child: Container(
-        margin: EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, 10),
+        child: Row(children: [
+          Expanded(child: _tabBar()),
+          SizedBox(width: 8),
+          _ThemeToggle(),
+        ]),
+      ),
+    ),
+  );
+
+  Widget _tabBar() => Container(
+        margin: EdgeInsets.zero,
         padding: EdgeInsets.all(6),
         decoration: ShapeDecoration(color: LT.primary, shape: StadiumBorder()),
         child: Row(
@@ -204,9 +215,38 @@ class _HomeShellState extends State<HomeShell> {
               ),
           ],
         ),
+      );
+}
+
+/// One tap between light and dark, beside the tab bar on every main screen.
+/// Saved like the choice on Me → Appearance, which keeps "Follow phone".
+class _ThemeToggle extends StatelessWidget {
+  const _ThemeToggle();
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = LT.dark;
+    return Semantics(
+      button: true,
+      label: dark ? 'Switch to light mode' : 'Switch to dark mode',
+      excludeSemantics: true,
+      child: Material(
+        color: LT.primary,
+        shape: CircleBorder(),
+        child: InkWell(
+          customBorder: CircleBorder(),
+          onTap: () async {
+            final s = AppScope.of(context);
+            final next = dark ? 'light' : 'dark';
+            await s.setThemeChoice(next);
+            appearance.value = themeModeOf(next);
+            if (context.mounted) AppScope.changed(context);
+          },
+          child: SizedBox(width: 62, height: 62, child: Icon(dark ? LucideIcons.sun : LucideIcons.moon, size: 20, color: LT.onDark)),
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _BootError extends StatelessWidget {
