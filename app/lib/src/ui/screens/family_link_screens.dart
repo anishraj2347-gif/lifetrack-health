@@ -283,6 +283,12 @@ class _LinkedAdultScreenState extends State<LinkedAdultScreen> {
           title: _l.name,
           description: _l.theirUpdateAt == null ? 'Nothing received from their phone yet.' : 'As last sent from their phone, ${dateTime(_l.theirUpdateAt!)}.',
         ),
+        if (_l.safetyCode case final code?)
+          Note("Safety code $code — the same code shows on ${_l.name.split(' ').first}'s phone. If it does not, unlink: someone else took the invite.",
+              icon: LucideIcons.shieldCheck, margin: EdgeInsets.fromLTRB(16, 0, 16, 10))
+        else
+          Note('This link was made by an older version of LifeTrack and can no longer send or receive. Unlink, then link again.',
+              icon: LucideIcons.triangleAlert, margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
         Eyebrow('What they share with you'),
         if (em == null && meds == null) Note('Nothing. That is their choice.', icon: LucideIcons.eyeOff, margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
         if (em != null)

@@ -56,31 +56,35 @@ void main() {
           identityRequired: true,
         );
 
-    /// The person in the browser picks [account] on the practice page.
+    /// The person in the browser picks [account] on the practice page, then
+    /// reads the hand-back code off the page that ends the sign-in.
+    String? shown;
     Future<void> Function(Uri) browserPicks(String account) => (url) async {
           final page = (await client.get(url)).body;
           final link = RegExp('href="([^"]*account=$account)"').firstMatch(page)!.group(1)!.replaceAll('&amp;', '&');
           final approve = await client.send(http.Request('GET', base.resolve(link))..followRedirects = false);
-          await client.get(Uri.parse(approve.headers['location']!));
+          final done = (await client.get(Uri.parse(approve.headers['location']!))).body;
+          shown = RegExp(r'[0-9A-Z]{4}-[0-9A-Z]{4}').firstMatch(done)?.group(0);
         };
+    Future<String?> typesShownCode(bool _) async => shown;
 
     final s = await phone(1);
-    final me = await s.verifyWithDigiLocker(purpose: 'self', openUrl: browserPicks('anjali'));
+    final me = await s.verifyWithDigiLocker(purpose: 'self', openUrl: browserPicks('anjali'), askCode: typesShownCode);
     final p = await s.createProfile(name: '', dob: DateTime(2000), sex: Sex.unspecified, verification: me);
     expect((p.name, p.sex, p.isVerified), ('Anjali Sharma', Sex.female, true));
     expect(s.lifeTrackIdOf(p.id), isNotNull);
 
     final baby = await s.addChild(
       name: '', dob: DateTime(2000), sex: Sex.unspecified, relation: 'son',
-      verification: await s.verifyWithDigiLocker(purpose: 'newborn', openUrl: browserPicks('anjali')),
+      verification: await s.verifyWithDigiLocker(purpose: 'newborn', openUrl: browserPicks('anjali'), askCode: typesShownCode),
     );
     expect(baby.name, 'Baby of Anjali Sharma');
     expect(s.custodyOf(baby.id)!.isVerified, isTrue);
 
-    await expectLater(s.verifyWithDigiLocker(purpose: 'self', openUrl: browserPicks('noaadhaar')), throwsA(isA<VerificationFailed>()));
+    await expectLater(s.verifyWithDigiLocker(purpose: 'self', openUrl: browserPicks('noaadhaar'), askCode: typesShownCode), throwsA(isA<VerificationFailed>()));
 
     final other = await phone(2);
-    final again = await other.verifyWithDigiLocker(purpose: 'self', openUrl: browserPicks('anjali'));
+    final again = await other.verifyWithDigiLocker(purpose: 'self', openUrl: browserPicks('anjali'), askCode: typesShownCode);
     await expectLater(other.createProfile(name: '', dob: DateTime(2000), sex: Sex.unspecified, verification: again), throwsA(isA<PersonExists>()));
     expect(other.currentPatient, isNull);
   });

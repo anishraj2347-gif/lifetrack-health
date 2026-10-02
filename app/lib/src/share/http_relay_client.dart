@@ -151,6 +151,27 @@ class HttpRemoteVaultStore implements RemoteVaultStore {
   }
 }
 
+/// Asks the registry whether a doctor is still approved with the same keys.
+class HttpDoctorStatus implements DoctorStatus {
+  HttpDoctorStatus({required this.baseUrl, http.Client? client}) : _http = client ?? http.Client();
+
+  final Uri baseUrl;
+  final http.Client _http;
+
+  @override
+  Future<bool?> stillApproved(DoctorCertificate cert) async {
+    try {
+      final r = await _http.get(baseUrl.resolve('/v1/doctors/${Uri.encodeComponent(cert.registryId)}')).timeout(const Duration(seconds: 10));
+      if (r.statusCode == 404) return false;
+      if (r.statusCode != 200) return null;
+      final j = jsonDecode(r.body) as Map;
+      return j['status'] == 'approved' && j['keyId'] == await cert.keyId();
+    } on Object {
+      return null;
+    }
+  }
+}
+
 /// LifeTrack ID registration on the LifeTrack server.
 class HttpIdDirectory implements IdDirectory {
   HttpIdDirectory({required this.baseUrl, http.Client? client}) : _http = client ?? http.Client();
@@ -219,9 +240,10 @@ class HttpIdentityVerifier implements IdentityVerifier {
   }
 
   @override
-  Future<Map<String, Object?>> poll(VerifySession s) async {
+  Future<Map<String, Object?>> poll(VerifySession s, {String? code}) async {
     try {
-      final r = await _http.get(baseUrl.resolve('/v1/verify/${s.id}'), headers: {RelayApi.hSessionSecret: s.secret});
+      final path = baseUrl.resolve('/v1/verify/${Uri.encodeComponent(s.id)}');
+      final r = await _http.get(code == null ? path : path.replace(queryParameters: {'code': code}), headers: {RelayApi.hSessionSecret: s.secret});
       return (jsonDecode(r.body) as Map).cast();
     } on Object {
       return {'status': 'pending'};

@@ -12,9 +12,19 @@ void main() {
 
   group('VaultCodec framing', () {
     test('round-trips a body', () async {
-      final frame = await VaultCodec.seal({'a': 1}, key);
+      final frame = await VaultCodec.seal({'a': 1}, key, name: 'records');
       expect(frame.sublist(0, 3), [0x4C, 0x54, VaultCodec.frameVersion]);
-      expect(await VaultCodec.open(frame, key), {'a': 1});
+      expect(await VaultCodec.open(frame, key, name: 'records'), {'a': 1});
+      final unnamed = await VaultCodec.seal({'a': 1}, key);
+      expect(unnamed[2], 1, reason: 'the backup blob has no name: version 1');
+      expect(await VaultCodec.open(unnamed, key), {'a': 1});
+    });
+
+    test('a named frame opens only under the name it was sealed with', () async {
+      final frame = await VaultCodec.seal(['grant'], key, name: 'grants');
+      expect(() => VaultCodec.open(frame, key, name: 'records'), throwsA(isA<VaultAuthenticationFailed>()));
+      expect(() => VaultCodec.open(frame, key), throwsA(isA<VaultAuthenticationFailed>()));
+      expect(await VaultCodec.open(frame, key, name: 'grants'), ['grant']);
     });
 
     test('a frame without the magic is refused as unknown, not as corrupt', () async {

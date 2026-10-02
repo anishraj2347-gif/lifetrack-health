@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:cryptography/dart.dart';
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 
 import '../audit/audit_log.dart';
@@ -61,9 +62,31 @@ class FamilyLink {
     this.theirEmergency,
     this.theirMedicines,
     this.theirUpdateAt,
+    this.secret,
   });
 
   final String id;
+
+  /// Made by the phone that accepted the invite and sent, sealed, only to
+  /// the inviter's phone. Every later message on the link carries it, so a
+  /// person who only saw the invite code (often sent over a chat app) cannot
+  /// send updates or unlink in either name. Null on links made before
+  /// 1.18.1: those accept no messages and must be linked again.
+  final String? secret;
+
+  bool get secured => secret != null;
+
+  /// Eight characters both phones show for this link. If they match, each
+  /// phone is linked to the other — not to someone who took the invite
+  /// first.
+  String? get safetyCode {
+    final k = secret;
+    if (k == null) return null;
+    const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+    final h = const DartSha256().hashSync(utf8.encode('lifetrack/family-link|$id|$k')).bytes;
+    final c = [for (var i = 0; i < 8; i++) alphabet[h[i] % 32]].join();
+    return '${c.substring(0, 4)} ${c.substring(4)}';
+  }
   final LinkSide side;
   final String name;
   final String theirMailbox;
@@ -91,6 +114,7 @@ class FamilyLink {
         theirEmergency: emergency,
         theirMedicines: medicines,
         theirUpdateAt: at,
+        secret: secret,
       );
 
   FamilyLink sharing({required bool emergency, required bool medicines}) =>
@@ -108,6 +132,7 @@ class FamilyLink {
         'theirEm': theirEmergency,
         'theirMed': theirMedicines,
         'theirAt': theirUpdateAt?.toIso8601String(),
+        'sec': secret,
       };
 
   static FamilyLink fromJson(Map<String, Object?> j) => FamilyLink(
@@ -122,12 +147,15 @@ class FamilyLink {
         theirEmergency: (j['theirEm'] as Map?)?.cast(),
         theirMedicines: j['theirMed'] as List?,
         theirUpdateAt: j['theirAt'] == null ? null : DateTime.parse(j['theirAt']! as String),
+        secret: j['sec'] as String?,
       );
 }
 
-class LinkRefused implements Exception {
+class LinkRefused implements MessageRefused {
   const LinkRefused(this.message);
   final String message;
+  @override
+  String get reason => message;
   @override
   String toString() => 'LinkRefused: $message';
 }
@@ -191,6 +219,7 @@ class FamilyLinkService {
       linkedAt: at,
       iShareEmergency: shareEmergency,
       iShareMedicines: shareMedicines,
+      secret: RelayApi.newToken(),
     );
     await _send(link, {
       'type': 'family_link_accept',
@@ -229,7 +258,9 @@ class FamilyLinkService {
   /// Either side can unlink. The other phone deletes what it held.
   Future<void> unlink({required String ownerId, required FamilyLink link, required DateTime at}) async {
     try {
-      await _send(link, {'type': 'family_unlink', 'linkId': link.id}, at);
+      // A link from an older version has no secret to prove the message
+      // with; it is removed here only.
+      if (link.secured) await _send(link, {'type': 'family_unlink', 'linkId': link.id}, at);
     } finally {
       await _save([...(await links()).where((l) => l.id != link.id)]);
       await audit.append(AuditEntry(at: at, actorId: 'patient:$ownerId', patientId: ownerId, action: AuditAction.grantRevoked, tokenId: 'family-link-${link.id}', detail: 'Unlinked from ${link.name}'));
@@ -243,14 +274,20 @@ class FamilyLinkService {
           final inviteId = p['inviteId']! as String;
           if (!open.contains(inviteId)) throw const LinkRefused('an invite this phone did not make, or already used');
           final reply = (p['replyTo']! as Map).cast<String, Object?>();
+          final secret = p['linkSecret'];
+          if (secret is! String || secret.length < 16 || secret.length > 100) throw const LinkRefused('an invite answer without its link secret');
+          final mailbox = reply['mailbox']! as String;
+          final key = reply['key']! as String;
+          if (!RegExp(r'^p-[0-9a-f]{64}$').hasMatch(mailbox) || base64Decode(key).length != 32) throw const LinkRefused('an invite answer with a bad address');
           final link = FamilyLink(
             id: inviteId,
             side: LinkSide.iInvited,
-            name: p['name']! as String,
-            theirMailbox: reply['mailbox']! as String,
-            theirKey: reply['key']! as String,
+            name: _text(p['name'], max: 80) ?? 'Family member',
+            theirMailbox: mailbox,
+            theirKey: key,
             linkedAt: at,
-          ).withTheirs(emergency: (p['emergency'] as Map?)?.cast(), medicines: p['medicines'] as List?, at: at);
+            secret: secret,
+          ).withTheirs(emergency: _emergency(p['emergency']), medicines: _medicines(p['medicines']), at: at);
           await _save([...(await links()).where((l) => l.id != inviteId), link]);
           await sealed.write(_invitesBlob, open..remove(inviteId));
           await audit.append(AuditEntry(at: at, actorId: 'family:${link.name}', patientId: ownerId, action: AuditAction.edit, tokenId: 'family-link-$inviteId', detail: '${link.name} accepted your family invite'));
@@ -259,12 +296,15 @@ class FamilyLinkService {
           final all = await links();
           final i = all.indexWhere((l) => l.id == p['linkId']);
           if (i < 0) throw const LinkRefused('an update for a link that no longer exists');
-          all[i] = all[i].withTheirs(emergency: (p['emergency'] as Map?)?.cast(), medicines: p['medicines'] as List?, at: at);
+          _proven(all[i], p);
+          all[i] = all[i].withTheirs(emergency: _emergency(p['emergency']), medicines: _medicines(p['medicines']), at: at);
           await _save(all);
         },
         'family_unlink': (p) async {
           final all = await links();
           final gone = all.where((l) => l.id == p['linkId']).toList();
+          if (gone.isEmpty) throw const LinkRefused('an unlink for a link that no longer exists');
+          _proven(gone.single, p);
           await _save([...all.where((l) => l.id != p['linkId'])]);
           for (final l in gone) {
             await audit.append(AuditEntry(at: at, actorId: 'family:${l.name}', patientId: ownerId, action: AuditAction.grantRevoked, tokenId: 'family-link-${l.id}', detail: '${l.name} unlinked; what they shared was deleted'));
@@ -272,12 +312,64 @@ class FamilyLinkService {
         },
       };
 
+  /// Refuses a message that does not carry this link's secret.
+  static void _proven(FamilyLink link, Map<String, Object?> p) {
+    final mine = link.secret;
+    final given = p['linkSecret'];
+    if (mine == null) throw const LinkRefused('a message for a link made by an older version — unlink and link again');
+    if (given is! String || !_sameText(given, mine)) throw const LinkRefused('a message that did not come from the linked phone');
+  }
+
+  static bool _sameText(String a, String b) {
+    if (a.length != b.length) return false;
+    var d = 0;
+    for (var i = 0; i < a.length; i++) {
+      d |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+    }
+    return d == 0;
+  }
+
+  static String? _text(Object? v, {int max = 200}) {
+    if (v is! String) return null;
+    final t = v.trim();
+    return t.isEmpty ? null : (t.length > max ? t.substring(0, max) : t);
+  }
+
+  /// Only the Emergency ID's own fixed fields, each bounded (#7).
+  static Map<String, Object?>? _emergency(Object? v) {
+    if (v is! Map) return null;
+    final j = v.cast<String, Object?>();
+    String f(String k) => _text(j[k], max: EmergencyCard.maxFieldLength) ?? '';
+    final card = EmergencyCard(
+      bloodType: EmergencyCard.bloodTypes.contains(j['blood']) ? j['blood']! as String : '',
+      allergies: f('allergies'),
+      conditions: f('conditions'),
+      medications: f('meds'),
+      contactName: f('contactName'),
+      contactRelation: f('contactRelation'),
+      contactPhone: RegExp(r'^\+?[0-9 ]{0,20}$').hasMatch(f('contactPhone')) ? f('contactPhone') : '',
+    );
+    return card.toJson();
+  }
+
+  /// Medicine names and doses only, at most 50.
+  static List<Object?>? _medicines(Object? v) {
+    if (v is! List) return null;
+    return [
+      for (final m in v.take(50))
+        if (m is Map && _text(m['title']) != null) {'title': _text(m['title']), 'dose': _text(m['dose'], max: 60), 'endsOn': DateTime.tryParse('${m['endsOn']}')?.toIso8601String()},
+    ];
+  }
+
   Map<String, Object?> _mine(FamilyLink link, EmergencyCard? emergency, List<HealthRecord> meds) => {
         'emergency': link.iShareEmergency && emergency != null ? emergency.toJson() : null,
         'medicines': link.iShareMedicines ? [for (final m in meds) {'title': m.title, 'dose': m.dose?.display, 'endsOn': m.endDate?.toIso8601String()}] : null,
       };
 
   Future<void> _send(FamilyLink link, Map<String, Object?> payload, DateTime at) async {
+    final secret = link.secret;
+    if (secret == null) throw const LinkRefused('This link was made by an older version. Unlink, then link again.');
+    payload = {...payload, 'linkSecret': secret};
     final key = base64Decode(link.theirKey);
     final exp = at.add(const Duration(hours: 47));
     // Unique per message: two sends in the same instant must not overwrite

@@ -64,6 +64,7 @@ void main() {
             },
             expiresAt: now.add(const Duration(hours: 4)),
             receivedAt: now,
+            verified: true,
           );
           s.inbox.add(open);
           s.registerShare(open);
@@ -82,6 +83,7 @@ void main() {
               },
               expiresAt: now.subtract(const Duration(days: 1)),
               receivedAt: now.subtract(const Duration(days: 3)),
+              verified: true,
             ),
           );
           await s.saveNote(

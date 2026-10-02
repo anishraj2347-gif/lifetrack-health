@@ -23,9 +23,10 @@ class PseudonymisedSlice {
     final entries = <SliceEntry>[
       for (final r in records)
         for (final res in r.results)
-          // Only analytes on the known table: a free-text analyte name is a
-          // channel for identifying text.
-          if (analyteNames.containsKey(res.analyte))
+          // Only analytes and units on the known tables: a free-text field
+          // is a channel for identifying text (a unit read off a photo, or
+          // typed, can be anything — a name included).
+          if (analyteNames.containsKey(res.analyte) && knownUnits.contains(res.unit))
             SliceEntry(
               analyte: res.analyte,
               value: res.value,

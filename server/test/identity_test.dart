@@ -42,6 +42,8 @@ void main() {
     ).handler;
   });
 
+  String? handbackOn(String page) => RegExp(r'[0-9A-Z]{4}-[0-9A-Z]{4}').firstMatch(page)?.group(0);
+
   /// The whole browser round trip: start → DigiLocker page → consent →
   /// callback → the app collects the signed result.
   Future<Map<String, Object?>> verify(String account, {String purpose = 'self', IdentityAttestation? parent}) async {
@@ -53,9 +55,10 @@ void main() {
     final approve = await call('GET', '/v1/practice-digilocker/approve?state=${auth.queryParameters['state']}&challenge=${Uri.encodeQueryComponent(auth.queryParameters['challenge']!)}&account=$account');
     expect(approve.statusCode, 302);
     final cb = Uri.parse(approve.headers['location']!);
-    await call('GET', '${cb.path}?${cb.query}');
+    final done = await (await call('GET', '${cb.path}?${cb.query}')).readAsString();
     expect((await json(await call('GET', '/v1/verify/${start['session']}', headers: {RelayApi.hSessionSecret: 'wrong'})))['status'], 'expired');
-    return json(await call('GET', '/v1/verify/${start['session']}', headers: {RelayApi.hSessionSecret: start['secret']! as String}));
+    final code = handbackOn(done);
+    return json(await call('GET', '/v1/verify/${start['session']}${code == null ? '' : '?code=$code'}', headers: {RelayApi.hSessionSecret: start['secret']! as String}));
   }
 
   test('an Aadhaar-linked DigiLocker account gives a signed identity, with no ID number in it', () async {
@@ -95,7 +98,7 @@ void main() {
     final a = ((await verify('anjali'))['attestation']! as Map).cast<String, Object?>();
     final key = base64Encode(List.filled(32, 5));
     Future<Response> reg(Map<String, Object?>? att) => call('POST', '/v1/ids', body: {
-          'id': LifeTrackId.generate(), 'mailbox': 'p-${'a' * 64}', 'key': key, 'tokenHash': 'x', if (att != null) 'attestation': att,
+          'id': LifeTrackId.generate(), 'mailbox': 'p-${'a' * 64}', 'key': key, 'tokenHash': 'f' * 64, if (att != null) 'attestation': att,
         });
     expect((await reg(null)).statusCode, 400, reason: 'identity required');
     expect((await reg(a)).statusCode, 201);
@@ -103,5 +106,42 @@ void main() {
     expect(again.statusCode, 409);
     expect((await json(again))['reason'], 'person_exists');
     expect((await reg({...a, 'name': 'Someone Else'})).statusCode, 400, reason: 'altered attestation');
+  });
+
+  test('the result goes only to whoever has the code from the browser that signed in', () async {
+    // Someone starts a check and sends its link to another person…
+    final start = await json(await call('POST', '/v1/verify/start', body: {'purpose': 'self'}));
+    final auth = Uri.parse(start['authorizeUrl']! as String);
+    // …who signs in. The code appears only on THEIR browser page.
+    final approve = await call('GET', '/v1/practice-digilocker/approve?state=${auth.queryParameters['state']}&challenge=${Uri.encodeQueryComponent(auth.queryParameters['challenge']!)}&account=anjali');
+    final cb = Uri.parse(approve.headers['location']!);
+    final page = await (await call('GET', '${cb.path}?${cb.query}')).readAsString();
+    final code = handbackOn(page)!;
+    Future<Map<String, Object?>> poll([String? c]) async =>
+        json(await call('GET', '/v1/verify/${start['session']}${c == null ? '' : '?code=$c'}', headers: {RelayApi.hSessionSecret: start['secret']! as String}));
+    // The session's starter, without the code, gets nothing.
+    final bare = await poll();
+    expect(bare['status'], 'awaiting_code');
+    expect(bare.containsKey('attestation'), isFalse);
+    expect((await poll('AAAA-AAAA'))['wrong'], isTrue);
+    // A replayed callback cannot mint a second code.
+    expect(await (await call('GET', '${cb.path}?${cb.query}')).readAsString(), contains('already finished'));
+    // Typed as people type it: lower case, no dash.
+    expect((await poll(code.toLowerCase().replaceAll('-', '')))['status'], 'done');
+  });
+
+  test('five wrong codes end the session', () async {
+    final start = await json(await call('POST', '/v1/verify/start', body: {'purpose': 'self'}));
+    final auth = Uri.parse(start['authorizeUrl']! as String);
+    final approve = await call('GET', '/v1/practice-digilocker/approve?state=${auth.queryParameters['state']}&challenge=${Uri.encodeQueryComponent(auth.queryParameters['challenge']!)}&account=anjali');
+    final cb = Uri.parse(approve.headers['location']!);
+    final code = handbackOn(await (await call('GET', '${cb.path}?${cb.query}')).readAsString())!;
+    Future<Map<String, Object?>> poll(String c) async =>
+        json(await call('GET', '/v1/verify/${start['session']}?code=$c', headers: {RelayApi.hSessionSecret: start['secret']! as String}));
+    for (var i = 0; i < 4; i++) {
+      expect((await poll('0000-0000'))['status'], 'awaiting_code');
+    }
+    expect((await poll('0000-0000'))['status'], 'error');
+    expect((await poll(code))['status'], 'expired', reason: 'the right code no longer helps');
   });
 }

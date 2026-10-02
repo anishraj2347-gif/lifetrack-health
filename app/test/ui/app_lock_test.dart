@@ -30,7 +30,7 @@ void main() {
   var now = DateTime(2026, 10, 1, 9);
   late AppServices services;
 
-  Future<void> start(WidgetTester tester, FakeUnlocker u) async {
+  Future<void> start(WidgetTester tester, FakeUnlocker u, {bool demo = false}) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.6;
     addTearDown(tester.view.reset);
@@ -42,6 +42,7 @@ void main() {
         kdf: KdfParams.weakForTests(),
         cloudFactory: defaultCloud,
         clock: () => now,
+        demoTools: demo,
       );
       await services.createProfile(name: 'Anjali Sharma', dob: DateTime(1984), sex: Sex.female);
       await services.emergency.save(services.selfPatientId!, const EmergencyCard(bloodType: 'B+', allergies: 'Penicillin'));
@@ -77,10 +78,30 @@ void main() {
     expect(services.audit.entriesFor(services.selfPatientId!).any((e) => e.actorId == EmergencyCardStore.unauthenticatedActor && e.action == AuditAction.emergencyRead), isTrue);
   });
 
-  testWidgets('a phone with no screen lock opens straight in', (tester) async {
+  testWidgets('a phone with no screen lock is asked to set one; the records stay closed', (tester) async {
     final u = FakeUnlocker(hasLock: false);
     await start(tester, u);
     expect(u.asked, 0);
+    expect(find.text('Set a screen lock first'), findsOneWidget);
+    expect(find.text('Anjali Sharma'), findsNothing);
+    // The Emergency ID is still one tap away.
+    await tester.tap(find.text('Emergency ID'));
+    await tester.pumpAndSettle();
+    expect(find.text('Penicillin'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    // They set one in Settings and come back.
+    u.hasLock = true;
+    await tester.tap(find.text('Check again'));
+    await tester.pumpAndSettle();
+    expect(u.asked, 1);
+    expect(find.text('Set a screen lock first'), findsNothing);
+  });
+
+  testWidgets('a demo build opens on a phone with no screen lock', (tester) async {
+    final u = FakeUnlocker(hasLock: false);
+    await start(tester, u, demo: true);
+    expect(find.text('Set a screen lock first'), findsNothing);
     expect(find.text('LifeTrack is locked'), findsNothing);
   });
 

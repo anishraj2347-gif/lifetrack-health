@@ -1,10 +1,13 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lifetrack/src/crypto/vault_codec.dart';
 import 'package:lifetrack/src/model/health_record.dart';
+import 'package:lifetrack/src/storage/attachment_store.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
 import 'package:lifetrack/src/storage/file_byte_store.dart';
 import 'package:lifetrack/src/storage/record_repository.dart';
@@ -56,6 +59,61 @@ void main() {
       expect(files.any((f) => f.contains('escape')), isFalse);
       expect(File('${dir.parent.path}/escape').existsSync(), isFalse);
       expect(await store.read('../../escape'), [9]);
+    });
+  });
+
+  group('sealed at rest, bound to names', () {
+    final key = SecretKey(List.filled(32, 3));
+    late Directory dir;
+    setUp(() async => dir = await Directory.systemTemp.createTemp('lt-bound'));
+    tearDown(() => dir.delete(recursive: true));
+
+    test('the index of names is sealed too, and still lists them', () async {
+      final store = FileByteStore(dir, indexKey: key);
+      await store.write('emergency_card_p-1234abcd', Uint8List.fromList([1]));
+      await store.write('att_scan42_0', Uint8List.fromList([2]));
+      final raw = File('${dir.path}/index.json').readAsBytesSync();
+      expect(latin1.decode(raw).contains('emergency'), isFalse);
+      expect(latin1.decode(raw).contains('scan42'), isFalse);
+      expect((await FileByteStore(dir, indexKey: key).names()).toSet(), {'emergency_card_p-1234abcd', 'att_scan42_0'});
+    });
+
+    test('an index written in the clear by an older version is read, then sealed on the next save', () async {
+      final plain = FileByteStore(dir);
+      await plain.write('records', Uint8List.fromList([1]));
+      expect(File('${dir.path}/index.json').readAsStringSync(), contains('records'));
+      final sealed = FileByteStore(dir, indexKey: key);
+      expect(await sealed.names(), ['records']);
+      await sealed.write('grants', Uint8List.fromList([2]));
+      expect(latin1.decode(File('${dir.path}/index.json').readAsBytesSync()).contains('records'), isFalse);
+      expect((await sealed.names()).toSet(), {'records', 'grants'});
+    });
+
+    test('a sealed blob copied under another name does not open there', () async {
+      final bytes = InMemoryByteStore();
+      final store = SealedStore(bytes, key);
+      await store.write('grants', {'g': 1});
+      await bytes.write('records', (await bytes.read('grants'))!);
+      expect(() => store.read('records'), throwsA(isA<VaultAuthenticationFailed>()));
+      expect(await store.read('grants'), {'g': 1});
+    });
+
+    test('a blob sealed before names were bound is read, then rewritten bound', () async {
+      final bytes = InMemoryByteStore();
+      await bytes.write('records', await VaultCodec.seal(['old'], key));
+      expect((await bytes.read('records'))![2], 1);
+      expect(await SealedStore(bytes, key).read('records'), ['old']);
+      expect((await bytes.read('records'))![2], VaultCodec.frameVersion);
+    });
+
+    test('original pages cannot be swapped between records', () async {
+      final bytes = InMemoryByteStore();
+      final pages = AttachmentStore(bytes, key);
+      await pages.save('a', [Uint8List.fromList([1, 1])]);
+      await pages.save('b', [Uint8List.fromList([2, 2])]);
+      await bytes.write('att_a_0', (await bytes.read('att_b_0'))!);
+      expect(() => pages.load('a'), throwsA(anything));
+      expect(await pages.load('b'), [[2, 2]]);
     });
   });
 

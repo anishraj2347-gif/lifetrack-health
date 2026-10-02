@@ -27,7 +27,7 @@ class FakeVerifier implements IdentityVerifier {
   }
 
   @override
-  Future<Map<String, Object?>> poll(VerifySession s) async => {'status': 'done', 'attestation': queue.removeAt(0).toJson()};
+  Future<Map<String, Object?>> poll(VerifySession s, {String? code}) async => {'status': 'done', 'attestation': queue.removeAt(0).toJson()};
 }
 
 void main() {
@@ -54,6 +54,7 @@ void main() {
       IdentityAttestation(method: method, name: name, dateOfBirth: dob, gender: g, subjectHash: subject, verifiedAt: now, parentSubjectHash: parent).signedWith(signer ?? registry);
 
   Future<void> noBrowser(Uri _) async {}
+  Future<String?> noCode(bool _) async => null;
 
   setUp(() async {
     registry = await Ed25519().newKeyPair();
@@ -65,7 +66,7 @@ void main() {
     final s = await phone(1);
     await expectLater(s.createProfile(name: 'Anyone', dob: DateTime(1990), sex: Sex.male), throwsA(isA<CustodyRefused>()));
     fake.queue.add(await att('Anjali Sharma', DateTime(1984, 6, 14), 'F', 'subj-anjali'));
-    final v = await s.verifyWithDigiLocker(purpose: 'self', openUrl: noBrowser);
+    final v = await s.verifyWithDigiLocker(purpose: 'self', openUrl: noBrowser, askCode: noCode);
     final p = await s.createProfile(name: 'typed name is ignored', dob: DateTime(2000), sex: Sex.male, verification: v);
     expect((p.name, p.dateOfBirth, p.sex, p.isVerified), ('Anjali Sharma', DateTime(1984, 6, 14), Sex.female, true));
     expect(dir.entries.values.single['subject'], 'subj-anjali');
@@ -96,7 +97,7 @@ void main() {
     await expectLater(s.addChild(name: 'Baby', dob: DateTime(2026, 8, 20), sex: Sex.male, relation: 'son'), throwsA(isA<CustodyRefused>()));
 
     fake.queue.add(await att('Baby of Anjali Sharma', DateTime(2026, 8, 20), 'M', 'subj-bc-1', method: IdentityMethod.birthCertificateDigiLocker, parent: 'subj-anjali'));
-    final v = await s.verifyWithDigiLocker(purpose: 'newborn', openUrl: noBrowser);
+    final v = await s.verifyWithDigiLocker(purpose: 'newborn', openUrl: noBrowser, askCode: noCode);
     expect(fake.lastParent!.subjectHash, 'subj-anjali', reason: 'the service is told who the verified parent is');
     final baby = await s.addChild(name: '', dob: DateTime(2000), sex: Sex.female, relation: 'son', verification: v);
     expect(baby.name, 'Baby of Anjali Sharma');
@@ -110,13 +111,13 @@ void main() {
   test('a newborn cannot be added until the parent is verified', () async {
     final s = await phone(1);
     await s.createProfile(name: '', dob: DateTime(1984), sex: Sex.female, demo: true);
-    await expectLater(s.verifyWithDigiLocker(purpose: 'newborn', openUrl: noBrowser), throwsA(isA<VerificationFailed>()));
+    await expectLater(s.verifyWithDigiLocker(purpose: 'newborn', openUrl: noBrowser, askCode: noCode), throwsA(isA<VerificationFailed>()));
   });
 
   test('a result not signed by the LifeTrack service is refused', () async {
     final s = await phone(1);
     fake.queue.add(await att('Forged', DateTime(1990), 'M', 'subj-x', signer: await Ed25519().newKeyPair()));
-    await expectLater(s.verifyWithDigiLocker(purpose: 'self', openUrl: noBrowser), throwsA(isA<VerificationFailed>()));
+    await expectLater(s.verifyWithDigiLocker(purpose: 'self', openUrl: noBrowser, askCode: noCode), throwsA(isA<VerificationFailed>()));
   });
 
   test('an adult who asks to be managed verifies with their own Aadhaar', () async {

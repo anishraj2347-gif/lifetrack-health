@@ -4,6 +4,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lifetrack_doctor/patients.dart';
+import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:lifetrack_doctor/practice.dart';
 import 'package:lifetrack_doctor/session.dart';
 import 'package:lifetrack_doctor/store/memory_cipher.dart';
@@ -23,15 +24,18 @@ void main() {
     };
   }
 
+  // A share with a LifeTrack ID stands for one whose ID the registry
+  // confirmed; one without is filed under its reply key.
   ReceivedShare share(String name, {String? ltId, String mailbox = 'p-abc', DateTime? at, int age = 42}) => ReceivedShare(
         grantId: 'g-$name-${at?.millisecondsSinceEpoch}',
         bundle: {
           'patient': {'name': name, 'age': age, 'sex': 'female', 'lifeTrackId': ?ltId},
-          'replyTo': {'mailbox': mailbox, 'key': ''},
+          'replyTo': {'mailbox': mailbox, 'key': 'key-of-$mailbox'},
           'levels': ['summary'],
         },
         expiresAt: (at ?? DateTime(2026, 10, 1)).add(const Duration(hours: 24)),
         receivedAt: at ?? DateTime(2026, 10, 1),
+        verified: ltId != null,
       );
 
   test('keys and profile saved in the clear by an older version are sealed on load', () async {
@@ -58,16 +62,16 @@ void main() {
     expect(other.enc, isNull);
   });
 
-  test('the register: one entry per person across shares, keyed by LifeTrack ID, else mailbox', () async {
+  test('the register: one entry per person across shares, keyed by confirmed LifeTrack ID, else reply key', () async {
     SharedPreferences.setMockInitialValues(await legacyPrefs());
     final s = await DoctorSession.load(base, cipher: MemoryCipher());
     s.registerShare(share('Anjali Sharma', ltId: '148209375516', at: DateTime(2026, 9, 1)));
     s.registerShare(share('Anjali Sharma', ltId: '148209375516', mailbox: 'p-new', at: DateTime(2026, 10, 1), age: 43));
     s.registerShare(share('Ramesh Kumar', mailbox: 'p-ramesh', at: DateTime(2026, 9, 15)));
-    expect(s.patients.map((p) => p.name), ['Anjali Sharma', 'Ramesh Kumar'], reason: 'most recent first');
+    expect(s.patients.map((p) => p.name), ['Anjali Sharma', 'Ramesh Kumar (identity not confirmed)'], reason: 'most recent first');
     final a = s.patients.first;
     expect([a.shares, a.age, a.firstSeen, a.lastShared], [2, 43, DateTime(2026, 9, 1), DateTime(2026, 10, 1)]);
-    expect(s.patients.last.key, 'p-ramesh');
+    expect(s.patients.last.key, 'key:${ReceivedShare.keyTag('key-of-p-ramesh')}');
   });
 
   test('notes are sealed, survive a reload, and can be edited and deleted', () async {
@@ -129,5 +133,63 @@ void main() {
     });
     await tester.pumpAndSettle();
     expect(s.notesFor('148209375516').single.complaint, 'Follow-up for diabetes');
+  });
+
+  group('shares from someone pretending to be a patient', () {
+    Future<String> sealTo(DoctorSession s, Map<String, Object?> bundle, String gid) async => base64Encode(await ShareEnvelope.seal(
+          bundle: bundle,
+          recipientKey: (await s.enc!.extractPublicKey()).bytes,
+          keyId: await RelayApi.keyId((await s.enc!.extractPublicKey()).bytes),
+          grantId: gid,
+          expiresAt: DateTime.now().add(const Duration(hours: 4)),
+        ));
+
+    test("a share naming someone's LifeTrack ID, that the registry cannot confirm, is filed apart and marked", () async {
+      SharedPreferences.setMockInitialValues(await legacyPrefs());
+      final s = await DoctorSession.load(base, cipher: MemoryCipher());
+      final real = share('Anjali Sharma', ltId: '148209375516');
+      s.inbox.add(real);
+      s.registerShare(real);
+      final forged = await sealTo(s, {
+        'patient': {'name': 'Anjali Sharma', 'age': 42, 'sex': 'female', 'lifeTrackId': '148209375516'},
+        'replyTo': {'mailbox': 'p-${'e' * 64}', 'key': base64Encode(List.filled(32, 7))},
+        'levels': ['summary'],
+      }, 'g-forged');
+      expect(await s.receive(forged, DateTime.now()), isTrue);
+      final f = s.inbox.first;
+      expect(f.verified, isFalse);
+      expect(f.lifeTrackId, isNull);
+      expect(f.patientName, 'Anjali Sharma (identity not confirmed)');
+      expect(s.openShareFor('148209375516'), same(real), reason: "the real patient's open share is untouched");
+      expect(s.patients.where((p) => p.key == '148209375516').single.name, 'Anjali Sharma');
+      expect(s.patients, hasLength(2));
+    });
+
+    test('an envelope that cannot be opened is refused on its own', () async {
+      SharedPreferences.setMockInitialValues(await legacyPrefs());
+      final s = await DoctorSession.load(base, cipher: MemoryCipher());
+      await expectLater(s.receive(base64Encode(utf8.encode('not an envelope')), DateTime.now()), throwsA(anything));
+      final other = await X25519().newKeyPair();
+      final notMine = base64Encode(await ShareEnvelope.seal(
+          bundle: {'patient': {'name': 'X'}, 'replyTo': {'mailbox': 'p-x', 'key': 'k'}},
+          recipientKey: (await other.extractPublicKey()).bytes,
+          keyId: 'k',
+          grantId: 'g',
+          expiresAt: DateTime.now().add(const Duration(hours: 1))));
+      await expectLater(s.receive(notMine, DateTime.now()), throwsA(anything));
+      final ok = await sealTo(s, {'patient': {'name': 'Ramesh Kumar'}, 'replyTo': {'mailbox': 'p-r', 'key': 'kr'}}, 'g-ok');
+      expect(await s.receive(ok, DateTime.now()), isTrue);
+      expect(s.inbox, hasLength(1));
+    });
+
+    test("a close message without the patient's secret closes nothing", () async {
+      SharedPreferences.setMockInitialValues(await legacyPrefs());
+      final s = await DoctorSession.load(base, cipher: MemoryCipher());
+      final real = share('Anjali Sharma', ltId: '148209375516');
+      s.inbox.add(real);
+      expect(await s.receive(await sealTo(s, {'type': 'close', 'grantId': real.grantId}, 'c1'), DateTime.now()), isFalse);
+      expect(await s.receive(await sealTo(s, {'type': 'close', 'grantId': real.grantId, 'closeSecret': 'guess'}, 'c2'), DateTime.now()), isFalse);
+      expect(s.inbox, [real]);
+    });
   });
 }

@@ -4,17 +4,22 @@ import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 
+import '../crypto/vault_codec.dart';
 import 'byte_store.dart';
 
 /// [ByteStore] on the local filesystem, honouring the atomicity contract:
 /// temp file → flush → rename.
 ///
 /// File names are a hash of the blob name, so no caller-supplied string can
-/// traverse out of [root] and the directory listing reveals nothing.
+/// traverse out of [root]. The index of names is sealed under [indexKey]
+/// when one is given (the app always gives the device key), so the folder
+/// reveals neither names nor what they say about the profiles on the phone.
 class FileByteStore implements ByteStore {
-  FileByteStore(this.root);
+  FileByteStore(this.root, {this.indexKey});
 
   final Directory root;
+  final SecretKey? indexKey;
+  static const _indexName = 'lifetrack/index';
 
   /// Every write and delete runs one at a time. Unserialised, two saves at
   /// the same moment (a share writes grants, audit and tokens together)
@@ -72,7 +77,19 @@ class FileByteStore implements ByteStore {
   Future<List<String>> names() async {
     final idx = File('${root.path}/index.json');
     if (!await idx.exists()) return [];
-    final text = await idx.readAsString();
+    final raw = await idx.readAsBytes();
+    final key = indexKey;
+    if (key != null && VaultCodec.versionOf(raw) != null) {
+      try {
+        return ((await VaultCodec.open(raw, key, name: _indexName))! as List).cast<String>();
+      } on Object {
+        // A damaged sealed index: names are only a listing, never needed to
+        // read a blob. Start again; the next save rewrites it.
+        return [];
+      }
+    }
+    // A plain index (no key, or written before the index was sealed).
+    final text = utf8.decode(raw, allowMalformed: true);
     try {
       return (jsonDecode(text) as List).cast<String>();
     } on FormatException {
@@ -87,7 +104,8 @@ class FileByteStore implements ByteStore {
     if (add ? !current.add(name) : !current.remove(name)) return;
     final idx = File('${root.path}/index.json');
     final temp = File('${idx.path}.tmp');
-    await temp.writeAsString(jsonEncode(current.toList()), flush: true);
+    final key = indexKey;
+    await temp.writeAsBytes(key == null ? utf8.encode(jsonEncode(current.toList())) : await VaultCodec.seal(current.toList(), key, name: _indexName), flush: true);
     await temp.rename(idx.path);
   }
 }

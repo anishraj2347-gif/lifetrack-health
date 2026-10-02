@@ -53,12 +53,23 @@ class _Session {
   String status = 'pending';
   IdentityAttestation? result;
   String? error;
+
+  /// Shown only in the browser that finished the DigiLocker sign-in; the
+  /// result is released only to whoever types it into the app.
+  String? handback;
+  int wrongCodes = 0;
 }
 
 /// Runs one identity check from start to signed result. The DigiLocker
 /// token, the account id and the documents are used and dropped here: what
 /// leaves is a signed [IdentityAttestation] with a keyed hash in place of
 /// any identifier. Sessions last ten minutes.
+///
+/// The result goes only to the phone that the signed-in person is holding:
+/// the browser page that ends the sign-in shows a hand-back code, and [poll]
+/// releases the attestation only with it. Without that, someone could start
+/// a session, send its link to another person, and collect THAT person's
+/// signed identity when they signed in.
 class IdentityService {
   IdentityService({required this.provider, required this.registryKey, required List<int> hmacSecret, required this.trust, DateTime Function()? clock})
       : _hmacKey = SecretKey(hmacSecret),
@@ -71,6 +82,27 @@ class IdentityService {
   final DateTime Function() clock;
 
   static const sessionLife = Duration(minutes: 10);
+
+  /// Open sessions at once; more are refused until some finish or expire.
+  static const maxSessions = 10000;
+
+  /// Wrong hand-back codes before a session is discarded.
+  static const maxWrongCodes = 5;
+
+  static const _codeAlphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+  /// 8 characters, 40 bits, shown as `XXXX-XXXX`.
+  static String _handback() {
+    final r = Random.secure();
+    final c = List.generate(8, (_) => _codeAlphabet[r.nextInt(32)]).join();
+    return '${c.substring(0, 4)}-${c.substring(4)}';
+  }
+
+  /// As typed: any case, with or without the dash or spaces.
+  static String normaliseCode(String typed) {
+    final c = typed.toUpperCase().replaceAll(RegExp('[^0-9A-Z]'), '').replaceAll('O', '0').replaceAll(RegExp('[IL]'), '1');
+    return c.length == 8 ? '${c.substring(0, 4)}-${c.substring(4)}' : c;
+  }
 
   /// How young a child must be to use a birth certificate instead of their
   /// own Aadhaar (user decision, 1 Oct 2026: newborns only).
@@ -96,6 +128,7 @@ class IdentityService {
   /// Returns (session id, secret, where to send the user).
   Future<(String, String, Uri)> start({required Uri base, required VerifyPurpose purpose, IdentityAttestation? parent}) async {
     _purge();
+    if (_sessions.length >= maxSessions) throw const VerifyRefused('Identity checks are busy. Try again in a few minutes.');
     if (purpose == VerifyPurpose.newborn) {
       if (parent == null || parent.method != IdentityMethod.aadhaarDigiLocker || !await parent.verifies(trust)) {
         throw const VerifyRefused('A newborn is added by a parent whose own profile is verified with Aadhaar.');
@@ -110,17 +143,18 @@ class IdentityService {
   }
 
   /// DigiLocker sent the user back. Records the result or the reason, and
-  /// returns the reason (null when the check succeeded) for the page the
-  /// person sees in the browser.
-  Future<String?> callback({required String state, required String? code, String? error}) async {
+  /// returns what the browser page shows: the reason it failed, or the
+  /// hand-back code to type into the app.
+  Future<({String? refused, String? handback})> callback({required String state, required String? code, String? error}) async {
     _purge();
     final s = _sessions[state];
     if (s == null) throw const VerifyRefused('This verification has expired. Start again in the app.');
+    if (s.status != 'pending') throw const VerifyRefused('This verification has already finished. Start again in the app.');
     if (code == null) {
       s
         ..status = 'error'
-        ..error = error == null ? 'DigiLocker sign-in was cancelled.' : 'DigiLocker said: $error';
-      return s.error;
+        ..error = error == null ? 'DigiLocker sign-in was cancelled.' : 'DigiLocker said: ${error.length > 200 ? error.substring(0, 200) : error}';
+      return (refused: s.error, handback: null);
     }
     try {
       final acct = await provider.finish(code: code, codeVerifier: s.verifier);
@@ -128,13 +162,15 @@ class IdentityService {
         VerifyPurpose.self => await _self(acct),
         VerifyPurpose.newborn => await _newborn(acct, s.parent!),
       };
-      s.status = 'done';
-      return null;
+      s
+        ..status = 'done'
+        ..handback = _handback();
+      return (refused: null, handback: s.handback);
     } on VerifyRefused catch (e) {
       s
         ..status = 'error'
         ..error = e.message;
-      return e.message;
+      return (refused: e.message, handback: null);
     }
   }
 
@@ -175,15 +211,31 @@ class IdentityService {
     ).signedWith(registryKey);
   }
 
-  /// The app collects the result with the session's secret; a finished
+  /// The app collects the result with the session's secret and, once the
+  /// sign-in is done, the hand-back code from the browser page. A finished
   /// session is removed as it is handed over.
-  Future<Map<String, Object?>> poll(String id, String secret) async {
+  ///
+  /// Statuses: `pending`, `awaiting_code` (with `wrong: true` after a wrong
+  /// code), `done`, `error`, `expired`.
+  Future<Map<String, Object?>> poll(String id, String secret, {String? code}) async {
     _purge();
     final s = _sessions[id];
     if (s == null || s.secretHash != await RelayApi.sha256Hex(secret)) return {'status': 'expired'};
     if (s.status == 'pending') return {'status': 'pending'};
+    if (s.status == 'error') {
+      _sessions.remove(id);
+      return {'status': 'error', 'error': s.error};
+    }
+    if (code == null) return {'status': 'awaiting_code'};
+    if (normaliseCode(code) != s.handback) {
+      if (++s.wrongCodes >= maxWrongCodes) {
+        _sessions.remove(id);
+        return {'status': 'error', 'error': 'Too many wrong codes. Start the DigiLocker check again.'};
+      }
+      return {'status': 'awaiting_code', 'wrong': true};
+    }
     _sessions.remove(id);
-    return s.status == 'done' ? {'status': 'done', 'attestation': s.result!.toJson()} : {'status': 'error', 'error': s.error};
+    return {'status': 'done', 'attestation': s.result!.toJson()};
   }
 }
 

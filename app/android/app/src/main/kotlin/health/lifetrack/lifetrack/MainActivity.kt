@@ -148,13 +148,12 @@ class MainActivity : FlutterFragmentActivity() {
             val mime = contentResolver.getType(uri) ?: intent.type ?: continue
             if (!mime.startsWith("image/") && mime != "application/pdf") continue
             val bytes = try {
-                contentResolver.openInputStream(uri)?.use { s ->
-                    val data = s.readBytes()
-                    if (data.size > MAX_BYTES) null else data
-                }
+                contentResolver.openInputStream(uri)?.use { s -> readAtMost(s, MAX_BYTES) }
             } catch (e: Exception) {
                 null
             } ?: continue
+            val held = pending.sumOf { (it["bytes"] as ByteArray).size }
+            if (held + bytes.size > MAX_HELD) continue
             pending.add(mapOf("mime" to mime, "bytes" to bytes))
         }
         // Handled once: a rotation must not deliver the same files again.
@@ -172,8 +171,22 @@ class MainActivity : FlutterFragmentActivity() {
         (if (Build.VERSION.SDK_INT >= 33) intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
         else intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)) ?: emptyList()
 
+    /** The stream's bytes, or null once it passes [max] — read in chunks, so
+     *  a sending app cannot make LifeTrack hold an endless stream in memory. */
+    private fun readAtMost(s: java.io.InputStream, max: Int): ByteArray? {
+        val out = java.io.ByteArrayOutputStream()
+        val buf = ByteArray(64 * 1024)
+        while (true) {
+            val n = s.read(buf)
+            if (n < 0) return out.toByteArray()
+            if (out.size() + n > max) return null
+            out.write(buf, 0, n)
+        }
+    }
+
     companion object {
         const val MAX_FILES = 12
         const val MAX_BYTES = 25 * 1024 * 1024
+        const val MAX_HELD = 60 * 1024 * 1024
     }
 }

@@ -221,14 +221,14 @@ void main() {
       final (id, _) = await register();
       final r = await json(await call('GET', '/v1/ids/${LifeTrackId.display(id)}'));
       expect(r.keys.toSet(), {'id', 'mailbox', 'key'});
-      expect((await call('POST', '/v1/ids', body: {'id': id, 'mailbox': 'p-${'b' * 64}', 'key': key, 'tokenHash': 'x'})).statusCode, 409);
+      expect((await call('POST', '/v1/ids', body: {'id': id, 'mailbox': 'p-${'b' * 64}', 'key': key, 'tokenHash': 'f' * 64})).statusCode, 409);
     });
 
     test('a mistyped ID is refused before any lookup', () async {
       final (id, _) = await register();
       final wrong = id.replaceRange(5, 6, id[5] == '0' ? '1' : '0');
       expect((await call('GET', '/v1/ids/$wrong')).statusCode, 404);
-      expect((await call('POST', '/v1/ids', body: {'id': '234567890123', 'mailbox': 'p-${'a' * 64}', 'key': key, 'tokenHash': 'x'})).statusCode, 400);
+      expect((await call('POST', '/v1/ids', body: {'id': '234567890123', 'mailbox': 'p-${'a' * 64}', 'key': key, 'tokenHash': 'f' * 64})).statusCode, 400);
     });
 
     test('only the owning phone can move or delete it', () async {
@@ -241,6 +241,149 @@ void main() {
       expect((await call('DELETE', '/v1/ids/$id')).statusCode, 403);
       expect((await json(await call('DELETE', '/v1/ids/$id', headers: {RelayApi.hIdToken: token})))['deleted'], true);
       expect((await call('GET', '/v1/ids/$id')).statusCode, 404);
+    });
+  });
+
+  group('hardening', () {
+    Future<Response> enrol(SimpleKeyPair e, SimpleKeyPair s) async => call('POST', '/v1/doctors', body: {
+          'registrationNo': 'DMC-12345',
+          'name': 'Dr. R. Mehta',
+          'speciality': 'Cardiology',
+          'council': 'Delhi Medical Council',
+          'encryptionKey': base64Encode((await e.extractPublicKey()).bytes),
+          'signingKey': base64Encode((await s.extractPublicKey()).bytes),
+        });
+    Future<Map<String, String>> signed(String qr, String mailbox, {SimpleKeyPair? key}) =>
+        RelayApi.doctorPickupHeaders(certificateQr: qr, signingKey: key ?? sign, mailbox: mailbox, at: now);
+    Map<String, String> expires() => {RelayApi.hExpires: now.add(const Duration(hours: 1)).toIso8601String()};
+    Future<Handler> fresh({RelayStore? relayStore}) async => LifeTrackApi(
+          registry: await DoctorRegistry.open(signingKey: await Ed25519().newKeyPair()),
+          relay: relayStore ?? RelayStore(),
+          vault: VaultStore(vaultDir),
+          ids: await IdRegistry.open(),
+          adminToken: admin,
+          clock: () => now,
+        ).handler;
+
+    test('keys waiting for review cannot be swapped by a second enrolment', () async {
+      expect((await enrol(enc, sign)).statusCode, 202);
+      final first = (await json(await call('GET', '/v1/doctors/DMC-12345')))['keyId'];
+      final r = await enrol(await X25519().newKeyPair(), await Ed25519().newKeyPair());
+      expect(r.statusCode, 409);
+      expect((await json(await call('GET', '/v1/doctors/DMC-12345')))['keyId'], first);
+    });
+
+    test('after a revocation, re-enrolling the same number never revives the old certificate', () async {
+      final oldQr = await enrolAndApprove();
+      final mailbox = await RelayApi.doctorMailbox((await enc.extractPublicKey()).bytes);
+      await call('POST', '/v1/admin/doctors/DMC-12345/revoke', headers: {RelayApi.hAdmin: admin});
+      // Someone enrols the number again with other keys — pending, then approved.
+      expect((await enrol(await X25519().newKeyPair(), await Ed25519().newKeyPair())).statusCode, 202);
+      expect((await call('GET', '/v1/relay/$mailbox', headers: await signed(oldQr, mailbox))).statusCode, 403, reason: 'pending re-enrolment');
+      await call('POST', '/v1/admin/doctors/DMC-12345/approve', headers: {RelayApi.hAdmin: admin});
+      expect((await call('GET', '/v1/relay/$mailbox', headers: await signed(oldQr, mailbox))).statusCode, 403, reason: 'other keys approved');
+    });
+
+    test('certificates are short-lived and renewed when the doctor asks', () async {
+      final qr = await enrolAndApprove();
+      final c = DoctorCertificate.decode(qr);
+      expect(c.expiresAt.difference(c.issuedAt), DoctorRegistry.certificateLifetime);
+      expect(DoctorRegistry.certificateLifetime, lessThanOrEqualTo(const Duration(days: 30)));
+      expect((await json(await call('GET', '/v1/doctors/DMC-12345')))['certificate'], qr, reason: 'not near expiry yet');
+      now = now.add(const Duration(days: 25));
+      final renewed = DoctorCertificate.decode((await json(await call('GET', '/v1/doctors/DMC-12345')))['certificate']! as String);
+      expect(renewed.expiresAt, now.add(DoctorRegistry.certificateLifetime));
+      expect(renewed.encryptionKey, c.encryptionKey);
+    });
+
+    test('a signed pickup cannot be replayed', () async {
+      final qr = await enrolAndApprove();
+      final mailbox = await RelayApi.doctorMailbox((await enc.extractPublicKey()).bytes);
+      final h0 = await signed(qr, mailbox);
+      expect((await call('GET', '/v1/relay/$mailbox', headers: h0)).statusCode, 200);
+      await call('PUT', '/v1/relay/$mailbox/g1', body: Uint8List.fromList([1]), headers: expires());
+      expect((await call('GET', '/v1/relay/$mailbox', headers: h0)).statusCode, 403);
+      expect(relay.countIn(mailbox), 1, reason: 'the replay took nothing');
+      final noNonce = {...h0}..remove(RelayApi.hNonce);
+      expect((await call('GET', '/v1/relay/$mailbox', headers: noNonce)).statusCode, 403);
+    });
+
+    test('a deposit never replaces one already waiting under the same id', () async {
+      final qr = await enrolAndApprove();
+      final mailbox = await RelayApi.doctorMailbox((await enc.extractPublicKey()).bytes);
+      await call('PUT', '/v1/relay/$mailbox/g1', body: Uint8List.fromList([1]), headers: expires());
+      await call('PUT', '/v1/relay/$mailbox/g1', body: Uint8List.fromList([2]), headers: expires());
+      final items = (await json(await call('GET', '/v1/relay/$mailbox', headers: await signed(qr, mailbox))))['items']! as List;
+      expect([for (final i in items) base64Decode((i as Map)['envelope']! as String).single], [1, 2]);
+    });
+
+    test('a full mailbox refuses more instead of growing without end', () async {
+      final api = await fresh(relayStore: RelayStore(maxItemsPerMailbox: 2));
+      Future<int> put(String g) async =>
+          (await api(Request('PUT', Uri.parse('http://localhost/v1/relay/d-${'a' * 16}/$g'), body: Uint8List.fromList([1]), headers: expires()))).statusCode;
+      expect([await put('a'), await put('b'), await put('c')], [201, 201, 507]);
+    });
+
+    test('wrong proofs on replace and delete count towards the lockout, and the server keeps only a hash', () async {
+      const acct = 'LT-7KQM2-XPA9D';
+      final verifier = base64Encode(List.filled(32, 2));
+      final entry = {'salt': base64Encode(List.filled(16, 1)), 'verifier': verifier, 'wrappedDataKey': base64Encode(List.filled(60, 3)), 'blob': base64Encode(List.filled(100, 4))};
+      await call('PUT', '/v1/vault/$acct', body: entry);
+      expect(File('${vaultDir.path}/$acct.json').readAsStringSync(), isNot(contains(verifier)));
+      for (var i = 0; i < 5; i++) {
+        expect((await call('PUT', '/v1/vault/$acct', body: entry, headers: {RelayApi.hVerifier: 'guess$i'})).statusCode, 403);
+        expect((await call('DELETE', '/v1/vault/$acct', headers: {RelayApi.hVerifier: 'guess$i'})).statusCode, 403);
+      }
+      expect((await call('DELETE', '/v1/vault/$acct', headers: {RelayApi.hVerifier: verifier})).statusCode, 429);
+      // The count survives a restart.
+      final restarted = await fresh();
+      final r = await restarted(Request('POST', Uri.parse('http://localhost/v1/vault/$acct/open'), body: jsonEncode({'verifier': verifier})));
+      expect(r.statusCode, 429);
+    });
+
+    test('a backup stored before hashing still opens, and is rewritten hashed', () async {
+      const acct = 'LT-7KQM2-XPA9E';
+      final verifier = base64Encode(List.filled(32, 2));
+      File('${vaultDir.path}/$acct.json')
+          .writeAsStringSync(jsonEncode({'salt': 'AA==', 'verifier': verifier, 'wrappedDataKey': 'AA==', 'blob': 'AA==', 'updatedAt': now.toIso8601String()}));
+      expect((await call('POST', '/v1/vault/$acct/open', body: {'verifier': verifier})).statusCode, 200);
+      final stored = File('${vaultDir.path}/$acct.json').readAsStringSync();
+      expect(stored, isNot(contains(verifier)));
+      expect(stored, contains('verifierHash'));
+      expect((await call('POST', '/v1/vault/$acct/open', body: {'verifier': verifier})).statusCode, 200);
+    });
+
+    test('web pages on other sites, and rebinding host names, are refused', () async {
+      expect((await call('GET', '/v1/health', headers: {'origin': 'https://evil.example'})).statusCode, 403);
+      final ok = await call('GET', '/v1/health', headers: {'origin': 'http://localhost:5173'});
+      expect(ok.statusCode, 200);
+      expect(ok.headers['access-control-allow-origin'], 'http://localhost:5173');
+      expect((await call('GET', '/v1/health')).headers.containsKey('access-control-allow-origin'), isFalse);
+      expect((await h(Request('GET', Uri.parse('http://evil.example:8787/v1/health')))).statusCode, 421);
+    });
+
+    test('the admin token is required on every admin route, and a bad reject body is not a crash', () async {
+      await enrol(enc, sign);
+      expect((await call('POST', '/v1/admin/doctors/DMC-12345/reject', body: {'reason': 'x'}, headers: {RelayApi.hAdmin: 'admin-secreT'})).statusCode, 401);
+      final r = await h(Request('POST', Uri.parse('http://localhost/v1/admin/doctors/DMC-12345/reject'), body: 'not json', headers: {RelayApi.hAdmin: admin}));
+      expect(r.statusCode, 200);
+      expect((await call('POST', '/v1/admin/doctors/NOPE-1/revoke', headers: {RelayApi.hAdmin: admin})).statusCode, 404);
+    });
+
+    test('ID lookups are rate-limited, so the number space cannot be walked', () async {
+      final codes = <int>[];
+      for (var i = 0; i < 61; i++) {
+        codes.add((await call('GET', '/v1/ids/${LifeTrackId.generate()}')).statusCode);
+      }
+      expect(codes.take(60).toSet(), {404});
+      expect(codes.last, 429);
+      now = now.add(const Duration(minutes: 1));
+      expect((await call('GET', '/v1/ids/${LifeTrackId.generate()}')).statusCode, 404);
+    });
+
+    test('oversized bodies are refused before they are read whole', () async {
+      expect((await call('POST', '/v1/ids', body: {'id': 'x' * (LifeTrackApi.maxJson + 1)})).statusCode, 400);
+      expect((await call('PUT', '/v1/relay/d-${'a' * 16}/g', body: Uint8List(LifeTrackApi.maxShare + 1), headers: expires())).statusCode, 413);
     });
   });
 }

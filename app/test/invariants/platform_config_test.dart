@@ -77,7 +77,8 @@ void main() {
   });
 
   test('dependencies are the allowlist — only http can reach the network', () {
-    final pubspec = File('pubspec.yaml').readAsStringSync();
+    // A Windows checkout has CRLF line ends; the pattern below expects LF.
+    final pubspec = File('pubspec.yaml').readAsStringSync().replaceAll('\r\n', '\n');
     final deps = RegExp(r'^dependencies:\n((?:  .*\n|\s*\n|  #.*\n)*)', multiLine: true).firstMatch(pubspec)!.group(1)!;
     final names = RegExp(r'^  ([a-z_]+):', multiLine: true).allMatches(deps).map((m) => m.group(1)).toSet();
     expect(names, {'flutter', 'cupertino_icons', 'cryptography', 'path_provider', 'flutter_secure_storage', 'lucide_icons_flutter', 'lifetrack_protocol', 'http', 'flutter_zxing', 'image_picker', 'image', 'qr_flutter', 'local_auth', 'archive', 'share_plus', 'url_launcher', 'flutter_local_notifications', 'timezone', 'flutter_timezone', 'file_picker', 'printing'});

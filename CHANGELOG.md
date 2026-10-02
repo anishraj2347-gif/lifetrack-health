@@ -6,6 +6,39 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.18.1 (3 Oct 2026) — security
+- **DigiLocker check needs the hand-back code**: the page that ends the sign-in shows an
+  8-character code; the result is released only to the app it is typed into. Before, someone
+  could start a check, send its link to another person, and collect THAT person's signed
+  identity when they signed in. Five wrong codes end the check.
+- **Family links are proven**: accepting an invite makes a link secret, sent sealed to the
+  inviter only; every update and unlink must carry it. Someone who saw the invite code (often
+  sent over a chat app) can no longer send a fake Emergency ID or medicines, or unlink. Both
+  phones show a safety code for the link. What a linked phone sends is cut to the Emergency ID
+  fields (bounded) and at most 50 medicine names. Links made before 1.18.1 must be made again.
+- **Revoked doctors refused while online**: before a scan, a share, a prescription or an access
+  request is accepted, the phone asks the registry whether the doctor is still approved with
+  the same keys. Offline, the certificate decides — and certificates now last 30 days, not 365.
+- **No screen lock, no records**: on a phone with no PIN, pattern, fingerprint or face lock the
+  app asks for one instead of opening straight in (the Emergency ID stays one tap away). Demo
+  builds still open.
+- **Storage**: every sealed blob is bound to its name (AES-GCM associated data, frame v2), so a
+  blob copied under another name — or a page moved to another record — no longer opens; older
+  blobs are rewritten bound the first time they are read. The index of names is sealed too.
+- Files shared to LifeTrack are read in bounded chunks (25 MB each, 60 MB held at once) instead
+  of whole before the size check.
+- Plane C: a result whose unit is not a known unit stays home (a unit field is free text).
+- Refused inbox messages name their reason in the access log.
+- **Server**: enrolments waiting for review cannot be replaced; revocation follows the keys
+  (re-enrolling a number never revives an old certificate); certificates renew automatically;
+  signed pickups carry a one-time nonce; a relay deposit never replaces another; mailbox and
+  relay sizes are bounded; per-client rate limits (ID lookups 60/min, enrolments 10/hour, …);
+  body sizes capped before reading; backups keep only a hash of the password verifier and
+  wrong proofs on replace and delete count towards the 10/hour lockout, which survives a
+  restart; browsers may call only from loopback pages or `--allow-origin`s, and only under
+  loopback Host names or `--public-base` (no DNS rebinding); admin token compared in constant
+  time; bad admin bodies are 4xx, not crashes.
+
 ### 1.18.0 (2 Oct 2026)
 - **Light/dark in one tap**: a sun/moon button beside the tab bar on every main screen
   switches between light and dark, and remembers. "Follow phone" stays on Me → Appearance.
@@ -124,6 +157,21 @@ always goes up (Android refuses to install a lower one).
 - Rebuilt phase-2 app: records, insights, consent, clinical sharing with verified doctors.
 
 ## Doctor web app
+
+### 1.4.1 (3 Oct 2026) — security
+- **Shares are checked against the patient's LifeTrack ID**: a share is filed under its ID only
+  when the registry has that ID registered to the key the share asks replies to go to. Anything
+  else is shown as "(identity not confirmed)" and kept apart, so a forged share can no longer
+  replace a real patient's open share or receive the prescription written for them.
+- One item that cannot be opened no longer loses the rest of a pickup.
+- Close messages need the patient's secret (a missing one no longer matches).
+- **Key fingerprint** on the waiting screen, to read back to the reviewer before approval.
+- Certificates (now 30 days) are renewed automatically; a number approved for another device
+  stops this one.
+- **Android**: opens behind the phone's lock (fingerprint, face or PIN; a phone with no screen
+  lock is asked to set one, except in `LT_DEMO_TOOLS` builds), relocks after a minute away;
+  FLAG_SECURE always on; cloud backup and device transfer refused.
+- Pickups are signed with a one-time nonce.
 
 ### 1.4.0 (1 Oct 2026)
 - **Dark mode**: My code → Appearance (Follow device, Light, Dark). The verified QR stays black

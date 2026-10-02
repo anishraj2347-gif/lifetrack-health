@@ -23,8 +23,9 @@ class ShareReceipt {
   final Set<DataClass> withheld;
 }
 
-class PrescriptionRejected implements Exception {
+class PrescriptionRejected implements MessageRefused {
   const PrescriptionRejected(this.reason);
+  @override
   final String reason;
   @override
   String toString() => 'PrescriptionRejected: $reason';
@@ -47,8 +48,17 @@ class ClinicalShareService {
     this.originals,
     this.shrink,
     this.lifeTrackIdOf,
+    this.doctors = const UnknownDoctorStatus(),
     WithdrawTokenStore? keyBook,
   }) : keyBook = keyBook ?? InMemoryWithdrawTokens();
+
+  /// Asked before anything goes to a doctor or is taken from one: a doctor
+  /// revoked since their certificate was issued is refused while online.
+  final DoctorStatus doctors;
+
+  Future<void> _stillApproved(DoctorCertificate cert) async {
+    if (await doctors.stillApproved(cert) == false) throw const CertificateRejected(CertificateProblem.revoked);
+  }
 
   /// The patient's LifeTrack ID, sent with a share so the doctor can ask for
   /// access again later (#17a); the patient still approves every request.
@@ -81,7 +91,11 @@ class ClinicalShareService {
 
   /// Step 1 — the patient scans the doctor's code. Throws
   /// [CertificateRejected] with a patient-readable reason.
-  Future<DoctorCertificate> scan(String qr, DateTime at) => trust.verify(qr, at);
+  Future<DoctorCertificate> scan(String qr, DateTime at) async {
+    final cert = await trust.verify(qr, at);
+    await _stillApproved(cert);
+    return cert;
+  }
 
   /// Step 2 — the patient approves [levels] (optionally narrowed by
   /// [filter]) for this doctor. [requested] is what the doctor asked for, so
@@ -99,6 +113,7 @@ class ClinicalShareService {
   }) async {
     if (levels.isEmpty) throw ArgumentError('Pick at least one level.');
     if (!at.isBefore(doctor.expiresAt)) throw const CertificateRejected(CertificateProblem.expired);
+    await _stillApproved(doctor);
     final patient = repository.patient(patientId)!;
     final keyId = await doctor.keyId();
     final mailbox = await RelayApi.doctorMailbox(doctor.encryptionKey);
@@ -308,7 +323,7 @@ class ClinicalShareService {
           actorId: 'relay',
           patientId: patientId,
           action: AuditAction.denied,
-          detail: 'A message was refused: ${e is PrescriptionRejected ? e.reason : e is CertificateRejected ? e.patientMessage : 'it could not be opened'}',
+          detail: 'A message was refused: ${e is MessageRefused ? e.reason : e is CertificateRejected ? e.patientMessage : e is StateError ? e.message : 'it could not be opened'}',
         ));
       }
     }
@@ -332,6 +347,7 @@ class ClinicalShareService {
     required DateTime at,
   }) async {
     final cert = await trust.verify(doctorCertificateQr, at);
+    await _stillApproved(cert);
     if (cert.registryId != rx.doctorRegistryId || cert.registrationNo != rx.registrationNo) {
       throw const PrescriptionRejected('The prescription and the doctor certificate do not match.');
     }

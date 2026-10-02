@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 
+import 'lock.dart';
 import 'patients.dart';
 import 'session.dart';
 import 'theme.dart';
@@ -70,7 +71,7 @@ class _DoctorAppState extends State<DoctorApp> with WidgetsBindingObserver {
     theme: DT.theme(),
     home: FutureBuilder<DoctorSession>(
       future: _session,
-      builder: (c, s) => s.hasData ? Shell(session: s.data!) : Scaffold(body: Center(child: CircularProgressIndicator())),
+      builder: (c, s) => LockGate(child: s.hasData ? Shell(session: s.data!) : Scaffold(body: Center(child: CircularProgressIndicator()))),
     ),
   );
 }
@@ -103,6 +104,7 @@ class _ShellState extends State<Shell> {
   Future<void> _tick() async {
     try {
       if (s.state == EnrolmentState.pending) await s.refreshStatus();
+      if (s.state == EnrolmentState.approved) await s.renewIfDue(DateTime.now());
       if (s.state == EnrolmentState.approved && s.certificateQr != null) await s.pickUp();
       await s.closeExpired(DateTime.now());
       if (s.closedByPatient.isNotEmpty && mounted) {
@@ -142,6 +144,14 @@ class _ShellState extends State<Shell> {
             Text(s.note ?? 'A LifeTrack reviewer checks your registration with your medical council before you can see any patient record.', style: DT.muted),
             SizedBox(height: 16),
             Text('${s.profile['name']} · ${s.registrationNo} · ${s.profile['council']}', style: DT.body),
+            if (s.state == EnrolmentState.pending && s.keyFingerprint != null) ...[
+              SizedBox(height: 16),
+              Text('Your device key', style: DT.muted),
+              SizedBox(height: 4),
+              SelectableText(s.keyFingerprint!, style: DT.h2.copyWith(fontFeatures: const [FontFeature.tabularFigures()], letterSpacing: 1.5)),
+              SizedBox(height: 4),
+              Text('The reviewer will call you and read a key like this. Approve only if it matches — otherwise someone else enrolled with your number.', style: DT.muted),
+            ],
             SizedBox(height: 20),
             Row(
               children: [

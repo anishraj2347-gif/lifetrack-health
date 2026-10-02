@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:lifetrack_server/api.dart';
+import 'package:lifetrack_server/guards.dart';
 import 'package:lifetrack_server/registry.dart';
 import 'package:lifetrack_server/relay_store.dart';
 import 'package:lifetrack_server/vault_store.dart';
@@ -17,6 +18,11 @@ import 'package:shelf/shelf_io.dart' as io;
 /// reach it. The phone reaches it over USB with `adb reverse tcp:8787 tcp:8787`.
 ///
 ///   dart run bin/server.dart [--port 8787] [--data data]
+///       [--public-base https://lifetrack.example] [--allow-origin https://doctor.example]
+///
+/// Browsers may call it only from loopback pages and `--allow-origin`s, and
+/// only under loopback Host names or the host of `--public-base` (refusing
+/// DNS-rebinding pages).
 Future<void> main(List<String> args) async {
   final port = int.parse(_arg(args, '--port') ?? '8787');
   final dataDir = Directory(_arg(args, '--data') ?? 'data');
@@ -42,8 +48,21 @@ Future<void> main(List<String> args) async {
           trust: RegistryTrust([await signingKey.extractPublicKey()]),
         )
       : null;
-  final api = LifeTrackApi(registry: registry, relay: relay, vault: VaultStore(Directory('${dataDir.path}/vault')), ids: await IdRegistry.open(file: File('${dataDir.path}/ids.json')), adminToken: adminToken,
-      identity: identity, requireIdentity: args.contains('--require-identity'));
+  final publicBase = _arg(args, '--public-base') == null ? null : Uri.parse(_arg(args, '--public-base')!);
+  final api = LifeTrackApi(
+    registry: registry,
+    relay: relay,
+    vault: VaultStore(Directory('${dataDir.path}/vault')),
+    ids: await IdRegistry.open(file: File('${dataDir.path}/ids.json')),
+    adminToken: adminToken,
+    identity: identity,
+    requireIdentity: args.contains('--require-identity'),
+    publicBase: publicBase,
+    origins: OriginPolicy(
+      publicHosts: {?publicBase?.host},
+      allowedOrigins: {for (var i = 0; i < args.length - 1; i++) if (args[i] == '--allow-origin') args[i + 1]},
+    ),
+  );
   final server = await io.serve(api.handler, InternetAddress.loopbackIPv4, port);
   final pub = base64Encode((await signingKey.extractPublicKey()).bytes);
   stdout

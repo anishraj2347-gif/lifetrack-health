@@ -10,6 +10,9 @@ import 'widgets/parts.dart';
 /// Covers the app with the phone's own lock when it opens, and again when it
 /// comes back after [relockAfter] in the background. The Emergency ID stays
 /// one tap away, because that is what it is for.
+///
+/// A phone with no screen lock is asked to set one: the records do not open
+/// on a phone anyone can pick up. Demo builds (LT_DEMO_TOOLS) still open.
 class AppLockGate extends StatefulWidget {
   const AppLockGate({super.key, required this.unlocker, required this.child, this.relockAfter = const Duration(minutes: 1)});
   final Unlocker unlocker;
@@ -35,11 +38,14 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    widget.unlocker.available().then((a) {
-      if (!mounted) return;
-      setState(() => _available = a);
-      if (a && _enabled) _ask();
-    });
+    _check();
+  }
+
+  Future<void> _check() async {
+    final a = await widget.unlocker.available();
+    if (!mounted) return;
+    setState(() => _available = a);
+    if (a && _enabled && _locked) _ask();
   }
 
   @override
@@ -58,7 +64,9 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
     } else if (state == AppLifecycleState.resumed) {
       final away = _leftAt == null ? Duration.zero : now.difference(_leftAt!);
       _leftAt = null;
-      if (_available == true && _enabled && !_locked && away >= widget.relockAfter) {
+      if (_available == false) {
+        _check(); // they may have just set a screen lock in Settings
+      } else if (_available == true && _enabled && !_locked && away >= widget.relockAfter) {
         // Screens pushed over the home would otherwise stay on top of the lock.
         Navigator.of(context).popUntil((r) => r.isFirst);
         setState(() => _locked = true);
@@ -81,6 +89,9 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     if (_available == null) return Scaffold();
+    if (!_available! && _enabled && !AppScope.of(context).demoTools) {
+      return _LockScreen(asking: false, onUnlock: _check, noScreenLock: true);
+    }
     if (!_available! || !_enabled || !_locked) {
       return _Scope(control: AppLockControl._(this), child: widget.child);
     }
@@ -89,9 +100,12 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
 }
 
 class _LockScreen extends StatelessWidget {
-  const _LockScreen({required this.asking, required this.onUnlock});
+  const _LockScreen({required this.asking, required this.onUnlock, this.noScreenLock = false});
   final bool asking;
   final VoidCallback onUnlock;
+
+  /// The phone has no screen lock: say so, and check again on tap.
+  final bool noScreenLock;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -102,11 +116,17 @@ class _LockScreen extends StatelessWidget {
               Spacer(),
               IconTile(LucideIcons.lock, color: LT.onAccent, background: LT.accent),
               SizedBox(height: 20),
-              Text('LifeTrack is locked', style: TextStyle(fontFamily: LT.body, fontSize: 24, fontWeight: FontWeight.w600, color: LT.ink)),
+              Text(noScreenLock ? 'Set a screen lock first' : 'LifeTrack is locked',
+                  textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.body, fontSize: 24, fontWeight: FontWeight.w600, color: LT.ink)),
               SizedBox(height: 8),
-              Text('Use your fingerprint, face or phone PIN.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: LT.ink3)),
+              Text(
+                  noScreenLock
+                      ? "This phone has no PIN, pattern, fingerprint or face lock, so anyone holding it could read your records. Set one in the phone's settings, then come back."
+                      : 'Use your fingerprint, face or phone PIN.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: LT.ink3)),
               Spacer(),
-              SlabButton('Unlock', icon: LucideIcons.lockOpen, onPressed: asking ? null : onUnlock),
+              SlabButton(noScreenLock ? 'Check again' : 'Unlock', icon: LucideIcons.lockOpen, onPressed: asking ? null : onUnlock),
               SizedBox(height: 12),
               SlabButton('Emergency ID', icon: LucideIcons.heartPulse, variant: ButtonVariant.outline, onPressed: () {
                 Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => EmergencyScreen(fromLockScreen: true)));

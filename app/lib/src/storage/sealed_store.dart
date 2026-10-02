@@ -13,14 +13,18 @@ class SealedStore {
   final ByteStore bytes;
   final SecretKey key;
 
+  /// Each blob is sealed bound to its [name] (frame version 2). A blob
+  /// written before that is read once and rewritten bound.
   Future<Object?> read(String name) async {
     final frame = await bytes.read(name);
     if (frame == null) return null;
-    return VaultCodec.open(frame, key);
+    final body = await VaultCodec.open(frame, key, name: name);
+    if (VaultCodec.versionOf(frame) == 1) await write(name, body);
+    return body;
   }
 
   Future<void> write(String name, Object? body) async =>
-      bytes.write(name, await VaultCodec.seal(body, key));
+      bytes.write(name, await VaultCodec.seal(body, key, name: name));
 
   Future<void> delete(String name) => bytes.delete(name);
 }

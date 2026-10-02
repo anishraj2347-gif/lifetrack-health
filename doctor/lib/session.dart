@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:cryptography/dart.dart';
 import 'package:http/http.dart' as http;
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,19 +16,33 @@ import 'store/local_cipher.dart';
 /// expiry or when the patient ends access. The doctor keeps their own consult note and any
 /// prescription they write — not the patient's shared records.
 class ReceivedShare {
-  ReceivedShare({required this.grantId, required this.bundle, required this.expiresAt, required this.receivedAt});
+  ReceivedShare({required this.grantId, required this.bundle, required this.expiresAt, required this.receivedAt, this.verified = false});
   final String grantId;
   final Map<String, Object?> bundle;
   final DateTime expiresAt;
   final DateTime receivedAt;
 
-  Map<String, Object?> get patient => (bundle['patient'] as Map?)?.cast() ?? {};
-  String get patientName => patient['name'] as String? ?? 'Patient';
+  /// True when the LifeTrack ID in the share is registered to the very key
+  /// the share asks replies to go to — i.e. it came from that person's
+  /// phone. Anyone can seal a "share" to this device's public key and write
+  /// any name and ID into it; only a confirmed one is filed under that ID.
+  final bool verified;
 
-  /// The same person across shares: their LifeTrack ID if sent, else the
-  /// reply mailbox their phone keeps for them.
-  String get patientKey =>
-      (patient['lifeTrackId'] as String?) ?? ((bundle['replyTo'] as Map?)?['mailbox'] as String?) ?? 'name:$patientName';
+  Map<String, Object?> get patient => (bundle['patient'] as Map?)?.cast() ?? {};
+  String get _name => patient['name'] as String? ?? 'Patient';
+  String get patientName => verified ? _name : '$_name (identity not confirmed)';
+
+  /// The LifeTrack ID, only when confirmed.
+  String? get lifeTrackId => verified ? patient['lifeTrackId'] as String? : null;
+
+  String get replyKey => ((bundle['replyTo'] as Map?)?['key'] as String?) ?? '';
+
+  /// The same person across shares: their confirmed LifeTrack ID, else the
+  /// key their phone receives replies with (which nobody else can use).
+  String get patientKey => lifeTrackId ?? 'key:${keyTag(replyKey)}';
+
+  static String keyTag(String key) =>
+      const DartSha256().hashSync(utf8.encode(key)).bytes.take(8).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
   String get patientLine => [
         if (patient['sex'] == 'female') 'F' else if (patient['sex'] == 'male') 'M',
@@ -130,7 +145,7 @@ class DoctorSession {
         name: sh.patientName,
         sex: sh.patient['sex'] as String?,
         age: sh.patient['age'] as int?,
-        lifeTrackId: sh.patient['lifeTrackId'] as String?,
+        lifeTrackId: sh.lifeTrackId,
         firstSeen: sh.receivedAt,
         lastShared: sh.receivedAt,
         levels: levels,
@@ -140,7 +155,7 @@ class DoctorSession {
         ..name = sh.patientName
         ..sex = sh.patient['sex'] as String? ?? p.sex
         ..age = sh.patient['age'] as int? ?? p.age
-        ..lifeTrackId = sh.patient['lifeTrackId'] as String? ?? p.lifeTrackId
+        ..lifeTrackId = sh.lifeTrackId ?? p.lifeTrackId
         ..lastShared = sh.receivedAt
         ..shares += 1
         ..levels = levels;
@@ -223,6 +238,7 @@ class DoctorSession {
       s.profile = (jsonDecode(await s._get(_kProfile) ?? '{}') as Map).cast();
       s.certificateQr = await s._get(_kCert);
       s.state = s.certificateQr != null ? EnrolmentState.approved : EnrolmentState.pending;
+      await s._fingerprint();
       await s._loadPractice();
       await s._restoreInbox();
     }
@@ -230,6 +246,37 @@ class DoctorSession {
   }
 
   String get registrationNo => profile['registrationNo'] ?? '';
+
+  /// This device's key fingerprint, as the registry shows it to the
+  /// reviewer: `1a2b 3c4d 5e6f 7a8b`. The doctor reads it back when the
+  /// reviewer calls, so nobody else's keys get approved in their name.
+  String? keyFingerprint;
+
+  Future<void> _fingerprint() async {
+    final id = await RelayApi.keyId((await enc!.extractPublicKey()).bytes);
+    keyFingerprint = [for (var i = 0; i < id.length; i += 4) id.substring(i, i + 4)].join(' ');
+  }
+
+  DateTime? _lastRenewCheck;
+
+  /// Certificates last 30 days. Asks the registry for a renewed one when
+  /// fewer than 10 days are left (at most hourly), and learns of a
+  /// revocation the same way.
+  Future<void> renewIfDue(DateTime now) async {
+    final qr = certificateQr;
+    if (qr == null) return;
+    final last = _lastRenewCheck;
+    if (last != null && now.difference(last) < const Duration(hours: 1)) return;
+    DateTime? expires;
+    try {
+      expires = DoctorCertificate.decode(qr).expiresAt;
+    } on Object {
+      expires = null;
+    }
+    if (expires != null && expires.difference(now) > const Duration(days: 10)) return;
+    _lastRenewCheck = now;
+    await refreshStatus();
+  }
 
   Future<void> enrol({required String name, required String speciality, required String council, required String registrationNo}) async {
     final e = await X25519().newKeyPair();
@@ -254,6 +301,7 @@ class DoctorSession {
     await _set(_kSign, base64Encode(await s.extractPrivateKeyBytes()));
     await _set(_kProfile, jsonEncode(profile));
     state = EnrolmentState.pending;
+    await _fingerprint();
   }
 
   /// Asks the registry whether the licence check is done.
@@ -262,17 +310,29 @@ class DoctorSession {
     if (r.statusCode != 200) return;
     final j = (jsonDecode(r.body) as Map).cast<String, Object?>();
     note = j['note'] as String?;
-    state = EnrolmentState.values.byName(j['status']! as String);
-    if (state == EnrolmentState.approved) {
-      certificateQr = j['certificate'] as String?;
-      if (certificateQr != null) await _set(_kCert, certificateQr!);
+    final next = EnrolmentState.values.byName(j['status']! as String);
+    final cert = j['certificate'] as String?;
+    // The registry's approval is for one set of keys. If it now names other
+    // keys, this device's certificate is no longer valid for this number.
+    if (next == EnrolmentState.approved && cert != null) {
+      final mine = (await enc!.extractPublicKey()).bytes;
+      final theirs = DoctorCertificate.decode(cert).encryptionKey;
+      if (base64Encode(mine) != base64Encode(theirs)) {
+        state = EnrolmentState.revoked;
+        note = 'Your registration number was approved for another device. Contact LifeTrack.';
+        return;
+      }
+      certificateQr = cert;
+      await _set(_kCert, cert);
     }
+    state = next;
   }
 
   Future<String> mailbox() async => RelayApi.doctorMailbox((await enc!.extractPublicKey()).bytes);
 
   /// Picks up every share waiting for this device; each is deleted from the
-  /// relay as it is handed over.
+  /// relay as it is handed over. An item that cannot be opened is dropped on
+  /// its own — it never costs the shares that came with it.
   Future<int> pickUp() async {
     final mb = await mailbox();
     final now = DateTime.now();
@@ -283,39 +343,70 @@ class DoctorSession {
     if (r.statusCode != 200) throw Exception((jsonDecode(r.body) as Map)['error'] ?? 'Pickup failed (${r.statusCode}).');
     var n = 0;
     for (final i in ((jsonDecode(r.body) as Map)['items'] as List?) ?? []) {
-      final env = base64Decode((i as Map)['envelope']! as String);
-      final header = (jsonDecode(utf8.decode(env)) as Map);
       try {
-        final bundle = await ShareEnvelope.open(Uint8List.fromList(env), enc!, now);
-        if (bundle['type'] == 'declined') {
-          for (final r in sent) {
-            if (r.requestId == bundle['requestId']) r.declined = true;
-          }
-          continue;
-        }
-        if (bundle['type'] == 'close') {
-          // The patient ended access. Only their phone knows this secret.
-          final gone = inbox.where((s) => s.grantId == bundle['grantId'] && s.bundle['closeSecret'] == bundle['closeSecret']).toList();
-          for (final s in gone) {
-            inbox.remove(s);
-            closedByPatient.add(s.patientName);
-          }
-          continue;
-        }
-        final grantId = i['grantId']! as String;
-        final share = ReceivedShare(grantId: grantId, bundle: bundle, expiresAt: DateTime.parse(header['exp']! as String), receivedAt: now);
-        inbox.removeWhere((s) => s.patientKey == share.patientKey);
-        inbox.insert(0, share);
-        registerShare(share);
-        _sealed[grantId] = (i['envelope']! as String, now);
-        n++;
-      } on ShareExpired {
-        // Arrived too late: dropped unread.
+        if (await receive((i as Map)['envelope']! as String, now)) n++;
+      } on Object {
+        // Expired, damaged, or not sealed to this device: dropped unread.
       }
     }
     await _saveInbox();
     if (n > 0) await _savePractice();
     return n;
+  }
+
+  /// Opens one envelope (base64, as the relay hands it over). Returns true
+  /// when it was a new share. Throws when it cannot be opened.
+  Future<bool> receive(String raw, DateTime now) async {
+    final env = Uint8List.fromList(base64Decode(raw));
+    final header = (jsonDecode(utf8.decode(env)) as Map).cast<String, Object?>();
+    final bundle = await ShareEnvelope.open(env, enc!, now);
+    if (bundle['type'] == 'declined') {
+      for (final r in sent) {
+        if (r.requestId == bundle['requestId']) r.declined = true;
+      }
+      return false;
+    }
+    if (bundle['type'] == 'close') {
+      // The patient ended access. Only their phone knows this secret.
+      final gone = inbox.where((s) => s.grantId == bundle['grantId'] && s.bundle['closeSecret'] != null && s.bundle['closeSecret'] == bundle['closeSecret']).toList();
+      for (final s in gone) {
+        inbox.remove(s);
+        closedByPatient.add(s.patientName);
+      }
+      return false;
+    }
+    if (bundle['patient'] is! Map || bundle['replyTo'] is! Map) return false;
+    // The grant id sealed into the envelope's header, not the relay's label.
+    final grantId = header['gid']! as String;
+    final share = ReceivedShare(
+      grantId: grantId,
+      bundle: bundle,
+      expiresAt: DateTime.parse(header['exp']! as String),
+      receivedAt: now,
+      verified: await _confirmSender(bundle),
+    );
+    inbox.removeWhere((s) => s.patientKey == share.patientKey || s.grantId == grantId);
+    inbox.insert(0, share);
+    registerShare(share);
+    _sealed[grantId] = (raw, now, share.verified);
+    return true;
+  }
+
+  /// Whether the LifeTrack ID a share names is registered to the key the
+  /// share asks replies to go to. Only that person's phone can register or
+  /// move its ID, so a match means the share is theirs. Offline or unknown:
+  /// not confirmed.
+  Future<bool> _confirmSender(Map<String, Object?> bundle) async {
+    final id = LifeTrackId.parse('${(bundle['patient']! as Map)['lifeTrackId']}');
+    final key = (bundle['replyTo']! as Map)['key'];
+    if (id == null || key is! String || key.isEmpty) return false;
+    try {
+      final r = await _http.get(base.resolve('/v1/ids/$id'));
+      if (r.statusCode != 200) return false;
+      return (jsonDecode(r.body) as Map)['key'] == key;
+    } on Object {
+      return false;
+    }
   }
 
   /// Drops every share whose access window has ended.
@@ -328,12 +419,12 @@ class DoctorSession {
   /// Envelopes as they arrived — still encrypted to this device — so a page
   /// reload re-opens them instead of losing them. Each is removed when its
   /// share expires or the patient closes it.
-  final Map<String, (String envelope, DateTime receivedAt)> _sealed = {};
+  final Map<String, (String envelope, DateTime receivedAt, bool verified)> _sealed = {};
 
   Future<void> _saveInbox() async {
     _sealed.removeWhere((id, _) => !inbox.any((s) => s.grantId == id));
     await _set(_kInbox, jsonEncode([
-      for (final e in _sealed.entries) {'grantId': e.key, 'envelope': e.value.$1, 'at': e.value.$2.toIso8601String()},
+      for (final e in _sealed.entries) {'grantId': e.key, 'envelope': e.value.$1, 'at': e.value.$2.toIso8601String(), 'verified': e.value.$3},
     ]));
   }
 
@@ -346,8 +437,9 @@ class DoctorSession {
         final bundle = await ShareEnvelope.open(Uint8List.fromList(env), enc!, now);
         final header = jsonDecode(utf8.decode(env)) as Map;
         final at = DateTime.parse(i['at']! as String);
-        inbox.add(ReceivedShare(grantId: i['grantId']! as String, bundle: bundle, expiresAt: DateTime.parse(header['exp']! as String), receivedAt: at));
-        _sealed[i['grantId']! as String] = (raw, at);
+        final verified = i['verified'] == true;
+        inbox.add(ReceivedShare(grantId: i['grantId']! as String, bundle: bundle, expiresAt: DateTime.parse(header['exp']! as String), receivedAt: at, verified: verified));
+        _sealed[i['grantId']! as String] = (raw, at, verified);
       } on Object {
         // Expired while the page was closed, or unreadable: dropped.
       }

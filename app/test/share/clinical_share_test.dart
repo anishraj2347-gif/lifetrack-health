@@ -371,6 +371,55 @@ void main() {
     });
   });
 
+  group('a doctor revoked after their certificate was issued', () {
+    Future<SignedPrescription> write(Doctor d) => SignedPrescription(
+          patientId: 'p1',
+          doctorRegistryId: 'DMC-12345',
+          doctorName: 'Dr. R. Mehta',
+          qualification: 'MD (Medicine)',
+          registrationNo: 'DMC-12345',
+          medicine: 'Atorvastatin 10 mg',
+          ingredient: 'atorvastatin',
+          morning: 0,
+          afternoon: 0,
+          night: 1,
+          days: 90,
+          issuedAt: now,
+        ).signedWith(d.sign);
+    late _Switch status;
+    late ClinicalShareService online;
+    setUp(() {
+      status = _Switch();
+      online = ClinicalShareService(
+        replyIdentity: (_) async => me,
+        trust: trust,
+        consent: consent,
+        access: RecordAccess(consent: consent, audit: audit, repository: repo),
+        audit: audit,
+        repository: repo,
+        relay: relay,
+        doctors: status,
+      );
+    });
+
+    test('is refused at scan, at share and for prescriptions, while the phone can ask', () async {
+      final d = await doctor();
+      final cert = await online.scan(d.qr, now);
+      await online.share(patientId: 'p1', doctor: cert, levels: {AccessLevel.summary}, at: now);
+      status.answer = false;
+      final revoked = isA<CertificateRejected>().having((e) => e.problem, 'problem', CertificateProblem.revoked);
+      await expectLater(online.scan(d.qr, now), throwsA(revoked));
+      await expectLater(online.share(patientId: 'p1', doctor: cert, levels: {AccessLevel.summary}, at: now), throwsA(revoked));
+      await expectLater(online.acceptPrescription(patientId: 'p1', rx: await write(d), doctorCertificateQr: d.qr, at: now), throwsA(revoked));
+    });
+
+    test('offline, the certificate itself decides', () async {
+      final d = await doctor();
+      status.answer = null;
+      await online.share(patientId: 'p1', doctor: await online.scan(d.qr, now), levels: {AccessLevel.summary}, at: now);
+    });
+  });
+
   group('the full round trip over the relay', () {
     test('patient shares, doctor replies with a sealed signed prescription, patient collects it', () async {
       final d = await doctor();
@@ -510,4 +559,10 @@ void main() {
       expect(audit.entriesFor('p1').where((e) => e.dataClass == DataClass.vitals && e.actorId.startsWith('doctor:')), isNotEmpty);
     });
   });
+}
+
+class _Switch implements DoctorStatus {
+  bool? answer = true;
+  @override
+  Future<bool?> stillApproved(DoctorCertificate cert) async => answer;
 }

@@ -6,6 +6,7 @@ import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
+import 'guards.dart';
 import 'registry.dart';
 import 'relay_store.dart';
 import 'id_registry.dart';
@@ -15,8 +16,20 @@ import 'vault_store.dart';
 /// HTTP routes. Every response is JSON; no response ever contains a
 /// decrypted record, because the server never holds a key that makes one.
 class LifeTrackApi {
-  LifeTrackApi({required this.registry, required this.relay, required this.vault, required this.ids, required this.adminToken, this.identity, this.requireIdentity = false, DateTime Function()? clock})
-      : clock = clock ?? DateTime.now;
+  LifeTrackApi({
+    required this.registry,
+    required this.relay,
+    required this.vault,
+    required this.ids,
+    required this.adminToken,
+    this.identity,
+    this.requireIdentity = false,
+    this.origins = const OriginPolicy(),
+    this.publicBase,
+    RateLimiter? limiter,
+    DateTime Function()? clock,
+  })  : clock = clock ?? DateTime.now,
+        limiter = limiter ?? RateLimiter(clock: clock);
 
   final DoctorRegistry registry;
   final RelayStore relay;
@@ -31,6 +44,39 @@ class LifeTrackApi {
   final bool requireIdentity;
   final String adminToken;
   final DateTime Function() clock;
+
+  /// Which Host names and browser origins may call.
+  final OriginPolicy origins;
+
+  /// The address people reach this server at, for links the server hands
+  /// out (the DigiLocker sign-in). Null: the request's own (already checked)
+  /// host.
+  final Uri? publicBase;
+  final RateLimiter limiter;
+
+  /// Body sizes. A backup carries every original page; a share up to 5 MB;
+  /// everything else is a small JSON document.
+  static const maxBackup = 60 * 1024 * 1024;
+  static const maxShare = 5 * 1024 * 1024;
+  static const maxJson = 64 * 1024;
+
+  /// Per client address. Generous for a person; ruinous for a script.
+  static final rateRules = [
+    RateRule('POST', RegExp(r'^/v1/doctors$'), 10, const Duration(hours: 1)),
+    RateRule('POST', RegExp(r'^/v1/ids$'), 30, const Duration(hours: 1)),
+    RateRule('GET', RegExp(r'^/v1/ids/'), 60, const Duration(minutes: 1)),
+    RateRule('POST', RegExp(r'^/v1/verify/start$'), 30, const Duration(hours: 1)),
+    RateRule('GET', RegExp(r'^/v1/verify/'), 120, const Duration(minutes: 1)),
+    RateRule('PUT', RegExp(r'^/v1/relay/'), 120, const Duration(minutes: 1)),
+    RateRule('GET', RegExp(r'^/v1/relay/'), 120, const Duration(minutes: 1)),
+    RateRule('GET', RegExp(r'^/v1/vault/'), 30, const Duration(minutes: 1)),
+    RateRule('POST', RegExp(r'^/v1/admin/'), 60, const Duration(minutes: 1)),
+    RateRule('GET', RegExp(r'^/v1/admin/'), 60, const Duration(minutes: 1)),
+  ];
+
+  /// Signed pickups already used, until they could no longer pass the time
+  /// check anyway.
+  final Map<String, DateTime> _seenPickups = {};
 
   Handler get handler {
     final r = Router()
@@ -60,7 +106,28 @@ class LifeTrackApi {
       ..get('/v1/verify/<session>', _verifyPoll)
       ..get('/v1/practice-digilocker/authorize', _practiceAuthorize)
       ..get('/v1/practice-digilocker/approve', _practiceApprove);
-    return const Pipeline().addMiddleware(_cors()).addHandler(r.call);
+    return const Pipeline()
+        .addMiddleware(origins.middleware())
+        .addMiddleware(rateLimit(limiter, rateRules))
+        .addHandler(r.call);
+  }
+
+  /// A small JSON object from the body; null when it is too large or not a
+  /// JSON object.
+  static Future<Map<String, Object?>?> _readJson(Request req) async {
+    final raw = await readCapped(req, maxJson);
+    if (raw == null) return null;
+    try {
+      return (jsonDecode(utf8.decode(raw)) as Map).cast();
+    } on Object {
+      return null;
+    }
+  }
+
+  static String _bounded(Object? v, {int max = 200}) {
+    final s = (v! as String).trim();
+    if (s.isEmpty || s.length > max) throw ArgumentError('Each field must be 1–$max characters.');
+    return s;
   }
 
   // ---- registry ------------------------------------------------------------
@@ -69,14 +136,14 @@ class LifeTrackApi {
       _json({'publicKey': base64Encode((await registry.publicKey()).bytes), 'algorithm': 'Ed25519'});
 
   Future<Response> _enrol(Request req) async {
-    final Map<String, Object?> b;
+    final b = await _readJson(req);
+    if (b == null) return _error(400, 'Invalid enrolment.');
     try {
-      b = (jsonDecode(await req.readAsString()) as Map).cast();
       final e = await registry.enrol(
-        registrationNo: (b['registrationNo']! as String).trim().toUpperCase(),
-        name: (b['name']! as String).trim(),
-        speciality: (b['speciality']! as String).trim(),
-        council: (b['council']! as String).trim(),
+        registrationNo: _bounded(b['registrationNo'], max: 20).toUpperCase(),
+        name: _bounded(b['name']),
+        speciality: _bounded(b['speciality']),
+        council: _bounded(b['council']),
         encryptionKey: base64Decode(b['encryptionKey']! as String),
         signingKey: base64Decode(b['signingKey']! as String),
         at: clock(),
@@ -89,12 +156,15 @@ class LifeTrackApi {
     }
   }
 
-  Response _doctor(Request _, String reg) {
-    final e = registry.byRegistration(reg.toUpperCase());
+  /// Public: status, key fingerprint and — when approved — a certificate,
+  /// renewed here when it is near expiry. Phones ask this to learn whether a
+  /// doctor is still approved with the same keys.
+  Future<Response> _doctor(Request _, String reg) async {
+    final e = await registry.current(reg.toUpperCase(), clock());
     return e == null ? _error(404, 'Not enrolled.') : _json(e.publicJson());
   }
 
-  bool _isAdmin(Request req) => req.headers[RelayApi.hAdmin] == adminToken;
+  bool _isAdmin(Request req) => VaultStore.sameText(req.headers[RelayApi.hAdmin], adminToken);
 
   Response _adminList(Request req) {
     if (!_isAdmin(req)) return _error(401, 'Admin token required.');
@@ -114,28 +184,45 @@ class LifeTrackApi {
 
   Future<Response> _adminReject(Request req, String reg) async {
     if (!_isAdmin(req)) return _error(401, 'Admin token required.');
-    final reason = ((jsonDecode(await req.readAsString()) as Map)['reason'] as String?) ?? 'Licence could not be verified.';
-    await registry.reject(reg.toUpperCase(), reason);
+    final b = await _readJson(req) ?? const {};
+    final reason = b['reason'] is String ? _bounded(b['reason'], max: 500) : 'Licence could not be verified.';
+    try {
+      await registry.reject(reg.toUpperCase(), reason);
+    } on StateError catch (e) {
+      return _error(404, e.message);
+    }
     return _json({'ok': true});
   }
 
   Future<Response> _adminRevoke(Request req, String reg) async {
     if (!_isAdmin(req)) return _error(401, 'Admin token required.');
-    await registry.revoke(reg.toUpperCase());
+    try {
+      await registry.revoke(reg.toUpperCase());
+    } on StateError catch (e) {
+      return _error(404, e.message);
+    }
     return _json({'ok': true});
   }
 
   // ---- relay ---------------------------------------------------------------
 
+  static bool _validGrant(String g) => g.isNotEmpty && g.length <= 200;
+
   Future<Response> _deposit(Request req, String mailbox, String grant) async {
     if (!_validMailbox(mailbox)) return _error(400, 'Unknown mailbox.');
+    final grantId = Uri.decodeComponent(grant);
+    if (!_validGrant(grantId)) return _error(400, 'Invalid share id.');
     final exp = DateTime.tryParse(req.headers[RelayApi.hExpires] ?? '');
     final now = clock();
     if (exp == null || !exp.isAfter(now)) return _error(400, 'Missing or past expiry.');
     if (exp.difference(now) > RelayApi.maxHold) return _error(400, 'Expiry beyond 48 hours.');
-    final body = Uint8List.fromList(await req.read().expand((c) => c).toList());
-    if (body.isEmpty || body.length > 5 * 1024 * 1024) return _error(413, 'Share too large.');
-    relay.put(mailbox, Uri.decodeComponent(grant), RelayItem(envelope: body, expiresAt: exp, withdrawHash: req.headers[RelayApi.hWithdrawHash]));
+    final raw = await readCapped(req, maxShare);
+    if (raw == null || raw.isEmpty) return _error(413, 'Share too large.');
+    try {
+      relay.put(mailbox, grantId, RelayItem(envelope: Uint8List.fromList(raw), expiresAt: exp, withdrawHash: req.headers[RelayApi.hWithdrawHash]));
+    } on RelayFull catch (e) {
+      return _error(507, e.message);
+    }
     return _json({'ok': true}, status: 201);
   }
 
@@ -152,7 +239,7 @@ class LifeTrackApi {
     final now = clock();
     if (mailbox.startsWith('p-')) {
       final secret = req.headers[RelayApi.hMailboxSecret];
-      if (secret == null || await RelayApi.patientMailboxFor(secret) != mailbox) return _error(403, 'Not your mailbox.');
+      if (secret == null || !VaultStore.sameText(await RelayApi.patientMailboxFor(secret), mailbox)) return _error(403, 'Not your mailbox.');
     } else if (mailbox.startsWith('d-')) {
       final problem = await _doctorAuth(req, mailbox, now);
       if (problem != null) return _error(403, problem);
@@ -169,50 +256,71 @@ class LifeTrackApi {
     final qr = req.headers[RelayApi.hCert];
     final time = DateTime.tryParse(req.headers[RelayApi.hTime] ?? '');
     final sig = req.headers[RelayApi.hSig];
-    if (qr == null || time == null || sig == null) return 'Signed request required.';
+    final nonce = req.headers[RelayApi.hNonce];
+    if (qr == null || time == null || sig == null || nonce == null || nonce.isEmpty || nonce.length > 100) return 'Signed request required.';
     if (now.difference(time).abs() > RelayApi.signatureSkew) return 'Request time too far from server time.';
     final DoctorCertificate cert;
     try {
       cert = await (await registry.trust()).verify(qr, now);
     } on CertificateRejected catch (e) {
       return e.patientMessage;
+    } on Object {
+      return 'This is not a LifeTrack doctor code.';
     }
-    if (registry.isRevoked(cert.registryId)) return 'Certificate revoked.';
+    if (registry.isRevoked(cert)) return 'Certificate revoked.';
     if (await RelayApi.doctorMailbox(cert.encryptionKey) != mailbox) return 'Mailbox does not belong to this certificate.';
-    final ok = await Ed25519().verify(
-      RelayApi.pickupMessage(mailbox, time),
-      signature: Signature(base64Decode(sig), publicKey: SimplePublicKey(cert.signingKey, type: KeyPairType.ed25519)),
-    );
-    return ok ? null : 'Bad signature.';
+    final bool ok;
+    try {
+      ok = await Ed25519().verify(
+        RelayApi.pickupMessage(mailbox, time, nonce),
+        signature: Signature(base64Decode(sig), publicKey: SimplePublicKey(cert.signingKey, type: KeyPairType.ed25519)),
+      );
+    } on Object {
+      return 'Bad signature.';
+    }
+    if (!ok) return 'Bad signature.';
+    // One use per signed request: a copy of it, replayed, is refused.
+    _seenPickups.removeWhere((_, until) => !now.isBefore(until));
+    final key = '$mailbox|$nonce';
+    if (_seenPickups.containsKey(key)) return 'This request was already used.';
+    _seenPickups[key] = time.add(RelayApi.signatureSkew * 2);
+    return null;
   }
 
   static bool _validMailbox(String m) => RegExp(r'^(d|p)-[0-9a-f]{16,64}$').hasMatch(m);
 
   // ---- backup vault --------------------------------------------------------
 
-  static const _maxBackup = 60 * 1024 * 1024;
-
-  /// Same comparison time whatever the input, so a guesser learns nothing
-  /// from how long a refusal takes.
-  static bool _same(String? a, String? b) {
-    if (a == null || b == null || a.length != b.length) return false;
-    var d = 0;
-    for (var i = 0; i < a.length; i++) {
-      d |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+  /// Proves the password with its verifier; counts a wrong proof towards the
+  /// lockout. Returns an error response, or null when the proof is good.
+  Future<Response?> _proveVault(String account, Map<String, Object?> entry, String? given, DateTime now) async {
+    if (await vault.lockedOut(account, now)) return _error(429, 'Too many wrong passwords. Try again in an hour.');
+    final c = await VaultStore.check(entry, given);
+    if (!c.ok) {
+      await vault.failed(account, now);
+      return _error(403, 'Wrong account code or password.');
     }
-    return d == 0;
+    await vault.succeeded(account, now);
+    if (c.migrate) {
+      await vault.put(account, {...entry..remove('verifier'), 'verifierHash': await VaultStore.hashVerifier(given!)});
+    }
+    return null;
   }
 
   /// Creates a backup, or replaces it when the caller proves the current
   /// password with its verifier.
   Future<Response> _vaultPut(Request req, String account) async {
+    final now = clock();
     if (!VaultStore.validAccount(account)) return _error(400, 'Unknown account format.');
     final existing = await vault.get(account);
-    if (existing != null && !_same(req.headers[RelayApi.hVerifier], existing['verifier'] as String?)) {
-      return _error(403, 'This backup belongs to someone else, or the password is wrong.');
+    if (existing != null) {
+      final refused = await _proveVault(account, existing, req.headers[RelayApi.hVerifier], now);
+      if (refused != null) {
+        return refused.statusCode == 403 ? _error(403, 'This backup belongs to someone else, or the password is wrong.') : refused;
+      }
     }
-    final raw = await req.read().expand((c) => c).take(_maxBackup + 1).toList();
-    if (raw.length > _maxBackup) return _error(413, 'Backup too large.');
+    final raw = await readCapped(req, maxBackup);
+    if (raw == null) return _error(413, 'Backup too large.');
     final Map<String, Object?> b;
     try {
       b = (jsonDecode(utf8.decode(raw)) as Map).cast();
@@ -224,10 +332,10 @@ class LifeTrackApi {
     }
     await vault.put(account, {
       'salt': b['salt'],
-      'verifier': b['verifier'],
+      'verifierHash': await VaultStore.hashVerifier(b['verifier']! as String),
       'wrappedDataKey': b['wrappedDataKey'],
       'blob': b['blob'],
-      'updatedAt': clock().toIso8601String(),
+      'updatedAt': now.toIso8601String(),
     });
     return _json({'ok': true}, status: existing == null ? 201 : 200);
   }
@@ -241,24 +349,20 @@ class LifeTrackApi {
   Future<Response> _vaultOpen(Request req, String account) async {
     final now = clock();
     if (!VaultStore.validAccount(account)) return _error(400, 'Unknown account format.');
-    if (vault.lockedOut(account, now)) return _error(429, 'Too many wrong passwords. Try again in an hour.');
+    if (await vault.lockedOut(account, now)) return _error(429, 'Too many wrong passwords. Try again in an hour.');
     final e = await vault.get(account);
-    String? given;
-    try {
-      given = ((jsonDecode(await req.readAsString()) as Map)['verifier']) as String?;
-    } on Object {
-      given = null;
-    }
-    if (e == null || !_same(given, e['verifier'] as String?)) {
-      vault.failed(account, now);
+    final given = (await _readJson(req))?['verifier'];
+    if (e == null) {
+      await vault.failed(account, now);
       return _error(403, 'Wrong account code or password.');
     }
-    vault.succeeded(account);
+    final refused = await _proveVault(account, e, given is String ? given : null, now);
+    if (refused != null) return refused;
     return _json({'wrappedDataKey': e['wrappedDataKey'], 'blob': e['blob'], 'updatedAt': e['updatedAt']});
   }
 
   /// For recovery with two recovery codes: the sealed blob only — no
-  /// verifier, no wrapped key.
+  /// verifier, no wrapped key. Opening it needs two full-strength codes.
   Future<Response> _vaultBlob(Request _, String account) async {
     final e = VaultStore.validAccount(account) ? await vault.get(account) : null;
     return e == null ? _error(404, 'No backup for this account code.') : _json({'blob': e['blob'], 'updatedAt': e['updatedAt']});
@@ -267,7 +371,8 @@ class LifeTrackApi {
   Future<Response> _vaultDelete(Request req, String account) async {
     final e = VaultStore.validAccount(account) ? await vault.get(account) : null;
     if (e == null) return _json({'deleted': false});
-    if (!_same(req.headers[RelayApi.hVerifier], e['verifier'] as String?)) return _error(403, 'Wrong password.');
+    final refused = await _proveVault(account, e, req.headers[RelayApi.hVerifier], clock());
+    if (refused != null) return refused.statusCode == 403 ? _error(403, 'Wrong password.') : refused;
     await vault.delete(account);
     return _json({'deleted': true});
   }
@@ -284,20 +389,27 @@ class LifeTrackApi {
 
   /// Registers a new ID. A duplicate is refused, so the phone draws another.
   Future<Response> _idRegister(Request req) async {
-    final Map<String, Object?> b;
-    try {
-      b = (jsonDecode(await req.readAsString()) as Map).cast();
-    } on Object {
-      return _error(400, 'Invalid registration.');
-    }
+    final b = await _readJson(req);
+    if (b == null) return _error(400, 'Invalid registration.');
     final id = LifeTrackId.parse('${b['id']}');
-    if (id == null || !_validMailbox('${b['mailbox']}') || !'${b['mailbox']}'.startsWith('p-') || !_validKey(b['key']) || b['tokenHash'] is! String) {
+    final tokenHash = b['tokenHash'];
+    if (id == null ||
+        !_validMailbox('${b['mailbox']}') ||
+        !'${b['mailbox']}'.startsWith('p-') ||
+        !_validKey(b['key']) ||
+        tokenHash is! String ||
+        !RegExp(r'^[0-9a-f]{64}$').hasMatch(tokenHash)) {
       return _error(400, 'Invalid registration.');
     }
     if (ids.contains(id)) return _error(409, 'That ID is taken.');
     String? subject;
     if (b['attestation'] is Map) {
-      final a = IdentityAttestation.fromJson((b['attestation']! as Map).cast());
+      final IdentityAttestation a;
+      try {
+        a = IdentityAttestation.fromJson((b['attestation']! as Map).cast());
+      } on Object {
+        return _error(400, 'Invalid identity check.');
+      }
       if (!await a.verifies(await registry.trust())) return _error(400, 'The identity check is not LifeTrack\'s.');
       subject = a.subjectHash;
       final existing = ids.bySubject(subject);
@@ -307,40 +419,47 @@ class LifeTrackApi {
     } else if (requireIdentity) {
       return _error(400, 'A verified identity is needed for a LifeTrack ID.');
     }
-    await ids.put(id, {'mailbox': b['mailbox'], 'key': b['key'], 'tokenHash': b['tokenHash'], 'subject': ?subject, 'createdAt': clock().toIso8601String()});
+    await ids.put(id, {'mailbox': b['mailbox'], 'key': b['key'], 'tokenHash': tokenHash, 'subject': ?subject, 'createdAt': clock().toIso8601String()});
     return _json({'id': id}, status: 201);
   }
 
+  static String? _parseId(String raw) {
+    try {
+      return LifeTrackId.parse(Uri.decodeComponent(raw));
+    } on Object {
+      return null;
+    }
+  }
+
   /// Where to send a request for this person. Public: it names a mailbox
-  /// and a key, nothing about who they are.
-  Response _idLookup(Request _, String id) {
-    final e = LifeTrackId.parse(Uri.decodeComponent(id)) == null ? null : ids[LifeTrackId.parse(Uri.decodeComponent(id))!];
-    return e == null ? _error(404, 'No such LifeTrack ID.') : _json({'id': LifeTrackId.parse(Uri.decodeComponent(id)), 'mailbox': e['mailbox'], 'key': e['key']});
+  /// and a key, nothing about who they are. Rate-limited per client, so the
+  /// ten-billion-number space cannot be walked.
+  Response _idLookup(Request _, String raw) {
+    final id = _parseId(raw);
+    final e = id == null ? null : ids[id];
+    return e == null ? _error(404, 'No such LifeTrack ID.') : _json({'id': id, 'mailbox': e['mailbox'], 'key': e['key']});
   }
 
   /// A restored phone points its ID at its new mailbox and key.
-  Future<Response> _idMove(Request req, String id) async {
-    final e = LifeTrackId.parse(Uri.decodeComponent(id)) == null ? null : ids[LifeTrackId.parse(Uri.decodeComponent(id))!];
+  Future<Response> _idMove(Request req, String raw) async {
+    final id = _parseId(raw);
+    final e = id == null ? null : ids[id];
     if (e == null) return _error(404, 'No such LifeTrack ID.');
     final token = req.headers[RelayApi.hIdToken];
-    if (token == null || !_same(await RelayApi.sha256Hex(token), e['tokenHash'] as String?)) return _error(403, 'Not your ID.');
-    final Map<String, Object?> b;
-    try {
-      b = (jsonDecode(await req.readAsString()) as Map).cast();
-    } on Object {
-      return _error(400, 'Invalid update.');
-    }
-    if (!_validMailbox('${b['mailbox']}') || !_validKey(b['key'])) return _error(400, 'Invalid update.');
-    await ids.put(LifeTrackId.parse(Uri.decodeComponent(id))!, {...e, 'mailbox': b['mailbox'], 'key': b['key']});
+    if (token == null || !VaultStore.sameText(await RelayApi.sha256Hex(token), e['tokenHash'] as String?)) return _error(403, 'Not your ID.');
+    final b = await _readJson(req);
+    if (b == null || !_validMailbox('${b['mailbox']}') || !'${b['mailbox']}'.startsWith('p-') || !_validKey(b['key'])) return _error(400, 'Invalid update.');
+    await ids.put(id!, {...e, 'mailbox': b['mailbox'], 'key': b['key']});
     return _json({'ok': true});
   }
 
-  Future<Response> _idDelete(Request req, String id) async {
-    final e = LifeTrackId.parse(Uri.decodeComponent(id)) == null ? null : ids[LifeTrackId.parse(Uri.decodeComponent(id))!];
+  Future<Response> _idDelete(Request req, String raw) async {
+    final id = _parseId(raw);
+    final e = id == null ? null : ids[id];
     if (e == null) return _json({'deleted': false});
     final token = req.headers[RelayApi.hIdToken];
-    if (token == null || !_same(await RelayApi.sha256Hex(token), e['tokenHash'] as String?)) return _error(403, 'Not your ID.');
-    await ids.remove(LifeTrackId.parse(Uri.decodeComponent(id))!);
+    if (token == null || !VaultStore.sameText(await RelayApi.sha256Hex(token), e['tokenHash'] as String?)) return _error(403, 'Not your ID.');
+    await ids.remove(id!);
     return _json({'deleted': true});
   }
 
@@ -351,57 +470,69 @@ class LifeTrackApi {
   Future<Response> _verifyStart(Request req) async {
     final idn = identity;
     if (idn == null) return _error(404, 'Identity checks are not set up on this server.');
-    final Map<String, Object?> b;
-    try {
-      b = (jsonDecode(await req.readAsString()) as Map).cast();
-    } on Object {
-      return _error(400, 'Invalid request.');
-    }
+    final b = await _readJson(req);
+    if (b == null) return _error(400, 'Invalid request.');
     final purpose = VerifyPurpose.values.where((v) => v.name == b['purpose']).firstOrNull;
     if (purpose == null) return _error(400, 'Unknown purpose.');
     try {
       final (id, secret, url) = await idn.start(
-        base: req.requestedUri.replace(path: '', query: null),
+        base: publicBase ?? req.requestedUri.replace(path: '', query: null),
         purpose: purpose,
         parent: b['parent'] is Map ? IdentityAttestation.fromJson((b['parent']! as Map).cast()) : null,
       );
       return _json({'session': id, 'secret': secret, 'authorizeUrl': '$url'});
     } on VerifyRefused catch (e) {
       return _error(403, e.message);
+    } on Object {
+      return _error(400, 'Invalid request.');
     }
   }
 
   Future<Response> _verifyCallback(Request req) async {
+    final idn = identity;
+    if (idn == null) return _error(404, 'Identity checks are not set up on this server.');
     final q = req.requestedUri.queryParameters;
     String title;
     String body;
+    String? code;
     try {
-      final refused = await identity!.callback(state: q['state'] ?? '', code: q['code'], error: q['error']);
-      title = refused == null ? 'Verified — go back to LifeTrack' : 'Not verified';
-      body = refused == null ? 'You can close this page. LifeTrack picks up the result by itself.' : '$refused Go back to LifeTrack to try again.';
+      final r = await idn.callback(state: q['state'] ?? '', code: q['code'], error: q['error']);
+      code = r.handback;
+      title = r.refused == null ? 'Verified — now go back to LifeTrack' : 'Not verified';
+      body = r.refused == null
+          ? 'Type this code into LifeTrack to finish. Do not give it to anyone else: whoever types it gets your verified name and date of birth.'
+          : '${r.refused} Go back to LifeTrack to try again.';
     } on VerifyRefused catch (e) {
       title = 'Not verified';
       body = e.message;
     }
+    const esc = HtmlEscape();
     return Response.ok(
       '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>LifeTrack</title></head>'
-      '<body style="font:18px system-ui;padding:32px;background:#f4f4f2"><h2>${const HtmlEscape().convert(title)}</h2>'
-      '<p>${const HtmlEscape().convert(body)}</p></body></html>',
-      headers: {'content-type': 'text/html; charset=utf-8'},
+      '<body style="font:18px system-ui;padding:32px;background:#f4f4f2"><h2>${esc.convert(title)}</h2>'
+      '${code == null ? '' : '<p style="font:600 34px ui-monospace,monospace;letter-spacing:4px;background:#fff;padding:16px 20px;border-radius:14px;display:inline-block">${esc.convert(code)}</p>'}'
+      '<p>${esc.convert(body)}</p></body></html>',
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'no-store',
+        'referrer-policy': 'no-referrer',
+        'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'",
+      },
     );
   }
 
   Future<Response> _verifyPoll(Request req, String session) async {
     final secret = req.headers[RelayApi.hSessionSecret];
-    if (identity == null || secret == null) return _error(404, 'No such session.');
-    return _json(await identity!.poll(session, secret));
+    final idn = identity;
+    if (idn == null || secret == null) return _error(404, 'No such session.');
+    return _json(await idn.poll(session, secret, code: req.requestedUri.queryParameters['code']));
   }
 
   Response _practiceAuthorize(Request req) {
     if (identity?.provider is! PracticeDigiLocker) return _error(404, 'Not here.');
     final q = req.requestedUri.queryParameters;
     return Response.ok(PracticeDigiLocker.page(state: q['state'] ?? '', challenge: q['challenge'] ?? '', purpose: q['purpose'] ?? 'self'),
-        headers: {'content-type': 'text/html; charset=utf-8'});
+        headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'"});
   }
 
   Response _practiceApprove(Request req) {
@@ -416,19 +547,7 @@ class LifeTrackApi {
   // ---- helpers -------------------------------------------------------------
 
   static Response _json(Object body, {int status = 200}) =>
-      Response(status, body: jsonEncode(body), headers: {'content-type': 'application/json'});
+      Response(status, body: jsonEncode(body), headers: {'content-type': 'application/json', 'cache-control': 'no-store'});
 
   static Response _error(int status, String message) => _json({'error': message}, status: status);
-
-  /// The doctor web app runs on another localhost port in development.
-  static Middleware _cors() => (inner) => (req) async {
-        const h = {
-          'access-control-allow-origin': '*',
-          'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'access-control-allow-headers': '*',
-        };
-        if (req.method == 'OPTIONS') return Response.ok('', headers: h);
-        final res = await inner(req);
-        return res.change(headers: h);
-      };
 }

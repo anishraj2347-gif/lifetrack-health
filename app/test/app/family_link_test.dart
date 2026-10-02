@@ -11,6 +11,7 @@ import 'package:lifetrack/src/model/health_record.dart';
 import 'package:lifetrack/src/model/patient.dart';
 import 'package:lifetrack/src/share/relay.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
+import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:lifetrack/src/vault/backup_vault.dart';
 
 /// Two phones, one relay: Anjali invites her husband Vikram, who keeps his
@@ -102,6 +103,74 @@ void main() {
     await other.joinFamily(code: code2, shareEmergency: false, shareMedicines: false);
     final (_, handled, refused) = await anjali.checkInbox();
     expect((handled, refused), (1, 1), reason: 'the second use of the same invite is refused');
+  });
+
+  test('someone who saw the invite code cannot send updates or unlink in either name', () async {
+    final anjali = await phone('Anjali Sharma', 1);
+    final vikram = await phone('Vikram Sharma', 2);
+    await vikram.emergency.save(vikram.selfPatientId!, const EmergencyCard(bloodType: 'B+', allergies: 'Penicillin'));
+    final invite = await anjali.createFamilyInvite();
+    await vikram.joinFamily(code: invite.encode(), shareEmergency: true, shareMedicines: false);
+    await anjali.checkInbox();
+
+    // The invite code (sent over a chat app) names Anjali's mailbox and key
+    // and the link's id. With them, someone forges "Vikram's" new card…
+    final seen = FamilyInvite.decode(invite.encode());
+    Future<void> forge(Map<String, Object?> payload) async {
+      final key = base64Decode(seen.key);
+      await relay.deposit(
+        mailbox: seen.mailbox,
+        grantId: 'forged-${payload.hashCode}',
+        envelope: await ShareEnvelope.seal(bundle: payload, recipientKey: key, keyId: await RelayApi.keyId(key), grantId: 'f', expiresAt: now.add(const Duration(hours: 1))),
+        expiresAt: now.add(const Duration(hours: 1)),
+      );
+    }
+
+    await forge({'type': 'family_link_update', 'linkId': seen.id, 'emergency': {'blood': 'O+', 'allergies': 'None'}, 'medicines': null});
+    await forge({'type': 'family_link_update', 'linkId': seen.id, 'linkSecret': 'a guess of sixteen+ chars', 'emergency': {'blood': 'O+'}});
+    await forge({'type': 'family_unlink', 'linkId': seen.id});
+    final (_, handled, refused) = await anjali.checkInbox();
+    expect((handled, refused), (0, 3));
+    final link = (await anjali.links!.links()).single;
+    expect((link.theirEmergency!['blood'], link.theirEmergency!['allergies']), ('B+', 'Penicillin'));
+    expect(anjali.audit.entriesFor(anjali.selfPatientId!).where((e) => e.detail?.contains('did not come from the linked phone') ?? false), hasLength(3));
+  });
+
+  test('both phones show the same safety code for a link', () async {
+    final anjali = await phone('Anjali Sharma', 1);
+    final vikram = await phone('Vikram Sharma', 2);
+    await vikram.joinFamily(code: (await anjali.createFamilyInvite()).encode(), shareEmergency: false, shareMedicines: false);
+    await anjali.checkInbox();
+    final a = (await anjali.links!.links()).single.safetyCode;
+    expect(a, matches(RegExp(r'^[0-9A-Z]{4} [0-9A-Z]{4}$')));
+    expect((await vikram.links!.links()).single.safetyCode, a);
+  });
+
+  test('what a linked phone sends is cut down to the Emergency ID fields and bounded', () async {
+    final anjali = await phone('Anjali Sharma', 1);
+    final vikram = await phone('Vikram Sharma', 2);
+    await vikram.joinFamily(code: (await anjali.createFamilyInvite()).encode(), shareEmergency: false, shareMedicines: false);
+    await anjali.checkInbox();
+    final l = (await vikram.links!.links()).single;
+    final key = base64Decode(l.theirKey);
+    await relay.deposit(
+      mailbox: l.theirMailbox,
+      grantId: 'big',
+      envelope: await ShareEnvelope.seal(bundle: {
+        'type': 'family_link_update',
+        'linkId': l.id,
+        'linkSecret': l.secret,
+        'emergency': {'blood': 'not a blood group', 'allergies': 'x' * 5000, 'extra': 'kept nowhere'},
+        'medicines': [for (var i = 0; i < 500; i++) {'title': 'M$i', 'dose': '1-0-0'}],
+      }, recipientKey: key, keyId: await RelayApi.keyId(key), grantId: 'big', expiresAt: now.add(const Duration(hours: 1))),
+      expiresAt: now.add(const Duration(hours: 1)),
+    );
+    await anjali.checkInbox();
+    final got = (await anjali.links!.links()).single;
+    expect(got.theirEmergency!['blood'], '');
+    expect((got.theirEmergency!['allergies']! as String).length, EmergencyCard.maxFieldLength);
+    expect(got.theirEmergency!.containsKey('extra'), isFalse);
+    expect(got.theirMedicines, hasLength(50));
   });
 
   test('you cannot join your own invite', () async {

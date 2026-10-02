@@ -22,7 +22,7 @@ class PendingRequest {
 /// registry certificate and signature (CLAUDE.md #15) — and nothing is
 /// shared until the patient approves on this phone.
 class AccessRequestInbox {
-  AccessRequestInbox({required this.sealed, required this.audit, required this.relay, required this.trust});
+  AccessRequestInbox({required this.sealed, required this.audit, required this.relay, required this.trust, this.doctors = const UnknownDoctorStatus()});
 
   static const _blob = 'access_requests';
 
@@ -30,6 +30,9 @@ class AccessRequestInbox {
   final AuditLog audit;
   final RelayClient relay;
   final RegistryTrust trust;
+
+  /// A doctor revoked since their certificate was issued is refused online.
+  final DoctorStatus doctors;
 
   Future<List<Map<String, Object?>>> _all() async => [for (final e in (await sealed.read(_blob) as List?) ?? const []) (e as Map).cast()];
 
@@ -61,6 +64,7 @@ class AccessRequestInbox {
         } on CertificateRejected catch (e) {
           throw StateError('a request from a doctor who could not be verified (${e.patientMessage})');
         }
+        if (await doctors.stillApproved(d) == false) throw StateError('a request from a doctor whose verification LifeTrack has withdrawn');
         final all = await _all()..removeWhere((e) => (e['request']! as Map)['requestId'] == r.requestId);
         await sealed.write(_blob, [...all, {'patientId': patientId, 'request': r.toJson(), 'at': at.toIso8601String()}]);
         await audit.append(AuditEntry(

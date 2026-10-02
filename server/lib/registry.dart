@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:cryptography/dart.dart';
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 
 enum EnrolmentStatus { pending, approved, rejected, revoked }
@@ -57,6 +58,11 @@ class Enrolment {
         note: j['note'] as String?,
       );
 
+  /// Short id of the encryption key (the doctor's mailbox). The doctor app
+  /// shows the same fingerprint, so a reviewer can confirm with the doctor —
+  /// by phone or in person — that the keys being approved are theirs.
+  String get keyId => const DartSha256().hashSync(encryptionKey).bytes.take(8).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+
   /// Public view: never includes anything a patient shared.
   Map<String, Object?> publicJson() => {
         'registrationNo': registrationNo,
@@ -64,6 +70,7 @@ class Enrolment {
         'speciality': speciality,
         'council': council,
         'status': status.name,
+        'keyId': keyId,
         if (status == EnrolmentStatus.approved) 'certificate': certificateQr,
         'note': note,
       };
@@ -83,7 +90,12 @@ class DoctorRegistry {
   final SimpleKeyPair _signingKey;
   final Map<String, Enrolment> _enrolments;
 
-  static const certificateLifetime = Duration(days: 365);
+  /// Short, so a revocation reaches every phone within a month even when a
+  /// phone never asks the registry. The doctor app renews automatically.
+  static const certificateLifetime = Duration(days: 30);
+
+  /// A certificate this close to expiry is reissued when asked for.
+  static const renewWithin = Duration(days: 10);
 
   static Future<DoctorRegistry> open({required SimpleKeyPair signingKey, File? file}) async {
     final map = <String, Enrolment>{};
@@ -104,7 +116,36 @@ class DoctorRegistry {
 
   List<Enrolment> withStatus(EnrolmentStatus s) => [for (final e in _enrolments.values) if (e.status == s) e];
 
-  bool isRevoked(String reg) => _enrolments[reg]?.status == EnrolmentStatus.revoked;
+  /// True unless [cert] belongs to the CURRENT approved enrolment with
+  /// exactly these keys. Revocation is bound to the keys, so a later
+  /// enrolment under the same registration number — by anyone — never brings
+  /// an old certificate back.
+  bool isRevoked(DoctorCertificate cert) {
+    final e = _enrolments[cert.registryId];
+    return e == null ||
+        e.status != EnrolmentStatus.approved ||
+        !_same(e.encryptionKey, cert.encryptionKey) ||
+        !_same(e.signingKey, cert.signingKey);
+  }
+
+  static bool _same(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  /// The enrolment for [reg], its certificate reissued (same keys, new
+  /// dates) when it is within [renewWithin] of expiring.
+  Future<Enrolment?> current(String reg, DateTime at) async {
+    final e = _enrolments[reg];
+    if (e == null || e.status != EnrolmentStatus.approved || e.certificateQr == null) return e;
+    if (DoctorCertificate.decode(e.certificateQr!).expiresAt.difference(at) > renewWithin) return e;
+    e.certificateQr = await _issue(e, at);
+    await _save();
+    return e;
+  }
 
   Future<Enrolment> enrol({
     required String registrationNo,
@@ -122,6 +163,11 @@ class DoctorRegistry {
     final existing = _enrolments[registrationNo];
     if (existing != null && existing.status == EnrolmentStatus.approved) {
       throw StateError('Already approved. A new device needs the old certificate revoked first.');
+    }
+    // Keys waiting for review are never replaced: whoever enrolled second
+    // could otherwise swap in their own keys just before an admin approves.
+    if (existing != null && existing.status == EnrolmentStatus.pending) {
+      throw StateError('An enrolment for $registrationNo is already waiting for review. If it is not yours, contact LifeTrack to have it rejected.');
     }
     final e = Enrolment(
       registrationNo: registrationNo,
@@ -141,36 +187,29 @@ class DoctorRegistry {
   Future<Enrolment> approve(String reg, DateTime at, {String reviewer = 'admin'}) async {
     final e = _enrolments[reg] ?? (throw StateError('No enrolment for $reg.'));
     if (e.status != EnrolmentStatus.pending) throw StateError('$reg is ${e.status.name}.');
-    final unsigned = DoctorCertificate(
-      registryId: e.registrationNo,
-      name: e.name,
-      speciality: e.speciality,
-      council: e.council,
-      registrationNo: e.registrationNo,
-      encryptionKey: e.encryptionKey,
-      signingKey: e.signingKey,
-      issuedAt: at,
-      expiresAt: at.add(certificateLifetime),
-      signature: const [],
-    );
-    final sig = await Ed25519().sign(unsigned.signedBytes, keyPair: _signingKey);
     e
-      ..certificateQr = DoctorCertificate(
-        registryId: unsigned.registryId,
-        name: unsigned.name,
-        speciality: unsigned.speciality,
-        council: unsigned.council,
-        registrationNo: unsigned.registrationNo,
-        encryptionKey: unsigned.encryptionKey,
-        signingKey: unsigned.signingKey,
-        issuedAt: unsigned.issuedAt,
-        expiresAt: unsigned.expiresAt,
-        signature: sig.bytes,
-      ).encode()
+      ..certificateQr = await _issue(e, at)
       ..status = EnrolmentStatus.approved
       ..note = 'Licence checked manually by $reviewer on ${at.toIso8601String().substring(0, 10)}.';
     await _save();
     return e;
+  }
+
+  Future<String> _issue(Enrolment e, DateTime at) async {
+    DoctorCertificate cert(List<int> signature) => DoctorCertificate(
+          registryId: e.registrationNo,
+          name: e.name,
+          speciality: e.speciality,
+          council: e.council,
+          registrationNo: e.registrationNo,
+          encryptionKey: e.encryptionKey,
+          signingKey: e.signingKey,
+          issuedAt: at,
+          expiresAt: at.add(certificateLifetime),
+          signature: signature,
+        );
+    final sig = await Ed25519().sign(cert(const []).signedBytes, keyPair: _signingKey);
+    return cert(sig.bytes).encode();
   }
 
   Future<void> reject(String reg, String reason) async {

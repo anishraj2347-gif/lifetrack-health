@@ -1,5 +1,6 @@
 import 'dart:io' show Directory;
 
+import 'package:cryptography/cryptography.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../storage/byte_store.dart';
@@ -13,7 +14,7 @@ import '../storage/file_byte_store.dart';
 /// channel. What would be backed up is ciphertext under a Keychain key marked
 /// this-device-only, so a restored copy on another device is unreadable.
 /// Android is covered by `allowBackup=false`.
-Future<ByteStore> openDeviceByteStore() async {
+Future<ByteStore> openDeviceByteStore(SecretKey deviceKey) async {
   final base = await getApplicationSupportDirectory();
-  return FileByteStore(Directory('${base.path}/vault'));
+  return FileByteStore(Directory('${base.path}/vault'), indexKey: deviceKey);
 }

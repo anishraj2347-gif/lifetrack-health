@@ -29,12 +29,22 @@ void main() {
     expect(await RelayApi.patientMailboxFor(secret), mailbox);
   });
 
-  test('a doctor pickup signature verifies with the signing key and only for that mailbox and time', () async {
+  test('a doctor pickup signature verifies with the signing key and only for that mailbox, time and nonce', () async {
     final sign = await Ed25519().newKeyPair();
     final at = DateTime.utc(2026, 9, 30, 12);
     final h = await RelayApi.doctorPickupHeaders(certificateQr: 'x', signingKey: sign, mailbox: 'd-abc', at: at);
+    final nonce = h[RelayApi.hNonce]!;
     final sig = Signature(base64Decode(h[RelayApi.hSig]!), publicKey: await sign.extractPublicKey());
-    expect(await Ed25519().verify(RelayApi.pickupMessage('d-abc', at), signature: sig), isTrue);
-    expect(await Ed25519().verify(RelayApi.pickupMessage('d-xyz', at), signature: sig), isFalse);
+    expect(await Ed25519().verify(RelayApi.pickupMessage('d-abc', at, nonce), signature: sig), isTrue);
+    expect(await Ed25519().verify(RelayApi.pickupMessage('d-xyz', at, nonce), signature: sig), isFalse);
+    expect(await Ed25519().verify(RelayApi.pickupMessage('d-abc', at, 'another'), signature: sig), isFalse);
+  });
+
+  test('every pickup carries a different nonce', () async {
+    final sign = await Ed25519().newKeyPair();
+    final at = DateTime.utc(2026, 9, 30, 12);
+    final a = await RelayApi.doctorPickupHeaders(certificateQr: 'x', signingKey: sign, mailbox: 'd-abc', at: at);
+    final b = await RelayApi.doctorPickupHeaders(certificateQr: 'x', signingKey: sign, mailbox: 'd-abc', at: at);
+    expect(a[RelayApi.hNonce], isNot(b[RelayApi.hNonce]));
   });
 }

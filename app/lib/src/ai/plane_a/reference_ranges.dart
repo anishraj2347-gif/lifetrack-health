@@ -65,6 +65,13 @@ const referenceRanges = <ReferenceRange>[
 ];
 
 /// Human names for analyte keys.
+/// Units as LifeTrack writes them (what the report reader turns printed
+/// units into). Anything else in a unit field is free text.
+const knownUnits = <String>{
+  'mg/dL', 'g/dL', '%', 'mIU/L', 'mIU/mL', 'µIU/mL', 'ng/mL', 'ng/dL', 'pg/mL', 'µg/dL', 'mmol/L', 'mmol/mol', 'mEq/L', 'U/L',
+  'IU/L', 'fL', 'pg', 'mm/hr', '/cumm', '/mm³', '/µL', '10³/µL', '10⁶/µL', 'million/cumm', 'lakh/cumm', 'lakh/µL', 'mL/min/1.73m²',
+};
+
 const analyteNames = <String, String>{
   'glucose_fasting': 'Fasting glucose',
   'hba1c': 'HbA1c',

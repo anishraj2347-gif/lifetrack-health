@@ -94,7 +94,11 @@ class AppServices {
   /// Opens DigiLocker and returns its signed confirmation. [purpose] is
   /// `self` (their own Aadhaar) or `newborn` (the owner's DigiLocker birth
   /// certificate; needs the owner to be verified).
-  Future<IdentityAttestation> verifyWithDigiLocker({required String purpose, required Future<void> Function(Uri url) openUrl}) async {
+  Future<IdentityAttestation> verifyWithDigiLocker({
+    required String purpose,
+    required Future<void> Function(Uri url) openUrl,
+    required Future<String?> Function(bool wrong) askCode,
+  }) async {
     final v = verifier ?? (throw const VerificationFailed('DigiLocker checks are not set up in this build.'));
     IdentityAttestation? parent;
     if (purpose == 'newborn') {
@@ -103,7 +107,7 @@ class AppServices {
         throw const VerificationFailed('Verify your own profile with Aadhaar first. A newborn is added from your DigiLocker.');
       }
     }
-    return runVerification(verifier: v, trust: sharing!.trust, purpose: purpose, parent: parent, openUrl: openUrl);
+    return runVerification(verifier: v, trust: sharing!.trust, purpose: purpose, parent: parent, openUrl: openUrl, askCode: askCode);
   }
 
   /// Registers the new profile's LifeTrack ID with its verification; if the
@@ -179,6 +183,7 @@ class AppServices {
     DateTime Function()? clock,
     ShareConfig? share,
     RelayClient Function(WithdrawTokenStore tokens)? relayOverride,
+    DoctorStatus Function()? doctorStatusOverride,
     bool backupEnabled = true,
     IdDirectory Function()? idDirectoryOverride,
     IdentityVerifier Function()? verifierOverride,
@@ -239,6 +244,8 @@ class AppServices {
         shrink: ReportImage.forShare,
         lifeTrackIdOf: services.lifeTrackIdOf,
         keyBook: tokens,
+        // Tests that bring their own relay bring their own registry answer.
+        doctors: doctorStatusOverride?.call() ?? (relayOverride != null ? const UnknownDoctorStatus() : HttpDoctorStatus(baseUrl: Uri.parse(share.relayUrl!))),
       );
       services.ids = LifeTrackIds(
         sealed: sealed,
@@ -248,7 +255,7 @@ class AppServices {
       );
       services.verifier = verifierOverride?.call() ?? HttpIdentityVerifier(baseUrl: Uri.parse(share.relayUrl!));
       await services.ids!.load();
-      services.requests = AccessRequestInbox(sealed: sealed, audit: audit, relay: services.sharing!.relay, trust: services.sharing!.trust);
+      services.requests = AccessRequestInbox(sealed: sealed, audit: audit, relay: services.sharing!.relay, trust: services.sharing!.trust, doctors: services.sharing!.doctors);
       unawaited(services.assignLifeTrackIds());
       services.links = FamilyLinkService(sealed: sealed, relay: services.sharing!.relay, audit: audit, replyIdentity: services._replyIdentity);
     }

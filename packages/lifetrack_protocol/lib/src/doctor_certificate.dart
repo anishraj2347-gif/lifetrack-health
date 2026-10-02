@@ -87,7 +87,7 @@ class DoctorCertificate {
   }
 }
 
-enum CertificateProblem { malformed, untrustedRegistry, badSignature, expired, notYetValid }
+enum CertificateProblem { malformed, untrustedRegistry, badSignature, expired, notYetValid, revoked }
 
 class CertificateRejected implements Exception {
   const CertificateRejected(this.problem);
@@ -99,6 +99,7 @@ class CertificateRejected implements Exception {
           'This doctor could not be verified. Do not share your records.',
         CertificateProblem.expired => "This doctor's verification has expired. Ask them to renew it.",
         CertificateProblem.notYetValid => "This doctor's code is not valid yet.",
+        CertificateProblem.revoked => "LifeTrack has withdrawn this doctor's verification. Do not share your records.",
       };
 
   @override

@@ -167,5 +167,18 @@ void main() {
       ),
     ]).canonical;
     expect(withFreeText.contains('Ramesh'), isFalse, reason: 'free-text analyte names are excluded');
+    final inTheUnit = PseudonymisedSlice.fromRecords(patient: patient, at: now, records: [
+      HealthRecord(
+        id: 'y',
+        patientId: 'p1',
+        kind: RecordKind.report,
+        title: 'y',
+        date: DateTime(2031, 1, 1),
+        source: RecordSource.typedByPatient,
+        results: const [LabResult(analyte: 'ldl', value: 1, unit: 'Ramesh'), LabResult(analyte: 'hdl', value: 50, unit: 'mg/dL')],
+      ),
+    ]);
+    expect(inTheUnit.canonical.contains('Ramesh'), isFalse, reason: 'a unit that is not a known unit is free text too');
+    expect(inTheUnit.entries.single.analyte, 'hdl');
   });
 }

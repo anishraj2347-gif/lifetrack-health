@@ -23,6 +23,10 @@ abstract final class RelayApi {
   static const hCert = 'x-lt-cert';
   static const hTime = 'x-lt-time';
   static const hSig = 'x-lt-sig';
+
+  /// A fresh random value in every signed pickup; the relay refuses one it
+  /// has seen, so a captured request cannot be replayed to empty a mailbox.
+  static const hNonce = 'x-lt-nonce';
   static const hMailboxSecret = 'x-lt-mailbox-secret';
   static const hAdmin = 'x-lt-admin';
 
@@ -64,16 +68,18 @@ abstract final class RelayApi {
   }
 
   /// What a doctor signs to pick up its mailbox.
-  static List<int> pickupMessage(String mailbox, DateTime at) =>
-      utf8.encode('GET|${mailboxPath(mailbox)}|${at.toUtc().toIso8601String()}');
+  static List<int> pickupMessage(String mailbox, DateTime at, String nonce) =>
+      utf8.encode('GET|${mailboxPath(mailbox)}|${at.toUtc().toIso8601String()}|$nonce');
 
   static Future<Map<String, String>> doctorPickupHeaders({
     required String certificateQr,
     required SimpleKeyPair signingKey,
     required String mailbox,
     required DateTime at,
+    String? nonce,
   }) async {
-    final sig = await Ed25519().sign(pickupMessage(mailbox, at), keyPair: signingKey);
-    return {hCert: certificateQr, hTime: at.toUtc().toIso8601String(), hSig: base64Encode(sig.bytes)};
+    final n = nonce ?? newToken();
+    final sig = await Ed25519().sign(pickupMessage(mailbox, at, n), keyPair: signingKey);
+    return {hCert: certificateQr, hTime: at.toUtc().toIso8601String(), hNonce: n, hSig: base64Encode(sig.bytes)};
   }
 }

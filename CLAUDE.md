@@ -60,14 +60,16 @@ copy predate the claim fixes; the app's wording is authoritative).
   imports it.
 - **Consent** (`lib/src/consent/`) — `ConsentStore` is the single authority; `RecordAccess` is the
   only non-patient read path and audits every read and refusal.
-- **Storage** — `FileByteStore` (atomic temp→flush→rename) → `SealedStore` (AES-256-GCM frame
-  `'LT' ‖ version ‖ nonce ‖ mac ‖ ct`, `{schemaVersion, body}`) under a Keystore/Keychain device key.
+- **Storage** — `FileByteStore` (atomic temp→flush→rename; index of names sealed) → `SealedStore`
+  (AES-256-GCM frame `'LT' ‖ version ‖ nonce ‖ mac ‖ ct`, `{schemaVersion, body}`; v2 binds the
+  blob name as associated data) under a Keystore/Keychain device key.
 - **Vault** (`lib/src/vault/`) — Argon2id → HKDF vault key + login verifier; data key wrapped by
   the vault key and split 2-of-3 (Shamir). Live since 1 Oct 2026: Me → Backup snapshots every
   profile (records, originals, allergies/conditions, Emergency ID; notes only on opt-in) to the
   local server's disk store (`server/lib/vault_store.dart`) via `HttpRemoteVaultStore` in the one
   network file. The **password is app-generated** (20 chars, 100 bits) and shown once with an
-  account code and recovery codes; the server rate-limits failed opens (10/hour). Restore is on the
+  account code and recovery codes; the server keeps only a hash of the verifier and rate-limits
+  failed proofs on open, replace and delete alike (10/hour, kept across restarts). Restore is on the
   onboarding screen and only onto an empty phone.
 
 ### Invariants
@@ -84,7 +86,10 @@ copy predate the claim fixes; the app's wording is authoritative).
    - 1e. A **family link** (P7, approved 30 Sep 2026) may carry only the adult's Emergency ID
      and/or current medicine names and doses — each off by default, ticked by that adult on
      their own phone — sealed to the linked phone's reply key via the relay. Never reports,
-     prescriptions or history. Unlink tells the other phone to delete its copy.
+     prescriptions or history. Unlink tells the other phone to delete its copy. Every message
+     after the invite carries the link secret the accepting phone made (1.18.1); both phones
+     show the link's safety code. Received cards and medicine lists are cut to fixed, bounded
+     fields.
    - 1f. **Export** (DPDP access right): the patient, or whoever `actingGrantor()` allows,
      taps Export; a zip (readable HTML, JSON, originals, access log) goes to the system share
      sheet the patient chooses from. AES-256 password-protected by default (app-generated
@@ -114,8 +119,9 @@ copy predate the claim fixes; the app's wording is authoritative).
      deleted after use and swept at start (`plain_leftovers.dart`). Screen privacy
      (FLAG_SECURE) is on by default, off by default only in demo builds.
    - 7a. The app opens behind the phone's own lock (`AppLockGate`, local_auth: fingerprint, face
-     or device PIN; release permissions add USE_BIOMETRIC/USE_FINGERPRINT only). The lock
-     screen offers the owner's Emergency ID read-only, logged as `unauthenticated:lock_screen`.
+     or device PIN; release permissions add USE_BIOMETRIC/USE_FINGERPRINT only). A phone with
+     no screen lock is asked to set one and the records stay closed (demo builds excepted). The
+     lock screen offers the owner's Emergency ID read-only, logged as `unauthenticated:lock_screen`.
      Relock after 1 min away pops pushed routes first. Turning it off needs an unlock.
    - 7b. **ABHA** is optional, per profile, typed in and shown as "not verified" until the ABDM
      integration exists; it is sealed with the profile, never in the Emergency ID blob. The
@@ -155,7 +161,11 @@ copy predate the claim fixes; the app's wording is authoritative).
       daughter (enforced in `addChild` and `setRole`); adults take any adult role.
 15. No doctor capability (e.g. prescribing) before registry verification. On the patient's
     phone this means: no grant to a doctor, and no inbound prescription accepted, unless the
-    doctor's device certificate verifies against the pinned registry key.
+    doctor's device certificate verifies against the pinned registry key. Certificates last 30
+    days (renewed by the doctor app); online, the phone also asks the registry that the doctor
+    is still approved with the same keys (`DoctorStatus`). Revocation is bound to keys, and an
+    enrolment waiting for review is never replaced. The doctor app files a share under a
+    LifeTrack ID only when the registry has that ID on the share's reply key.
 16. Access levels are presets over data classes plus an optional filter — Summary (default),
     All my reports, Family illnesses, Home readings (vitals, last 30 days; off unless ticked). A level never widens `authorize`; the patient may always
     grant less. Results show their age, never "valid" or "expired".
@@ -176,7 +186,9 @@ copy predate the claim fixes; the app's wording is authoritative).
     own DigiLocker (the only route that marks parenthood *verified*). DigiLocker is used only to
     create/add profiles — not as login, not as the ID. The server runs the OAuth (it holds the
     partner secret) and returns an `IdentityAttestation` signed with the registry key; the phone
-    refuses any other signature. No Aadhaar number, DigiLocker id or document is stored anywhere —
+    refuses any other signature. The result is released only with the hand-back code shown on
+    the browser page that finished the sign-in, so a sign-in link sent to someone else yields
+    nothing to its sender. No Aadhaar number, DigiLocker id or document is stored anywhere —
     only name, DOB, gender, method, date and an HMAC subject hash that gives one person one
     LifeTrack ID. Sample profiles are exempt. **Legal note:** I advised that mandatory Aadhaar for
     a private service conflicts with *Puttaswamy* (2018) and the 2019 Aadhaar amendment; the user
