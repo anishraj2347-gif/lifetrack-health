@@ -77,6 +77,31 @@ const analyteNames = <String, String>{
   'tsh': 'TSH',
   'ferritin': 'Ferritin',
   'vitamin_d': 'Vitamin D',
+  // Read off scanned reports. No generic range in the table above, so Tier 1
+  // uses the range printed on the report or says "not checked" (#9a).
+  'glucose_pp': 'Glucose, after meals (PP)',
+  'glucose_random': 'Glucose, random',
+  'vldl': 'VLDL cholesterol',
+  'wbc': 'White cells (TLC)',
+  'rbc': 'Red cells (RBC)',
+  'platelets': 'Platelets',
+  'pcv': 'Haematocrit (PCV)',
+  'esr': 'ESR',
+  'urea': 'Urea',
+  'bun': 'Blood urea nitrogen',
+  'uric_acid': 'Uric acid',
+  'alt': 'ALT (SGPT)',
+  'ast': 'AST (SGOT)',
+  'alp': 'Alkaline phosphatase',
+  'bilirubin_total': 'Bilirubin, total',
+  'sodium': 'Sodium',
+  'potassium': 'Potassium',
+  'calcium': 'Calcium',
+  't3': 'T3',
+  't4': 'T4',
+  'free_t3': 'Free T3',
+  'free_t4': 'Free T4',
+  'vitamin_b12': 'Vitamin B12',
 };
 
 String analyteName(String key) => analyteNames[key] ?? key;

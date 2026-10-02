@@ -6,6 +6,18 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.17.0 (2 Oct 2026)
+- **Scan a report or prescription**: add pages from the camera, photos, any file (PDF or
+  photo), or share straight to LifeTrack from WhatsApp, Gmail or Files. LifeTrack reads them
+  on the phone (Tesseract, bundled; nothing is sent) and fills the form: kind, report name,
+  lab or clinic, doctor, sample date, each value with unit and printed range, and for a
+  prescription each medicine with dose, food timing and days. Anything it is unsure of is
+  highlighted with what it read; each must be ticked or corrected, then "This matches my
+  report" saves it with the photo. Handwriting is flagged and nothing on it is trusted
+  unticked. 24 more tests in the list (CBC, liver, kidney, thyroid, electrolytes, B12).
+  A prescription with several medicines saves one record per medicine on the same pages.
+  Android only for now; on iPhone the form is filled by hand as before.
+
 ### 1.16.0 (1 Oct 2026)
 - **Dark mode**: Me → Appearance — Follow phone, Light or Dark. Switching keeps the screen
   you are on. Dark pages and cards; hero cards lifted; primary buttons cream; lime still means

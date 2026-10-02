@@ -26,6 +26,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // Tesseract opens its model by file length; keep it uncompressed.
+    androidResources {
+        noCompress += "traineddata"
+    }
+
     defaultConfig {
         applicationId = "health.lifetrack.lifetrack"
         // You can update the following values to match your application needs.
@@ -69,4 +74,6 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // On-device OCR for scanned reports and prescriptions (Plane B). No network.
+    implementation("com.github.adaptech-cz.Tesseract4Android:tesseract4android-openmp:4.8.0")
 }

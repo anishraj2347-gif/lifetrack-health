@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'src/app/app_services.dart';
 import 'src/app/storage_wiring.dart';
+import 'src/capture/tesseract_reader.dart';
 import 'src/crypto/device_key_store.dart';
 import 'src/crypto/key_derivation.dart';
 import 'src/reminders/local_notification_scheduler.dart';
@@ -31,6 +33,8 @@ void main() {
       demoTools: const bool.fromEnvironment('LT_DEMO_TOOLS'),
       reminderScheduler: LocalNotificationScheduler(),
       screenPrivacy: PlatformScreenPrivacy(),
+      // Reads scanned reports on the phone (Tesseract, Android only for now).
+      pageReader: defaultTargetPlatform == TargetPlatform.android ? TesseractPageReader() : null,
       kdf: KdfParams.production,
       cloudFactory: defaultCloud,
       share: const ShareConfig(

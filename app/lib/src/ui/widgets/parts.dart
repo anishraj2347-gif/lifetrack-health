@@ -275,7 +275,7 @@ class FieldButton extends StatelessWidget {
             child: Row(children: [
               Icon(icon, size: 16, color: LT.ink3),
               SizedBox(width: 10),
-              Text(text, style: LT.label.copyWith(fontSize: 15, fontWeight: FontWeight.w400, color: placeholder ? LT.ink3 : LT.ink)),
+              Expanded(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: LT.label.copyWith(fontSize: 15, fontWeight: FontWeight.w400, color: placeholder ? LT.ink3 : LT.ink))),
             ]),
           ),
         ),

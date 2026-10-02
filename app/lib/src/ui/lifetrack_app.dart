@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../app/app_services.dart';
+import '../capture/incoming_files.dart';
 import '../security/unlocker.dart';
 import 'app_lock.dart';
 import 'app_scope.dart';
@@ -10,6 +11,7 @@ import 'screens/me_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/records_screen.dart';
 import 'screens/reminders_screen.dart';
+import 'screens/scan_report_screen.dart';
 import 'screens/share_screen.dart';
 import 'theme.dart';
 
@@ -110,6 +112,30 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _tab = 0;
+
+  // Built only behind the app lock, so a report shared to LifeTrack from
+  // another app opens only once the phone's owner has unlocked it.
+  @override
+  void initState() {
+    super.initState();
+    IncomingFiles.listen();
+    IncomingFiles.arrivals.addListener(_incoming);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _incoming());
+  }
+
+  @override
+  void dispose() {
+    IncomingFiles.arrivals.removeListener(_incoming);
+    super.dispose();
+  }
+
+  Future<void> _incoming() async {
+    final files = await IncomingFiles.take();
+    if (files.isEmpty || !mounted) return;
+    setState(() => _tab = 1);
+    await Navigator.of(context).push(MaterialPageRoute<bool>(builder: (_) => ScanReportScreen(incoming: files)));
+    if (mounted) AppScope.changed(context);
+  }
 
   static const _tabs = [
     ('Reminders', LucideIcons.bell),

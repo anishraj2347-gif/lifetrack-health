@@ -2,6 +2,11 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // Tesseract (on-device OCR for scanned reports) is published only on
+        // JitPack. Scoped to that one library so nothing else resolves there.
+        maven("https://jitpack.io") {
+            content { includeGroup("com.github.adaptech-cz.Tesseract4Android") }
+        }
     }
 }
 

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'source.dart';
@@ -28,6 +29,30 @@ void main() {
     for (final p in ['RECORD_AUDIO', 'READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE', 'ACCESS_NETWORK_STATE']) {
       expect(manifest, contains('android.permission.$p" tools:node="remove"'), reason: p);
     }
+  });
+
+  test('"Share to LifeTrack" takes photos and PDFs only, read in memory from other apps', () {
+    final filters = RegExp(r'<intent-filter>(.*?)</intent-filter>', dotAll: true).allMatches(manifest).map((m) => m.group(1)!).where((f) => f.contains('.SEND')).toList();
+    expect(filters, hasLength(2));
+    for (final f in filters) {
+      final types = RegExp(r'android:mimeType="([^"]+)"').allMatches(f).map((m) => m.group(1)).toSet();
+      expect(types, {'image/*', 'application/pdf'});
+    }
+    final activity = File('android/app/src/main/kotlin/health/lifetrack/lifetrack/MainActivity.kt').readAsStringSync();
+    expect(activity, contains('uri.scheme != "content" || uri.authority?.startsWith(packageName) == true'), reason: 'no file:// paths, none of our own files');
+    expect(activity.contains('FileOutputStream') || activity.contains('cacheDir'), isFalse, reason: 'shared files stay in memory (#7c)');
+  });
+
+  test('scanned pages are read on the phone by the pinned Tesseract model (#1)', () async {
+    final model = File('android/app/src/main/assets/tessdata/eng.traineddata');
+    // tessdata_best eng, from github.com/tesseract-ocr/tessdata_best. A
+    // different model is a visible change, not a silent one.
+    final sha = await Sha256().hash(model.readAsBytesSync());
+    expect(sha.bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(), '8280aed0782fe27257a68ea10fe7ef324ca0f8d85bd2fd145d1c2b560bcb66ba');
+    final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+    expect(gradle, contains('tesseract4android-openmp:4.8.0'));
+    final repos = File('android/build.gradle.kts').readAsStringSync();
+    expect(repos, contains('includeGroup("com.github.adaptech-cz.Tesseract4Android")'), reason: 'JitPack serves this one library only');
   });
 
   test('Android backup and device transfer are refused', () {

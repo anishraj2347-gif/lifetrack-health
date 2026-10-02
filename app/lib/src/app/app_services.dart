@@ -10,6 +10,7 @@ import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import '../ai/cloud_escalation.dart';
 import '../ai/insight.dart';
 import '../ai/plane_a/insight_engine.dart';
+import '../ai/plane_b/capture.dart';
 import '../audit/audit_log.dart';
 import '../consent/consent_store.dart';
 import '../consent/consent_token.dart';
@@ -185,6 +186,7 @@ class AppServices {
     bool demoTools = false,
     ReminderScheduler? reminderScheduler,
     ScreenPrivacy? screenPrivacy,
+    PageReader? pageReader,
   }) async {
     final now = clock ?? DateTime.now;
     final sealed = SealedStore(bytes, deviceKey);
@@ -214,6 +216,7 @@ class AppServices {
     services.demoTools = demoTools;
     services.reminderScheduler = reminderScheduler;
     services.screenPrivacy = screenPrivacy;
+    services.scanner = pageReader == null ? null : CaptureExtractor(pageReader);
     unawaited(screenPrivacy?.set(services.screenPrivacyEnabled));
     services._doseLog = ((await sealed.read(_doseLogBlob) as Map?) ?? {}).cast<String, Object?>();
     services._vaccines = ((await sealed.read(_vaccinesBlob) as Map?) ?? {}).cast<String, Object?>();
@@ -287,6 +290,10 @@ class AppServices {
 
   ScreenPrivacy? screenPrivacy;
 
+  /// Reads scanned pages into a draft, on the phone. Null where there is no
+  /// reader (iOS for now, tests): the patient fills the form by hand.
+  CaptureExtractor? scanner;
+
   /// Screenshots, recordings and the Recent apps preview blanked. On unless
   /// the patient turns it off; demo builds start with it off so the screen
   /// can be recorded for a demonstration.
@@ -324,29 +331,41 @@ class AppServices {
 
   /// Saves a photographed paper document: every page is straightened,
   /// shrunk and stripped of metadata, encrypted, and linked to the record.
-  Future<HealthRecord> addScanned({required HealthRecord draft, required List<Uint8List> rawPages}) async {
+  Future<HealthRecord> addScanned({required HealthRecord draft, required List<Uint8List> rawPages, String? checked}) async =>
+      (await addScannedAll(drafts: [draft], rawPages: rawPages, checked: checked)).single;
+
+  /// One document, several records — a prescription with three medicines
+  /// is three prescriptions sharing the same original pages. [checked] says,
+  /// for the access log, how the patient checked what was read off the scan.
+  Future<List<HealthRecord>> addScannedAll({required List<HealthRecord> drafts, required List<Uint8List> rawPages, String? checked}) async {
     final pages = <Uint8List>[for (final p in rawPages) await ReportImage.prepare(p)];
     final attachmentId = 'a-${_randomId()}';
     await attachments.save(attachmentId, pages);
-    final r = HealthRecord(
-      id: draft.id,
-      patientId: draft.patientId,
-      kind: draft.kind,
-      title: draft.title,
-      date: draft.date,
-      source: RecordSource.smartCapture,
-      doctor: draft.doctor,
-      facility: draft.facility,
-      results: draft.results,
-      dose: draft.dose,
-      ingredient: draft.ingredient,
-      labName: draft.labName,
-      sampleDate: draft.sampleDate,
-      attachmentId: attachmentId,
-      originalFormat: draft.originalFormat,
-    );
-    await addRecord(r);
-    return r;
+    final saved = <HealthRecord>[];
+    for (final draft in drafts) {
+      final r = HealthRecord(
+        id: draft.id,
+        patientId: draft.patientId,
+        kind: draft.kind,
+        title: draft.title,
+        date: draft.date,
+        source: RecordSource.smartCapture,
+        doctor: draft.doctor,
+        facility: draft.facility,
+        results: draft.results,
+        dose: draft.dose,
+        ingredient: draft.ingredient,
+        labName: draft.labName,
+        sampleDate: draft.sampleDate,
+        attachmentId: attachmentId,
+        endDate: draft.endDate,
+        timing: draft.timing,
+        originalFormat: draft.originalFormat,
+      );
+      await addRecord(r, how: checked);
+      saved.add(r);
+    }
+    return saved;
   }
 
   /// The patient's own originals — their phone, their data, no grant.
@@ -576,7 +595,9 @@ class AppServices {
   /// backup on the next run). Shares already sent are not recalled by this.
   Future<void> deleteRecord(HealthRecord r) async {
     await repository.remove(r.id);
-    if (r.attachmentId != null) await attachments.delete(r.attachmentId!);
+    // Pages shared with other records from the same scan stay until the last goes.
+    final a = r.attachmentId;
+    if (a != null && !repository.recordsOf(r.patientId).any((x) => x.attachmentId == a)) await attachments.delete(a);
     await audit.append(AuditEntry(
       at: clock(),
       actorId: actingGrantor(),
@@ -916,7 +937,7 @@ class AppServices {
 
   List<HealthRecord> records() => currentPatientId == null ? const [] : repository.recordsOf(currentPatientId!);
 
-  Future<void> addRecord(HealthRecord r) async {
+  Future<void> addRecord(HealthRecord r, {String? how}) async {
     await repository.add(r);
     await audit.append(AuditEntry(
       at: clock(),
@@ -924,7 +945,7 @@ class AppServices {
       patientId: r.patientId,
       action: AuditAction.edit,
       dataClass: r.dataClass,
-      detail: 'added "${r.title}"',
+      detail: how == null ? 'added "${r.title}"' : 'added "${r.title}" $how',
     ));
     if (r.kind == RecordKind.prescription) {
       await _tellLinkedFamily(r.patientId);
