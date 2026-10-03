@@ -172,6 +172,10 @@ always goes up (Android refuses to install a lower one).
 
 ## Doctor web app
 
+### 1.5.1 (3 Oct 2026)
+- Demo builds: "Use a sample doctor" on the sign-up screen fills in a sample name, speciality,
+  council and a fresh registration number. Approval still comes from the registry.
+
 ### 1.5.0 (3 Oct 2026)
 - **Sample patients** (demo builds only, `LT_DEMO_TOOLS=true`): My code → Add sample patients
   fills the app with six made-up patients, each named "(sample)". Three have access open with a

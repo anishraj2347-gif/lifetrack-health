@@ -5,6 +5,7 @@ import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 
 import 'lock.dart';
 import 'patients.dart';
+import 'sample_data.dart' show demoTools;
 import 'session.dart';
 import 'theme.dart';
 
@@ -285,6 +286,21 @@ class _EnrolScreenState extends State<EnrolScreen> {
           Field('Speciality', _spec, hint: 'Cardiology'),
           Field('Medical council', _council, hint: 'Delhi Medical Council'),
           Field('Registration number', _reg, hint: 'DMC-12345'),
+          if (demoTools)
+            Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: OutlinedButton.icon(
+                icon: Icon(Icons.auto_awesome_outlined, size: 18),
+                label: Text('Use a sample doctor'),
+                onPressed: () => setState(() {
+                  _name.text = 'Dr. Kavya Menon';
+                  _spec.text = 'General Medicine';
+                  _council.text = 'Delhi Medical Council';
+                  // A fresh number each time: a number already enrolled is refused.
+                  _reg.text = 'DMC-${10000 + DateTime.now().millisecondsSinceEpoch % 90000}';
+                }),
+              ),
+            ),
           if (_error != null)
             Padding(
               padding: EdgeInsets.only(bottom: 12),
