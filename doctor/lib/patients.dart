@@ -50,7 +50,7 @@ class MyCodePanel extends StatelessWidget {
     return ListView(
       padding: pagePadding(context),
       children: [
-        Text('LifeTrack for doctors', style: DT.muted),
+        Text('LifeTrack Clinic', style: DT.muted),
         SizedBox(height: 4),
         Text('${s.profile['name']}', style: DT.h1),
         Text('${s.profile['speciality']} · ${s.registrationNo}', style: DT.muted),

@@ -172,6 +172,12 @@ always goes up (Android refuses to install a lower one).
 
 ## Doctor web app
 
+### 1.6.0 (3 Oct 2026)
+- **Named LifeTrack Clinic**, shown as "LT Clinic" on the home screen. It gets its own icon:
+  the patient app's card deck with ℞ on the front card, the pulse line forming the ℞'s cross
+  stroke and ending in the lime "now" dot. Android adaptive icon, legacy icons and web icons
+  are all updated. The web manifest no longer uses Flutter's blue.
+
 ### 1.5.1 (3 Oct 2026)
 - Demo builds: "Use a sample doctor" on the sign-up screen fills in a sample name, speciality,
   council and a fresh registration number. Approval still comes from the registry.

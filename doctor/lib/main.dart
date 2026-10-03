@@ -67,7 +67,7 @@ class _DoctorAppState extends State<DoctorApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'LifeTrack for doctors',
+    title: 'LifeTrack Clinic',
     debugShowCheckedModeBanner: false,
     theme: DT.theme(),
     home: FutureBuilder<DoctorSession>(
@@ -274,7 +274,7 @@ class _EnrolScreenState extends State<EnrolScreen> {
         shrinkWrap: true,
         padding: EdgeInsets.all(20),
         children: [
-          Text('LifeTrack for doctors', style: DT.muted),
+          Text('LifeTrack Clinic', style: DT.muted),
           Text('Verify your licence', style: DT.h1),
           SizedBox(height: 8),
           Text(
