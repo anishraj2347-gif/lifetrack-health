@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 
 import 'lock.dart';
@@ -185,7 +186,37 @@ class _ShellState extends State<Shell> {
         _prefill = prefill;
       });
 
-  Widget _home() => LayoutBuilder(builder: (context, box) {
+  DateTime? _lastBack;
+
+  /// Back works as in other apps: an open patient closes first, then another
+  /// tab returns to Patients, and on Patients a second press leaves.
+  void _onBack(bool didPop, Object? _) {
+    if (didPop) return;
+    if (_openKey != null) {
+      setState(() {
+        _openKey = null;
+        _prefill = null;
+      });
+      return;
+    }
+    if (_tab != 0) {
+      setState(() => _tab = 0);
+      return;
+    }
+    final now = DateTime.now();
+    if (_lastBack != null && now.difference(_lastBack!) < const Duration(seconds: 2)) {
+      SystemNavigator.pop();
+      return;
+    }
+    _lastBack = now;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Press back again to exit'), duration: Duration(seconds: 2)));
+  }
+
+  Widget _home() => PopScope(canPop: false, onPopInvokedWithResult: _onBack, child: _homeBody());
+
+  Widget _homeBody() => LayoutBuilder(builder: (context, box) {
         final wide = box.maxWidth >= 1000;
         final Widget content = _openKey != null
             ? PatientScreen(

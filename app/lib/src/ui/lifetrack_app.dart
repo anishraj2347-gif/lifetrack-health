@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../app/app_services.dart';
@@ -145,8 +146,36 @@ class _HomeShellState extends State<HomeShell> {
     ('Me', LucideIcons.userRound),
   ];
 
+  DateTime? _lastBack;
+
+  /// Back works as in other apps: from another tab it returns to the first;
+  /// on the first tab it asks for a second press before leaving. Pages
+  /// opened on top close first, as usual.
+  void _onBack(bool didPop, Object? _) {
+    if (didPop) return;
+    if (_tab != 0) {
+      setState(() => _tab = 0);
+      return;
+    }
+    final now = DateTime.now();
+    if (_lastBack != null && now.difference(_lastBack!) < const Duration(seconds: 2)) {
+      SystemNavigator.pop();
+      return;
+    }
+    _lastBack = now;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Press back again to exit'), duration: Duration(seconds: 2)));
+  }
+
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => PopScope(
+    canPop: false,
+    onPopInvokedWithResult: _onBack,
+    child: _shell(),
+  );
+
+  Widget _shell() => Scaffold(
     body: SafeArea(
       bottom: false,
       child: switch (_tab) {

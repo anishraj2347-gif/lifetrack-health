@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:lifetrack_doctor/main.dart' show Shell;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -278,5 +280,51 @@ void main() {
       expect(find.textContaining(sh.patientName), findsWidgets);
       expect(tester.takeException(), isNull);
     }
+  });
+
+  testWidgets('back closes an open patient, then returns to Patients, then asks before leaving', (tester) async {
+    SharedPreferences.setMockInitialValues(await legacyPrefs());
+    late DoctorSession s;
+    await tester.runAsync(() async {
+      s = await DoctorSession.load(base, cipher: MemoryCipher());
+      s.registerShare(share('Anjali Sharma', ltId: '148209375516', at: DateTime(2026, 9, 1)));
+    });
+    final exits = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'SystemNavigator.pop') exits.add(call.method);
+      return null;
+    });
+    tester.view.physicalSize = const Size(400 * 2.6, 860 * 2.6);
+    tester.view.devicePixelRatio = 2.6;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(MaterialApp(home: Shell(session: s)));
+    await tester.pump();
+    expect(find.text('My patients'), findsOneWidget);
+
+    await tester.scrollUntilVisible(find.textContaining('Anjali Sharma · F · 42 y'), 300, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Anjali Sharma · F · 42 y'));
+    await tester.pumpAndSettle();
+    expect(find.text('Their shared records are closed'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Their shared records are closed'), findsNothing, reason: 'the patient page closed');
+    expect(find.text('My patients'), findsOneWidget);
+
+    await tester.tap(find.text('Prescriptions'));
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('My patients'), findsOneWidget, reason: 'back from Prescriptions goes to Patients');
+    expect(exits, isEmpty);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(find.text('Press back again to exit'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(exits, hasLength(1));
+    await tester.pumpWidget(const SizedBox());
   });
 }

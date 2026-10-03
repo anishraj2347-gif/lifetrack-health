@@ -6,6 +6,11 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.18.3 (3 Oct 2026)
+- **Back works like other apps**: from Records, Insights, Share or Me, back returns to
+  Reminders; on Reminders, "Press back again to exit". Pages opened on top still close first.
+  Before, back from any tab closed the app.
+
 ### 1.18.2 (3 Oct 2026) — fixes from the review of 1.18.1
 - **Shares prove who sent them**: a share that carries a LifeTrack ID now also carries a proof
   (HMAC under X25519(reply key, doctor's key), bound to the grant and the ID) that it came from
@@ -171,6 +176,11 @@ always goes up (Android refuses to install a lower one).
 - Rebuilt phase-2 app: records, insights, consent, clinical sharing with verified doctors.
 
 ## Doctor web app
+
+### 1.6.1 (3 Oct 2026)
+- **Back works like other apps**: an open patient closes first, then Prescriptions or My code
+  return to Patients, and on Patients "Press back again to exit". Before, back closed the app,
+  even from a patient's page.
 
 ### 1.6.0 (3 Oct 2026)
 - **Named LifeTrack Clinic**, shown as "LT Clinic" on the home screen. It gets its own icon:
