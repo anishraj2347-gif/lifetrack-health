@@ -1,0 +1,54 @@
+Running `(cd /Users/anishraj/.pub-cache/hosted/pub.dev/objective_c-9.5.0/; TMPDIR=/var/folders/dh/1n5czpys59b7kry0j926wt_h0000gn/T/ PATH=/Users/anishraj/.local/bin:/Users/anishraj/.local/bin:/Users/anishraj/.nvm/versions/node/v24.15.0/bin:/usr/local/mysql-9.7.0-macos15-arm64/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/opt/homebrew/bin HOME=/Users/anishraj /opt/homebrew/share/flutter/bin/cache/dart-sdk/bin/dart '--packages=/Users/anishraj/Ntcc Project/integration/.dart_tool/package_config.json' '/Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/objective_c/de310349bc/hook.dill' '--config=/Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/objective_c/de310349bc/input.json' )`.
+INFO: 2026-10-03 11:15:18.585714: Using compiler /Library/Developer/CommandLineTools/usr/bin/clang from BuildInput.cCompiler.cc.
+
+INFO: 2026-10-03 11:15:18.589478: Running: /Library/Developer/CommandLineTools/usr/bin/clang -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -target arm64-apple-darwin -mmacos-version-min=13 -c /Users/anishraj/.pub-cache/hosted/pub.dev/objective_c-9.5.0/src/include/dart_api_dl.c -fpic -gline-tables-only -I src -o /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/include/dart_api_dl.c.o
+
+INFO: 2026-10-03 11:15:18.590338: Running: /Library/Developer/CommandLineTools/usr/bin/clang -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -target arm64-apple-darwin -mmacos-version-min=13 -c /Users/anishraj/.pub-cache/hosted/pub.dev/objective_c-9.5.0/src/objective_c.c -fpic -gline-tables-only -I src -o /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/objective_c.c.o
+
+INFO: 2026-10-03 11:15:18.590552: Running: /Library/Developer/CommandLineTools/usr/bin/clang -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -target arm64-apple-darwin -mmacos-version-min=13 -x objective-c -fobjc-arc -c /Users/anishraj/.pub-cache/hosted/pub.dev/objective_c-9.5.0/src/objective_c.m -fpic -gline-tables-only -I src -o /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/objective_c.m.o
+
+ream_adapter.m.o
+
+INFO: 2026-10-03 11:15:18.590637: Running: /Library/Developer/CommandLineTools/usr/bin/clang -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -target arm64-apple-darwin -mmacos-version-min=13 -x objective-c -fobjc-arc -c /Users/anishraj/.pub-cache/hosted/pub.dev/objective_c-9.5.0/src/observer.m -fpic -gline-tables-only -I src -o /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/observer.m.o
+INFO: 2026-10-03 11:15:18.590717: Running: /Library/Developer/CommandLineTools/usr/bin/clang -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -target arm64-apple-darwin -mmacos-version-min=13 -x objective-c -fobjc-arc -c /Users/anishraj/.pub-cache/hosted/pub.dev/objective_c-9.5.0/src/ns_number.m -fpic -gline-tables-only -I src -o /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/ns_number.m.o
+INFO: 2026-10-03 11:15:18.590802: Running: /Library/Developer/CommandLineTools/usr/bin/clang -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -target arm64-apple-darwin -mmacos-version-min=13 -x objective-c -fobjc-arc -c /Users/anishraj/.pub-cache/hosted/pub.dev/objective_c-9.5.0/src/protocol.m -fpic -gline-tables-only -I src -o /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/protocol.m.o
+INFO: 2026-10-03 11:15:18.590885: Running: /Library/Developer/CommandLineTools/usr/bin/clang -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -target arm64-apple-darwin -mmacos-version-min=13 -x objective-c -fobjc-arc -c /Users/anishraj/.pub-cache/hosted/pub.dev/objective_c-9.5.0/src/objective_c_bindings_generated.m -fpic -gline-tables-only -I src -o /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/objective_c_bindings_generated.m.o
+
+INFO: 2026-10-03 11:15:18.867315: 
+INFO: 2026-10-03 11:15:18.867403: 
+INFO: 2026-10-03 11:15:18.867447: Generated /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/include/dart_api_dl.c.o
+
+INFO: 2026-10-03 11:15:18.867790: 
+INFO: 2026-10-03 11:15:18.867832: 
+INFO: 2026-10-03 11:15:18.867854: Generated /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/objective_c.c.o
+
+INFO: 2026-10-03 11:15:18.868632: 
+INFO: 2026-10-03 11:15:18.868664: 
+INFO: 2026-10-03 11:15:18.868683: Generated /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/observer.m.o
+
+INFO: 2026-10-03 11:15:18.868814: 
+INFO: 2026-10-03 11:15:18.868837: 
+INFO: 2026-10-03 11:15:18.868856: Generated /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/protocol.m.o
+
+INFO: 2026-10-03 11:15:19.297810: 
+INFO: 2026-10-03 11:15:19.297949: 
+INFO: 2026-10-03 11:15:19.297993: Generated /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/ns_number.m.o
+
+INFO: 2026-10-03 11:15:19.312920: 
+INFO: 2026-10-03 11:15:19.312992: 
+INFO: 2026-10-03 11:15:19.313013: Generated /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/objective_c.m.o
+
+INFO: 2026-10-03 11:15:19.313684: 
+INFO: 2026-10-03 11:15:19.313723: 
+INFO: 2026-10-03 11:15:19.313743: Generated /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/input_stream_adapter.m.o
+
+INFO: 2026-10-03 11:15:19.361310: 
+INFO: 2026-10-03 11:15:19.361353: 
+INFO: 2026-10-03 11:15:19.361366: Generated /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/objective_c_bindings_generated.m.o
+
+INFO: 2026-10-03 11:15:19.361756: Running: /Library/Developer/CommandLineTools/usr/bin/clang -shared -Wl,-encryptable -undefined dynamic_lookup -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -target arm64-apple-darwin -mmacos-version-min=13 /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/include/dart_api_dl.c.o /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/objective_c.c.o /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/input_stream_adapter.m.o /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/objective_c.m.o /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/observer.m.o /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/ns_number.m.o /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/protocol.m.o /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/obj/src/objective_c_bindings_generated.m.o -o /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/objective_c.dylib
+
+INFO: 2026-10-03 11:15:19.554602: 
+INFO: 2026-10-03 11:15:19.554662: 
+INFO: 2026-10-03 11:15:19.554675: Generated /Users/anishraj/Ntcc Project/integration/.dart_tool/hooks_runner/shared/objective_c/build/de310349bc/objective_c.dylib
+

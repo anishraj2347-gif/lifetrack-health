@@ -1,0 +1,26 @@
+name: lifetrack_integration
+description: Both apps and the server together — the patient app's and the doctor app's real code, joined through the real server handler.
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+
+dev_dependencies:
+  flutter:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  lifetrack:
+    path: ../app
+  lifetrack_doctor:
+    path: ../doctor
+  lifetrack_server:
+    path: ../server
+  lifetrack_protocol:
+    path: ../packages/lifetrack_protocol
+  cryptography: any
+  http: any
+  shelf: any
+  shared_preferences: any
+flutter:
+  uses-material-design: true

@@ -209,6 +209,9 @@ copy predate the claim fixes; the app's wording is authoritative).
   `lib/src/ui/widgets/parts.dart`. Lime means "selected / now" only — never a health status.
   Do not add the `shadcn_ui` package: it pulls in `http` and `extended_image` (network-capable).
 - Build the APK with `scripts/build_apk.sh` (obfuscated release).
+- `integration/` runs both apps' real code against the real server handler (`flutter test` there):
+  scan, share, confirmed sender, prescription back, request by ID, decline, end access, revocation.
+  Run it after any change to what one app sends the other.
 - **Bump the version with every update** (user rule, 1 Oct 2026): `app/pubspec.yaml` and/or
   `doctor/pubspec.yaml`, feature → middle number, fix → last; build number always rises; add a
   line to `CHANGELOG.md` in the same commit.
