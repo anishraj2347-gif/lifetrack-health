@@ -24,6 +24,7 @@ Future<pw.Document> prescriptionPdf({
   required String patientLine,
   required String council,
   required String speciality,
+  List<String> practice = const [],
 }) async {
   final fp = await signatureFingerprint(rx);
   final issued = rx.issuedAt.toLocal();
@@ -37,6 +38,8 @@ Future<pw.Document> prescriptionPdf({
       pw.Text(rx.doctorName, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
       pw.Text('${rx.qualification}${speciality.isEmpty ? '' : ' · $speciality'}', style: const pw.TextStyle(fontSize: 10)),
       pw.Text('Reg. no. ${rx.registrationNo} · $council', style: const pw.TextStyle(fontSize: 10)),
+      // Clinic, address and phone, from Profile → Practice details.
+      for (final line in practice) pw.Text(line, style: const pw.TextStyle(fontSize: 10)),
       pw.Divider(),
       pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
         pw.Text('Patient: $patientName  $patientLine', style: const pw.TextStyle(fontSize: 11)),
@@ -73,7 +76,8 @@ Future<void> printPrescription({
   required String patientLine,
   required String council,
   required String speciality,
+  List<String> practice = const [],
 }) async {
-  final doc = await prescriptionPdf(rx: rx, patientName: patientName, patientLine: patientLine, council: council, speciality: speciality);
+  final doc = await prescriptionPdf(rx: rx, patientName: patientName, patientLine: patientLine, council: council, speciality: speciality, practice: practice);
   await Printing.layoutPdf(name: 'Prescription ${rx.registrationNo} $patientName.pdf', onLayout: (_) => doc.save());
 }

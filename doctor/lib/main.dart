@@ -6,6 +6,7 @@ import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 
 import 'lock.dart';
 import 'patients.dart';
+import 'profile.dart';
 import 'sample_data.dart' show demoTools;
 import 'session.dart';
 import 'theme.dart';
@@ -233,7 +234,8 @@ class _ShellState extends State<Shell> {
             : switch (wide && _tab == 2 ? 0 : _tab) {
                 0 => PatientsTab(session: s, onOpen: _openPatient, onChanged: () => setState(() {})),
                 1 => PrescriptionsTab(session: s, onOpenPatient: _openPatient, onWriteAgain: (e) => _openPatient(e.patientKey, prefill: e.rx)),
-                _ => MyCodePanel(session: s, error: _error, onChanged: () => setState(() {})),
+                2 => MyCodePanel(session: s, error: _error, onChanged: () => setState(() {})),
+                _ => ProfileTab(session: s, onChanged: () => setState(() {})),
               };
         if (wide) {
           return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -251,6 +253,7 @@ class _ShellState extends State<Shell> {
                           segments: [
                             ButtonSegment(value: 0, label: Text('Patients · ${s.patients.length}'), icon: Icon(Icons.people_outline)),
                             ButtonSegment(value: 1, label: Text('Prescriptions · ${s.prescriptions.length}'), icon: Icon(Icons.receipt_long_outlined)),
+                            ButtonSegment(value: 3, label: Text('Profile'), icon: Icon(Icons.person_outline)),
                           ],
                           selected: {_tab == 2 ? 0 : _tab},
                           onSelectionChanged: (v) => setState(() => _tab = v.first),
@@ -275,6 +278,7 @@ class _ShellState extends State<Shell> {
                     NavigationDestination(icon: Badge(isLabelVisible: s.inbox.isNotEmpty, label: Text('${s.inbox.length}'), child: Icon(Icons.people_outline)), label: 'Patients'),
                     NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Prescriptions'),
                     NavigationDestination(icon: Icon(Icons.qr_code_2), label: 'My code'),
+                    NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
                   ],
                 ),
         );

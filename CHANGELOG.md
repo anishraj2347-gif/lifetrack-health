@@ -185,6 +185,18 @@ always goes up (Android refuses to install a lower one).
 
 ## Doctor web app
 
+### 1.8.0 (3 Oct 2026)
+- **Profile tab** (like Me in the patient app): who you are as the registry approved you
+  (name, speciality, registration, council, verified, certificate renewal date), practice
+  details, privacy, appearance, this device (key fingerprint, patients, prescriptions, notes),
+  demo tools, version, and Start over (now asks first).
+- **Practice details**: qualification, clinic, address and phone, editable any time. Printed on
+  paper prescriptions; the qualification fills in each new prescription.
+- **Hide from screenshots is a setting** (Profile → Privacy), as in the patient app: on by
+  default, off by default in demo builds so demos can be recorded. Before, screenshots were
+  always blocked.
+- My code now shows only your code; Appearance and Demo moved to Profile.
+
 ### 1.7.0 (3 Oct 2026)
 - **Ask for a time**: Request access by LifeTrack ID → For how long (1 hour by default, up to
   2 days). The time is signed with the request; the patient may give less.

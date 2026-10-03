@@ -6,7 +6,6 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'main.dart' show Countdown, RequestByIdCard;
 import 'practice.dart';
 import 'print_rx.dart';
-import 'sample_data.dart';
 import 'session.dart';
 import 'summary.dart';
 import 'theme.dart';
@@ -25,6 +24,7 @@ Future<void> printRx(DoctorSession s, RxEntry e) => printPrescription(
       patientLine: e.patientLine,
       council: s.profile['council'] ?? '',
       speciality: s.profile['speciality'] ?? '',
+      practice: [for (final k in const ['clinic', 'address', 'phone']) if ((s.profile[k] ?? '').isNotEmpty) s.profile[k]!],
     );
 
 /// The next follow-up date the doctor set for [key] that is today or later.
@@ -80,44 +80,6 @@ class MyCodePanel extends StatelessWidget {
             ),
           ]),
         ),
-        Card0(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Appearance', style: DT.label),
-            const SizedBox(height: 8),
-            StatefulBuilder(
-              builder: (context, setLocal) => Wrap(spacing: 8, runSpacing: 8, children: [
-                for (final (v, label) in const [('system', 'Follow device'), ('light', 'Light'), ('dark', 'Dark')])
-                  ChoiceChip(
-                    label: Text(label),
-                    selected: s.themeChoice == v,
-                    onSelected: (_) async {
-                      await s.setThemeChoice(v);
-                      appearance.value = themeModeOf(v);
-                      setLocal(() {});
-                    },
-                    selectedColor: DT.button,
-                    labelStyle: TextStyle(color: s.themeChoice == v ? DT.onButton : DT.ink, fontWeight: FontWeight.w500),
-                    shape: const StadiumBorder(),
-                    showCheckmark: false,
-                  ),
-              ]),
-            ),
-          ]),
-        ),
-        if (demoTools)
-          Card0(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Demo', style: DT.label),
-              const SizedBox(height: 4),
-              Text('Adds made-up patients, prescriptions and notes, each marked "(sample)". Adding again replaces them.', style: DT.muted),
-              const SizedBox(height: 10),
-              Pill('Add sample patients', onTap: () async {
-                await s.addSamplePatients(DateTime.now());
-                onChanged?.call();
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sample patients added. Open Patients to see them.')));
-              }),
-            ]),
-          ),
         ExpansionTile(
           title: Text('Copy code instead', style: DT.muted),
           children: [SelectableText(s.certificateQr!, style: TextStyle(fontSize: 10))],
@@ -646,7 +608,7 @@ class _PrescribeCardState extends State<PrescribeCard> {
   late final _days = TextEditingController(text: '${widget.prefill?.days ?? 30}');
   late final _note = TextEditingController(text: widget.prefill?.note);
   late final _dose = [widget.prefill?.morning ?? 0, widget.prefill?.afternoon ?? 0, widget.prefill?.night ?? 1];
-  late final _qual = TextEditingController(text: widget.prefill?.qualification ?? 'MBBS, MD');
+  late final _qual = TextEditingController(text: widget.prefill?.qualification ?? widget.session.profile['qualification'] ?? 'MBBS, MD');
   late String? _timing = widget.prefill == null ? 'after_food' : widget.prefill!.timing;
   SignedPrescription? _sent;
   String? _error;

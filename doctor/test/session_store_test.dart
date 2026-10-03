@@ -10,6 +10,7 @@ import 'package:http/testing.dart';
 import 'package:lifetrack_doctor/patients.dart';
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:lifetrack_doctor/practice.dart';
+import 'package:lifetrack_doctor/screen_privacy.dart';
 import 'package:lifetrack_doctor/session.dart';
 import 'package:lifetrack_doctor/store/memory_cipher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -327,5 +328,31 @@ void main() {
     await tester.pump();
     expect(exits, hasLength(1));
     await tester.pumpWidget(const SizedBox());
+  });
+
+  test('screenshots are blocked by default; the doctor can allow them, and the choice survives a restart', () async {
+    SharedPreferences.setMockInitialValues(await legacyPrefs());
+    final cipher = MemoryCipher();
+    final privacy = RecordingScreenPrivacy();
+    final s = await DoctorSession.load(base, cipher: cipher, privacy: privacy);
+    expect((s.screenPrivacy, privacy.on), (true, true), reason: 'not a demo build: on');
+    await s.setScreenPrivacy(false);
+    expect(privacy.on, isFalse);
+
+    final again = RecordingScreenPrivacy();
+    final s2 = await DoctorSession.load(base, cipher: cipher, privacy: again);
+    expect((s2.screenPrivacy, again.on), (false, false));
+  });
+
+  test('practice details are kept, bounded, and only the editable ones', () async {
+    SharedPreferences.setMockInitialValues(await legacyPrefs());
+    final cipher = MemoryCipher();
+    final s = await DoctorSession.load(base, cipher: cipher);
+    await s.savePractice({'qualification': 'MBBS, MD', 'clinic': 'Menon Family Clinic', 'phone': ''});
+    expect(() => s.savePractice({'clinic': 'x' * 121}), throwsArgumentError);
+    expect(() => s.savePractice({'registrationNo': 'DMC-1'}), throwsArgumentError, reason: 'the registration comes from the licence check');
+    final s2 = await DoctorSession.load(base, cipher: cipher);
+    expect((s2.profile['qualification'], s2.profile['clinic'], s2.profile['phone']), ('MBBS, MD', 'Menon Family Clinic', null));
+    expect(s2.registrationNo, 'DMC-67890');
   });
 }

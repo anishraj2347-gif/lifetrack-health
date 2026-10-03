@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'practice.dart';
 import 'sample_data.dart';
+import 'screen_privacy.dart';
 import 'store/local_cipher.dart';
 
 /// A patient's share as the doctor holds it: opened in memory; on disk only
@@ -63,13 +64,16 @@ enum EnrolmentState { none, pending, approved, rejected, revoked }
 /// ([LocalCipher]). Values written by older versions in the clear are
 /// sealed the first time they are read.
 class DoctorSession {
-  DoctorSession._(this.prefs, this.base, this.cipher, [http.Client? client]) : _http = client ?? http.Client();
+  DoctorSession._(this.prefs, this.base, this.cipher, [http.Client? client, ScreenPrivacy? privacy])
+      : _http = client ?? http.Client(),
+        _privacy = privacy ?? PlatformScreenPrivacy();
 
   static const _kEnc = 'lt.doctor.enc';
   static const _kSign = 'lt.doctor.sign';
   static const _kProfile = 'lt.doctor.profile';
   static const _kCert = 'lt.doctor.cert';
   static const _kRevoked = 'lt.doctor.revoked';
+  static const _kPrivacy = 'lt.doctor.privacy';
   static const _kInbox = 'lt.doctor.inbox';
   static const _kPatients = 'lt.doctor.patients';
   static const _kRx = 'lt.doctor.prescriptions';
@@ -95,6 +99,48 @@ class DoctorSession {
   }
 
   Future<void> _set(String k, String v) async => prefs.setString(k, await cipher.seal(v));
+
+  final ScreenPrivacy _privacy;
+
+  /// Screenshots and screen recordings of LT Clinic come out blank.
+  bool screenPrivacy = true;
+
+  Future<void> setScreenPrivacy(bool on) async {
+    screenPrivacy = on;
+    await _set(_kPrivacy, on ? 'on' : 'off');
+    await _privacy.set(on);
+  }
+
+  /// Practice details the doctor may change at any time: printed on paper
+  /// prescriptions, and the qualification prefills each new one. Name,
+  /// speciality, council and registration number come from the approved
+  /// enrolment and change only by enrolling again.
+  static const practiceFields = {'qualification': 'Qualification', 'clinic': 'Clinic or hospital', 'address': 'Clinic address', 'phone': 'Clinic phone'};
+
+  Future<void> savePractice(Map<String, String> fields) async {
+    for (final e in fields.entries) {
+      if (!practiceFields.containsKey(e.key)) throw ArgumentError('Unknown field ${e.key}.');
+      final v = e.value.trim();
+      if (v.length > 120) throw ArgumentError('Keep ${practiceFields[e.key]} under 120 characters.');
+      if (v.isEmpty) {
+        profile.remove(e.key);
+      } else {
+        profile[e.key] = v;
+      }
+    }
+    await _set(_kProfile, jsonEncode(profile));
+  }
+
+  /// When the registry's certificate for this device ends (it renews itself).
+  DateTime? get certificateExpires {
+    final qr = certificateQr;
+    if (qr == null) return null;
+    try {
+      return DoctorCertificate.decode(qr).expiresAt;
+    } on Object {
+      return null;
+    }
+  }
 
   /// 'system' (follow the device), 'light' or 'dark'.
   String themeChoice = 'system';
@@ -231,9 +277,14 @@ class DoctorSession {
   /// Names whose shares the patient closed since the screen last showed it.
   final List<String> closedByPatient = [];
 
-  static Future<DoctorSession> load(Uri base, {LocalCipher? cipher, http.Client? client}) async {
-    final s = DoctorSession._(await SharedPreferences.getInstance(), base, cipher ?? platformCipher(), client);
+  static Future<DoctorSession> load(Uri base, {LocalCipher? cipher, http.Client? client, ScreenPrivacy? privacy}) async {
+    final s = DoctorSession._(await SharedPreferences.getInstance(), base, cipher ?? platformCipher(), client, privacy);
     s.themeChoice = await s._get(_kTheme) ?? 'system';
+    // On unless the doctor turned it off; demo builds start with it off so
+    // demos can be recorded (as in the patient app).
+    final p = await s._get(_kPrivacy);
+    s.screenPrivacy = p == null ? !demoTools : p == 'on';
+    await s._privacy.set(s.screenPrivacy);
     final encSeed = await s._get(_kEnc);
     final signSeed = await s._get(_kSign);
     if (encSeed != null && signSeed != null) {

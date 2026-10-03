@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lifetrack_doctor/patients.dart';
 import 'package:lifetrack_doctor/practice.dart';
+import 'package:lifetrack_doctor/profile.dart';
 import 'package:lifetrack_doctor/session.dart';
 import 'package:lifetrack_doctor/store/memory_cipher.dart';
 import 'package:lifetrack_doctor/theme.dart';
@@ -16,7 +17,7 @@ import 'contrast_check.dart';
 void main() {
   for (final mode in ['light', 'dark']) {
     testWidgets(
-      '$mode: patients, a patient (open and closed), prescriptions, my code',
+      '$mode: patients, a patient (open and closed), prescriptions, my code, profile',
       (tester) async {
         DT.dark = mode == 'dark';
         addTearDown(() => DT.dark = false);
@@ -146,6 +147,10 @@ void main() {
           ),
         );
         await show('My code', MyCodePanel(session: s));
+        await tester.runAsync(() => s.savePractice({'qualification': 'MBBS, MD', 'clinic': 'Menon Family Clinic', 'address': '12 MG Road, New Delhi', 'phone': '011 2345 6789'}));
+        // A tall view, so every card on Profile is built and checked.
+        tester.view.physicalSize = const Size(400 * 2.6, 2600 * 2.6);
+        await show('Profile', ProfileTab(session: s, onChanged: () {}));
       },
     );
   }
