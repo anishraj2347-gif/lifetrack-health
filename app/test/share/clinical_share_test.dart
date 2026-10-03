@@ -260,18 +260,51 @@ void main() {
       expect(views.map((e) => e.dataClass).toSet(), {DataClass.allergies, DataClass.conditions, DataClass.prescriptions, DataClass.reports});
     });
 
-    test('a visit grant is a session of at most 4 hours, bound to the device key', () async {
+    test('a visit grant is a session of 1 hour unless the patient picks more, bound to the device key', () async {
       final d = await doctor();
       final cert = await service.scan(d.qr, now);
       final r = await service.share(patientId: 'p1', doctor: cert, levels: {AccessLevel.summary}, at: now);
       expect(r.grant.type, GrantType.session);
-      expect(r.grant.expiresAt.difference(now), const Duration(hours: 4));
+      expect(r.grant.expiresAt.difference(now), const Duration(hours: 1));
       expect(r.grant.granteeKeyId, await cert.keyId());
-      await expectLater(pickUpAndOpen(d, at: now.add(const Duration(hours: 5))), throwsA(anything));
+      await expectLater(pickUpAndOpen(d, at: now.add(const Duration(hours: 2))), throwsA(anything));
+    });
+
+    test('the patient picks how long, never past 48 hours', () async {
+      final d = await doctor();
+      final cert = await service.scan(d.qr, now);
+      final r = await service.share(patientId: 'p1', doctor: cert, levels: {AccessLevel.summary}, window: const Duration(hours: 48), at: now);
+      expect(r.grant.expiresAt.difference(now), const Duration(hours: 48));
+      await expectLater(
+        service.share(patientId: 'p1', doctor: cert, levels: {AccessLevel.summary}, window: const Duration(hours: 49), at: now),
+        throwsA(anything),
+      );
     });
   });
 
   group('changing and ending access', () {
+    test('changing the time sends the same share again with the new end, and tells the doctor it was replaced', () async {
+      final d = await doctor();
+      final first = await service.share(patientId: 'p1', doctor: await service.scan(d.qr, now), levels: {AccessLevel.summary, AccessLevel.familyIllnesses}, at: now);
+      await pickUpAndOpen(d);
+
+      final later = now.add(const Duration(minutes: 30));
+      final r = await service.changeTime(first.grant, const Duration(hours: 24), later);
+      expect(r.grant.expiresAt, later.add(const Duration(hours: 24)));
+      expect(r.grant.levels, {AccessLevel.summary, AccessLevel.familyIllnesses}, reason: 'same levels as before');
+      expect(consent.activeGrantsFor('p1', later).single.id, r.grant.id, reason: 'the old grant is ended');
+
+      final cert = DoctorCertificate.decode(d.qr);
+      final opened = [for (final e in relay.pickUp(await RelayApi.doctorMailbox(cert.encryptionKey), later)) await ShareEnvelope.open(e, d.enc, later)];
+      expect(opened.where((b) => b['type'] == 'close').single['replaced'], isTrue);
+      expect(opened.where((b) => b['patient'] != null), hasLength(1));
+
+      // Shorter works the same way; a share made before this version needs a new scan.
+      final shorter = await service.changeTime(r.grant, const Duration(hours: 1), later);
+      expect(shorter.grant.expiresAt, later.add(const Duration(hours: 1)));
+      await expectLater(service.changeTime(first.grant, const Duration(hours: 4), later), throwsStateError);
+    });
+
     test('moving from Summary to All my reports replaces the grant instead of throwing', () async {
       final d = await doctor();
       final cert = await service.scan(d.qr, now);

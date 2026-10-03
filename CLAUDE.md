@@ -144,7 +144,9 @@ copy predate the claim fixes; the app's wording is authoritative).
     - 11a. Plane C holds its own one-time grant, minted at the tap.
     - 11b. A live grant cannot be re-issued with any difference (extension, grantee, scope); a
       finished grant is evicted so re-approval works.
-12. No grant exceeds 48 h. Grant ids are patient-scoped. ABDM consent artefacts, when
+12. No grant exceeds 48 h. A clinical share lasts 1 h unless the patient picks 4 h, 12 h, 1 day or
+    2 days (`AccessRequest.accessChoices`); a doctor's request may ask for one of those, signed,
+    and the patient may give less or change it later (`changeTime` re-sends and replaces). Grant ids are patient-scoped. ABDM consent artefacts, when
     integrated (Phase 4), map in as a separate long-lived type with a bounded projection — do not
     widen `ConsentToken` for them.
 13. Every read, change, grant, revocation, egress, restore and erasure is audited; the egress

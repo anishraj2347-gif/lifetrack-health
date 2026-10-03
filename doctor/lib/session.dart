@@ -199,7 +199,8 @@ class DoctorSession {
   /// Asks a patient, by their 12-digit LifeTrack ID, for access at [levels].
   /// Signed with this device's key and sealed to the patient's phone; the
   /// patient approves, lowers or declines there.
-  Future<void> requestAccess({required String lifeTrackId, required List<String> levels, String? note}) async {
+  Future<void> requestAccess({required String lifeTrackId, required List<String> levels, String? note, int accessHours = 1}) async {
+    if (!AccessRequest.accessChoices.contains(accessHours)) throw ArgumentError('Pick one of ${AccessRequest.accessChoices} hours.');
     final id = LifeTrackId.parse(lifeTrackId) ?? (throw Exception('That is not a valid LifeTrack ID — check the 12 digits.'));
     final look = await _http.get(base.resolve('/v1/ids/$id'));
     if (look.statusCode == 404) throw Exception('No patient has that LifeTrack ID.');
@@ -215,6 +216,7 @@ class DoctorSession {
       expiresAt: now.add(AccessRequest.lifetime - const Duration(minutes: 5)),
       certificate: certificateQr!,
       note: note == null || note.trim().isEmpty ? null : note.trim(),
+      accessHours: accessHours,
     ).signedWith(sign!);
     final sealed = await ShareEnvelope.seal(bundle: r.toJson(), recipientKey: key, keyId: await RelayApi.keyId(key), grantId: r.requestId, expiresAt: r.expiresAt);
     final put = await _http.put(
@@ -390,7 +392,8 @@ class DoctorSession {
       final gone = inbox.where((s) => s.grantId == bundle['grantId'] && s.bundle['closeSecret'] != null && s.bundle['closeSecret'] == bundle['closeSecret']).toList();
       for (final s in gone) {
         inbox.remove(s);
-        closedByPatient.add(s.patientName);
+        // `replaced`: the patient changed the time; the new share follows.
+        if (bundle['replaced'] != true) closedByPatient.add(s.patientName);
       }
       return false;
     }

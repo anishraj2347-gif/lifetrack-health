@@ -408,6 +408,7 @@ class _RequestByIdCardState extends State<RequestByIdCard> {
   final _id = TextEditingController();
   final _note = TextEditingController();
   final Set<String> _levels = {'summary'};
+  int _hours = 1;
   bool _busy = false;
   String? _msg;
   bool _ok = false;
@@ -420,7 +421,7 @@ class _RequestByIdCardState extends State<RequestByIdCard> {
       _msg = null;
     });
     try {
-      await widget.session.requestAccess(lifeTrackId: _id.text, levels: [for (final l in _labels.keys) if (_levels.contains(l)) l], note: _note.text);
+      await widget.session.requestAccess(lifeTrackId: _id.text, levels: [for (final l in _labels.keys) if (_levels.contains(l)) l], note: _note.text, accessHours: _hours);
       _ok = true;
       _msg = 'Request sent. It appears on the patient\'s phone when they check for updates.';
       _id.clear();
@@ -453,6 +454,19 @@ class _RequestByIdCardState extends State<RequestByIdCard> {
               onSelected: (v) => setState(() => v ? _levels.add(e.key) : _levels.remove(e.key)),
             ),
         ]),
+        SizedBox(height: 10),
+        Text('For how long', style: DT.muted),
+        SizedBox(height: 6),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final h in AccessRequest.accessChoices)
+            ChoiceChip(
+              label: Text(h == 1 ? '1 hour' : h == 24 ? '1 day' : h == 48 ? '2 days' : '$h hours'),
+              selected: _hours == h,
+              onSelected: (_) => setState(() => _hours = h),
+            ),
+        ]),
+        SizedBox(height: 4),
+        Text('The patient chooses; they may give less time or end it early.', style: TextStyle(fontSize: 12.5, color: DT.ink3)),
         SizedBox(height: 8),
         Field('Reason (optional)', _note, hint: 'Follow-up for diabetes'),
         SizedBox(height: 12),

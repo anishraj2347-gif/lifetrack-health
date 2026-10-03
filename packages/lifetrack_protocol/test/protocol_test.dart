@@ -47,4 +47,27 @@ void main() {
     final b = await RelayApi.doctorPickupHeaders(certificateQr: 'x', signingKey: sign, mailbox: 'd-abc', at: at);
     expect(a[RelayApi.hNonce], isNot(b[RelayApi.hNonce]));
   });
+
+  test('an access request carries the time the doctor asks for, signed; older requests without one still verify', () async {
+    final key = await Ed25519().newKeyPair();
+    final pub = await key.extractPublicKey();
+    Future<bool> verifies(AccessRequest r) => Ed25519().verify(r.signedBytes, signature: Signature(r.signature, publicKey: pub));
+    AccessRequest make({int? hours}) => AccessRequest(
+          requestId: 'req-1', lifeTrackId: LifeTrackId.generate(), levels: const ['summary'],
+          issuedAt: DateTime.utc(2026, 10, 3, 9), expiresAt: DateTime.utc(2026, 10, 5, 9), certificate: 'CERT', accessHours: hours);
+
+    final asked = await make(hours: 12).signedWith(key);
+    final back = AccessRequest.fromJson(jsonDecode(jsonEncode(asked.toJson())) as Map<String, Object?>);
+    expect(back.accessHours, 12);
+    expect(await verifies(back), isTrue);
+
+    final old = await make().signedWith(key);
+    expect(old.toJson().containsKey('accessHours'), isFalse, reason: 'same bytes as before the field existed');
+    expect(await verifies(AccessRequest.fromJson(old.toJson())), isTrue);
+
+    for (final tampered in [48, 99]) {
+      final j = {...asked.toJson(), 'accessHours': tampered};
+      expect(await verifies(AccessRequest.fromJson(j)), isFalse, reason: 'a changed time breaks the signature ($tampered)');
+    }
+  });
 }

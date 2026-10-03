@@ -582,14 +582,14 @@ packages:
       path: "../app"
       relative: true
     source: path
-    version: "1.18.2+2030"
+    version: "1.18.3+2031"
   lifetrack_doctor:
     dependency: "direct dev"
     description:
       path: "../doctor"
       relative: true
     source: path
-    version: "1.6.0+11"
+    version: "1.6.1+12"
   lifetrack_protocol:
     dependency: "direct dev"
     description:

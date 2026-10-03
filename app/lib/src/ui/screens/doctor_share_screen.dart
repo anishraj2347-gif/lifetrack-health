@@ -34,6 +34,10 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
   final Set<String> _stillTaking = {};
   ShareReceipt? _receipt;
 
+  /// How long the doctor can see it: 1 hour unless the patient picks more,
+  /// or what a doctor's request asked for.
+  int _hours = 1;
+
   @override
   void initState() {
     super.initState();
@@ -44,6 +48,7 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
       _levels
         ..clear()
         ..addAll(r.levels.isEmpty ? {AccessLevel.summary} : r.levels);
+      _hours = r.request.accessHours ?? 1;
     }
   }
 
@@ -77,6 +82,7 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
         levels: _levels,
         filter: _lastTwoYears ? RecordFilter(from: at.subtract(Duration(days: 730))) : null,
         requested: widget.request?.levels,
+        window: Duration(hours: _hours),
         at: at,
       );
       if (widget.request != null) await s.requests!.remove(widget.request!.request.requestId);
@@ -173,7 +179,19 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
             subtitle: Text(r.doctor ?? '', style: LT.small),
           ),
       ],
-      Note('For this visit, up to 4 hours. Encrypted so only this doctor\'s device can open it. Personal notes are never included. The doctor keeps their own consult note; you can end access any time.',
+      Eyebrow('For how long?'),
+      Padding(
+        padding: EdgeInsets.fromLTRB(20, 0, 20, 6),
+        child: Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final h in AccessRequest.accessChoices) Chip2(hoursLabel(h), selected: _hours == h, onTap: () => setState(() => _hours = h)),
+        ]),
+      ),
+      if (widget.request?.request.accessHours case final asked?)
+        Padding(
+          padding: EdgeInsets.fromLTRB(20, 0, 20, 6),
+          child: Text('${d.name} asked for ${hoursLabel(asked)}. You can give less.', style: LT.small),
+        ),
+      Note('Access ends after ${hoursLabel(_hours)}; you can change the time or end it any time. Encrypted so only this doctor\'s device can open it. Personal notes are never included. The doctor keeps their own consult note.',
           icon: LucideIcons.lock),
       if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
       Padding(
@@ -236,3 +254,5 @@ String levelsLabel(Set<AccessLevel> l) => [
       if (l.contains(AccessLevel.homeReadings)) 'Home readings',
     ].join(' · ');
 
+/// "1 hour", "4 hours", "1 day", "2 days".
+String hoursLabel(int h) => h == 24 ? '1 day' : h == 48 ? '2 days' : h == 1 ? '1 hour' : '$h hours';

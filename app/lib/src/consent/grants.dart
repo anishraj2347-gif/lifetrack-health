@@ -41,8 +41,9 @@ abstract final class Grants {
       );
 
   /// A visit: session-typed (a one-time grant would be spent by the first
-  /// data class read), at most 4 hours, bound to one doctor device.
-  static const visitWindow = Duration(hours: 4);
+  /// data class read), bound to one doctor device. 1 hour unless the patient
+  /// picks another of [AccessRequest.accessChoices] (at most 48 hours).
+  static const visitWindow = Duration(hours: 1);
 
   static String _nonce() {
     final r = Random.secure();

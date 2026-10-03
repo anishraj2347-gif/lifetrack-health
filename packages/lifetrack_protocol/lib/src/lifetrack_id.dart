@@ -80,10 +80,15 @@ class AccessRequest {
     required this.expiresAt,
     required this.certificate,
     this.note,
+    this.accessHours,
     this.signature = const [],
   });
 
   static const lifetime = Duration(hours: 48);
+
+  /// The choices a doctor can ask for, and a patient can give. Never more
+  /// than 48 hours (CLAUDE.md #12).
+  static const accessChoices = [1, 4, 12, 24, 48];
 
   final String requestId;
   final String lifeTrackId;
@@ -98,6 +103,11 @@ class AccessRequest {
 
   /// Why, in the doctor's words. Optional.
   final String? note;
+
+  /// How long the doctor asks to see the records, in hours (one of
+  /// [accessChoices]). Null from doctor apps before 1.7.0: the patient's
+  /// default applies. The patient may always give less.
+  final int? accessHours;
   final List<int> signature;
 
   Map<String, Object?> _body() => {
@@ -110,6 +120,8 @@ class AccessRequest {
         'expiresAt': expiresAt.toUtc().toIso8601String(),
         'certificate': certificate,
         'note': note,
+        // Only when set, so requests signed by older doctor apps still verify.
+        if (accessHours != null) 'accessHours': accessHours,
       };
 
   List<int> get signedBytes => utf8.encode(jsonEncode(_body()));
@@ -138,6 +150,7 @@ class AccessRequest {
         expiresAt: DateTime.parse(j['expiresAt']! as String),
         certificate: j['certificate']! as String,
         note: j['note'] as String?,
+        accessHours: accessChoices.contains(j['accessHours']) ? j['accessHours'] as int : null,
         signature: j['signature'] == null ? const [] : base64Decode(j['signature']! as String),
       );
 }

@@ -121,7 +121,7 @@ class ClinicalShareService {
 
     // One live grant per doctor per patient: a new approval replaces the old.
     for (final g in consent.activeGrantsFor(patientId, at)) {
-      if (g.grantedToActorId == actor) await _end(g, at, 'replaced by a new approval');
+      if (g.grantedToActorId == actor) await _end(g, at, 'replaced by a new approval', replaced: true);
     }
 
     final scopes = scopesFor(levels);
@@ -213,6 +213,10 @@ class ClinicalShareService {
     ));
     await relay.deposit(mailbox: mailbox, grantId: grant.id, envelope: envelope, expiresAt: grant.expiresAt);
     await keyBook.put('dk-${grant.id}', base64Encode(doctor.encryptionKey));
+    // Kept so the patient can change how long this share lasts without
+    // scanning again; re-checked against the registry when used.
+    await keyBook.put('dq-${grant.id}', doctor.encode());
+    if (sharedBy != null) await keyBook.put('ds-${grant.id}', sharedBy);
     return ShareReceipt(grant: grant, doctor: doctor, withheld: requestedScopes.difference(scopes));
   }
 
@@ -254,7 +258,41 @@ class ClinicalShareService {
 
   Future<void> endAccess(ConsentToken grant, DateTime at) => _end(grant, at, 'ended by patient');
 
-  Future<void> _end(ConsentToken grant, DateTime at, String why) async {
+  /// The patient changes how long a live share lasts — longer or shorter,
+  /// never past 48 hours. The same levels and filter are sent again for the
+  /// new [window] from [at], replacing the old share on the doctor's device;
+  /// the doctor is checked against the registry again first.
+  Future<ShareReceipt> changeTime(ConsentToken grant, Duration window, DateTime at) async {
+    final qr = await keyBook.take('dq-${grant.id}');
+    if (qr == null) throw StateError("To change the time, scan the doctor's code again.");
+    final sharedBy = await keyBook.take('ds-${grant.id}');
+    try {
+      return await share(
+        patientId: grant.patientId,
+        doctor: await scan(qr, at),
+        levels: grant.levels,
+        filter: grant.filter,
+        window: window,
+        grantorId: grant.grantorId,
+        sharedBy: sharedBy,
+        at: at,
+      );
+    } on Object {
+      await keyBook.put('dq-${grant.id}', qr);
+      if (sharedBy != null) await keyBook.put('ds-${grant.id}', sharedBy);
+      rethrow;
+    }
+  }
+
+  /// Whether this share can have its time changed without a new scan.
+  Future<bool> canChangeTime(ConsentToken grant) async {
+    final qr = await keyBook.take('dq-${grant.id}');
+    if (qr == null) return false;
+    await keyBook.put('dq-${grant.id}', qr);
+    return true;
+  }
+
+  Future<void> _end(ConsentToken grant, DateTime at, String why, {bool replaced = false}) async {
     consent.revoke(grant.id);
     if (grant.granteeKeyId != null) {
       final mailbox = 'd-${grant.granteeKeyId!}';
@@ -270,7 +308,9 @@ class ClinicalShareService {
           mailbox: mailbox,
           grantId: id,
           envelope: await ShareEnvelope.seal(
-            bundle: {'type': 'close', 'grantId': grant.id, 'closeSecret': await _closeSecret(grant.patientId, grant.id)},
+            // `replaced`: a new share with a new time follows, so the doctor
+            // app does not announce that access ended.
+            bundle: {'type': 'close', 'grantId': grant.id, 'closeSecret': await _closeSecret(grant.patientId, grant.id), if (replaced) 'replaced': true},
             recipientKey: k,
             keyId: grant.granteeKeyId!,
             grantId: id,

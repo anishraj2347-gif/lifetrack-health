@@ -112,6 +112,7 @@ void main() {
     addTearDown(tester.view.reset);
     String? opened;
     await tester.pumpWidget(MaterialApp(home: Scaffold(body: PatientsTab(session: s, onOpen: (k) => opened = k, onChanged: () {}))));
+    await tester.scrollUntilVisible(find.text('All patients · 1'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.text('All patients · 1'), findsOneWidget);
     expect(find.text('Closed'), findsOneWidget);
     await tester.ensureVisible(find.textContaining('Anjali Sharma · F · 42 y'));

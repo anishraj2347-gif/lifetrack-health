@@ -6,6 +6,14 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.19.0 (3 Oct 2026)
+- **Choose how long a doctor can see your records**: 1 hour (default), 4 hours, 12 hours,
+  1 day or 2 days, picked when you share. When a doctor asks by LifeTrack ID, their asked-for
+  time is preselected and shown ("asked for 12 hours, you can give less").
+- **Change the time later**: Share → Who has access → Time. Longer or shorter, counted from
+  now; the doctor's copy is replaced with one that ends at the new time. Shares made before
+  1.19.0 need the doctor's code scanned again.
+
 ### 1.18.3 (3 Oct 2026)
 - **Back works like other apps**: from Records, Insights, Share or Me, back returns to
   Reminders; on Reminders, "Press back again to exit". Pages opened on top still close first.
@@ -176,6 +184,12 @@ always goes up (Android refuses to install a lower one).
 - Rebuilt phase-2 app: records, insights, consent, clinical sharing with verified doctors.
 
 ## Doctor web app
+
+### 1.7.0 (3 Oct 2026)
+- **Ask for a time**: Request access by LifeTrack ID → For how long (1 hour by default, up to
+  2 days). The time is signed with the request; the patient may give less.
+- When the patient changes the time of a share, the new one replaces the old without an
+  "ended access" message.
 
 ### 1.6.1 (3 Oct 2026)
 - **Back works like other apps**: an open patient closes first, then Prescriptions or My code

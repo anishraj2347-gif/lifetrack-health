@@ -188,6 +188,43 @@ void main() {
     expect(doctor.state, EnrolmentState.revoked);
     expect(doctor.certificateQr, isNull);
   });
+
+  test('the doctor asks for a time, the patient gives less, then changes it; the doctor sees each end time', () async {
+    await approveDoctor();
+    final id = patient.lifeTrackIdOf(patientId)!;
+
+    await doctor.requestAccess(lifeTrackId: id, levels: ['summary'], accessHours: 12);
+    await patient.checkInbox();
+    final p = (await patient.pendingRequests()).single;
+    expect(p.request.accessHours, 12, reason: 'the asked-for time arrives signed');
+
+    final at = DateTime.now();
+    final r = await patient.sharing!.share(
+      patientId: patientId, doctor: p.doctor, levels: p.levels, requested: p.levels,
+      window: const Duration(hours: 4), grantorId: patient.actingGrantor(), at: at,
+    );
+    await patient.requests!.remove(p.request.requestId);
+    await doctor.pickUp();
+    expect(doctor.inbox.single.expiresAt.difference(at).inMinutes, 4 * 60, reason: 'the doctor sees the time the patient gave');
+
+    final changed = await patient.sharing!.changeTime(r.grant, const Duration(hours: 24), DateTime.now());
+    await doctor.pickUp();
+    expect(doctor.inbox, hasLength(1), reason: 'the old share is replaced, not added to');
+    expect(doctor.inbox.single.grantId, changed.grant.id);
+    expect(doctor.inbox.single.expiresAt.isAfter(DateTime.now().add(const Duration(hours: 23))), isTrue);
+    expect(doctor.closedByPatient, isEmpty, reason: 'a change of time is not announced as ending access');
+  });
+
+  test('a share without a chosen time lasts 1 hour', () async {
+    await approveDoctor();
+    final at = DateTime.now();
+    await patient.sharing!.share(
+      patientId: patientId, doctor: await patient.sharing!.scan(doctor.certificateQr!, at), levels: {AccessLevel.summary},
+      grantorId: patient.actingGrantor(), at: at,
+    );
+    await doctor.pickUp();
+    expect(doctor.inbox.single.expiresAt.difference(at), const Duration(hours: 1));
+  });
 }
 
 Future<String> registryKeyOf(http.Client c, Uri base) async =>

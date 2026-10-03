@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lifetrack_protocol/lifetrack_protocol.dart' show AccessRequest;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../consent/consent_token.dart';
@@ -148,19 +149,56 @@ class ShareScreen extends StatelessWidget {
             SizedBox(width: 8),
             SizedBox(
               width: 92,
-              child: SlabButton('End', variant: ButtonVariant.outline, onPressed: () async {
+              child: Column(children: [
+                if (isClinicalShare(g) && sharing != null) ...[
+                  SlabButton('Time', variant: ButtonVariant.outline, onPressed: () => _changeTime(context, g)),
+                  SizedBox(height: 8),
+                ],
+                SlabButton('End', variant: ButtonVariant.outline, onPressed: () async {
                 if (isClinicalShare(g) && sharing != null) {
                   await sharing.endAccess(g, s.clock());
                 } else {
                   await s.revoke(g);
                 }
                 if (context.mounted) AppScope.changed(context);
-              }),
+                }),
+              ]),
             ),
           ]),
         ),
       SizedBox(height: 28),
     ]);
+  }
+
+  /// Longer or shorter, from now: the doctor's copy is replaced with one that
+  /// ends at the new time.
+  Future<void> _changeTime(BuildContext context, ConsentToken g) async {
+    final s = AppScope.of(context);
+    final hours = await showModalBottomSheet<int>(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Change how long', style: LT.title),
+            SizedBox(height: 4),
+            Text('Counted from now. Now until ${dateTime(g.expiresAt)}.', style: LT.small),
+            SizedBox(height: 14),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final h in AccessRequest.accessChoices) Chip2(hoursLabel(h), selected: false, onTap: () => Navigator.of(c).pop(h)),
+            ]),
+          ]),
+        ),
+      ),
+    );
+    if (hours == null || !context.mounted) return;
+    try {
+      final r = await s.sharing!.changeTime(g, Duration(hours: hours), s.clock());
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${r.doctor.name} can now see it until ${dateTime(r.grant.expiresAt)}.')));
+    } on Object catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Time not changed. ${plainError(e)}')));
+    }
+    if (context.mounted) AppScope.changed(context);
   }
 }
 
@@ -195,7 +233,7 @@ class _Requests extends StatelessWidget {
                   Badge2('Verified', tone: BadgeTone.trace),
                 ]),
                 SizedBox(height: 10),
-                Text('Asks for: ${levelsLabel(p.levels)}', style: LT.label),
+                Text('Asks for: ${levelsLabel(p.levels)}${p.request.accessHours == null ? '' : ' · for ${hoursLabel(p.request.accessHours!)}'}', style: LT.label),
                 if (p.request.note != null && p.request.note!.trim().isNotEmpty) ...[
                   SizedBox(height: 4),
                   Text('"${p.request.note!.trim()}"', style: LT.small),
