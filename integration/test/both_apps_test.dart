@@ -10,7 +10,6 @@ import 'package:lifetrack/src/consent/consent_token.dart';
 import 'package:lifetrack/src/crypto/key_derivation.dart';
 import 'package:lifetrack/src/model/health_record.dart';
 import 'package:lifetrack/src/model/patient.dart';
-import 'package:lifetrack/src/share/clinical_share_service.dart';
 import 'package:lifetrack/src/share/http_relay_client.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
 import 'package:lifetrack/src/vault/backup_vault.dart';
