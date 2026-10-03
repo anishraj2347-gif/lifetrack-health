@@ -201,11 +201,11 @@ class _ShellState extends State<Shell> {
             : switch (wide && _tab == 2 ? 0 : _tab) {
                 0 => PatientsTab(session: s, onOpen: _openPatient, onChanged: () => setState(() {})),
                 1 => PrescriptionsTab(session: s, onOpenPatient: _openPatient, onWriteAgain: (e) => _openPatient(e.patientKey, prefill: e.rx)),
-                _ => MyCodePanel(session: s, error: _error),
+                _ => MyCodePanel(session: s, error: _error, onChanged: () => setState(() {})),
               };
         if (wide) {
           return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            SizedBox(width: 340, child: MyCodePanel(session: s, error: _error)),
+            SizedBox(width: 340, child: MyCodePanel(session: s, error: _error, onChanged: () => setState(() {}))),
             Expanded(
               child: Container(
                 color: DT.ground,

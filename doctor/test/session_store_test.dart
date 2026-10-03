@@ -245,4 +245,38 @@ void main() {
     expect(again.certificateQr, isNull);
     expect(again.note, 'Licence suspended.');
   });
+
+  testWidgets('demo builds can fill the app with sample patients, which survive a reload and replace themselves', (tester) async {
+    late DoctorSession s;
+    final cipher = MemoryCipher();
+    await tester.runAsync(() async {
+      SharedPreferences.setMockInitialValues(await legacyPrefs());
+      s = await DoctorSession.load(base, cipher: cipher);
+      final real = share('Anjali Sharma', ltId: '148209375516');
+      s.inbox.add(real);
+      s.registerShare(real);
+      await expectLater(s.addSamplePatients(DateTime.now()), throwsStateError, reason: 'not a demo build');
+      await s.addSamplePatients(DateTime.now(), allowed: true);
+      await s.addSamplePatients(DateTime.now(), allowed: true);
+    });
+    expect(s.patients, hasLength(7), reason: 'six samples once each, and the real patient kept');
+    expect(s.inbox.where((x) => x.patientName.endsWith('(sample)')), hasLength(3));
+    expect(s.inbox.every((x) => x.verified), isTrue);
+    expect(s.prescriptions, hasLength(6));
+    expect(s.notes, hasLength(4));
+    expect(s.patients.where((p) => p.name == 'Anjali Sharma'), hasLength(1));
+
+    await tester.runAsync(() async {
+      final again = await DoctorSession.load(base, cipher: cipher);
+      expect(again.inbox.where((x) => x.patientName.endsWith('(sample)')), hasLength(3), reason: 'open sample shares re-open after a restart');
+      expect(again.prescriptions, hasLength(6));
+    });
+
+    // Each open sample renders as a patient page.
+    for (final sh in s.inbox.where((x) => x.patientName.endsWith('(sample)'))) {
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: PatientScreen(session: s, patientKey: sh.patientKey, onClose: () {}, onChanged: () {}))));
+      expect(find.textContaining(sh.patientName), findsWidgets);
+      expect(tester.takeException(), isNull);
+    }
+  });
 }

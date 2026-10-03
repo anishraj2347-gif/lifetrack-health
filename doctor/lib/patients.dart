@@ -6,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'main.dart' show Countdown, RequestByIdCard;
 import 'practice.dart';
 import 'print_rx.dart';
+import 'sample_data.dart';
 import 'session.dart';
 import 'summary.dart';
 import 'theme.dart';
@@ -37,9 +38,10 @@ DateTime? nextFollowUp(DoctorSession s, String key, DateTime now) {
 
 /// The doctor's verified QR, for a patient in front of them to scan.
 class MyCodePanel extends StatelessWidget {
-  const MyCodePanel({super.key, required this.session, this.error});
+  const MyCodePanel({super.key, required this.session, this.error, this.onChanged});
   final DoctorSession session;
   final String? error;
+  final VoidCallback? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -102,6 +104,20 @@ class MyCodePanel extends StatelessWidget {
             ),
           ]),
         ),
+        if (demoTools)
+          Card0(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Demo', style: DT.label),
+              const SizedBox(height: 4),
+              Text('Adds made-up patients, prescriptions and notes, each marked "(sample)". Adding again replaces them.', style: DT.muted),
+              const SizedBox(height: 10),
+              Pill('Add sample patients', onTap: () async {
+                await s.addSamplePatients(DateTime.now());
+                onChanged?.call();
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sample patients added. Open Patients to see them.')));
+              }),
+            ]),
+          ),
         ExpansionTile(
           title: Text('Copy code instead', style: DT.muted),
           children: [SelectableText(s.certificateQr!, style: TextStyle(fontSize: 10))],

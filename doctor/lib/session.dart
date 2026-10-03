@@ -9,6 +9,7 @@ import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'practice.dart';
+import 'sample_data.dart';
 import 'store/local_cipher.dart';
 
 /// A patient's share as the doctor holds it: opened in memory; on disk only
@@ -430,6 +431,97 @@ class DoctorSession {
     } on Object {
       return false;
     }
+  }
+
+  /// Demo builds only: fills the register with made-up patients (names end
+  /// in "(sample)") — three with access open, three closed — plus
+  /// prescriptions signed on this device and consult notes. Adding again
+  /// replaces the samples, never anything real.
+  Future<void> addSamplePatients(DateTime now, {bool allowed = demoTools}) async {
+    if (!allowed) throw StateError('Sample patients are only in demo builds.');
+    final people = samplePatients(now);
+    final names = {for (final p in people) p.name};
+    final keys = {for (final p in people) sampleId(p.name)};
+    inbox.removeWhere((sh) => keys.contains(sh.patientKey));
+    patients.removeWhere((p) => keys.contains(p.key));
+    prescriptions.removeWhere((r) => names.contains(r.patientName));
+    notes.removeWhere((n) => keys.contains(n.patientKey));
+
+    final mine = (await enc!.extractPublicKey()).bytes;
+    final keyId = await RelayApi.keyId(mine);
+    for (final (i, p) in people.indexed) {
+      final id = sampleId(p.name);
+      final shared = now.subtract(Duration(days: p.sharedDaysAgo, minutes: 20 + i * 35));
+      final entry = PatientEntry(
+        key: id,
+        name: p.name,
+        sex: p.sex,
+        age: p.age,
+        lifeTrackId: id,
+        firstSeen: shared.subtract(Duration(days: 30 * (p.shares - 1))),
+        lastShared: shared,
+        shares: p.shares,
+        levels: [for (final l in (p.share?['levels'] as List?) ?? const ['summary']) '$l'],
+      );
+      patients.add(entry);
+      final body = p.share;
+      if (body == null) continue;
+      // A reply key nobody holds: a prescription written to a sample goes
+      // to the relay and expires unread.
+      final reply = await (await X25519().newKeyPair()).extractPublicKey();
+      final bundle = <String, Object?>{
+        ...body,
+        'patient': {'name': p.name, 'sex': p.sex, 'age': p.age, 'lifeTrackId': id},
+        'patientRef': 'sample-$i',
+        'replyTo': {'mailbox': 'p-${ReceivedShare.keyTag(base64Encode(reply.bytes))}${'0' * 48}', 'key': base64Encode(reply.bytes)},
+        'closeSecret': RelayApi.newToken(),
+      };
+      final grantId = 'sample-$id';
+      final expires = now.add(Duration(hours: 6 + i * 14));
+      final env = await ShareEnvelope.seal(bundle: bundle, recipientKey: mine, keyId: keyId, grantId: grantId, expiresAt: expires);
+      inbox.add(ReceivedShare(grantId: grantId, bundle: bundle, expiresAt: expires, receivedAt: shared, verified: true));
+      _sealed[grantId] = (base64Encode(env), shared, true);
+    }
+
+    PatientEntry who(String name) => patients.firstWhere((p) => p.name == name);
+    for (final r in sampleRx) {
+      final p = who(r.patient);
+      final rx = await SignedPrescription(
+        patientId: 'sample',
+        doctorRegistryId: registrationNo,
+        doctorName: profile['name'] ?? 'Doctor',
+        qualification: 'MBBS, MD',
+        registrationNo: registrationNo,
+        medicine: r.medicine,
+        ingredient: r.ingredient,
+        morning: r.dose[0],
+        afternoon: r.dose[1],
+        night: r.dose[2],
+        days: r.days,
+        issuedAt: now.subtract(Duration(days: r.daysAgo)).toUtc(),
+        note: r.note,
+        timing: r.timing,
+      ).signedWith(sign!);
+      prescriptions.add(RxEntry(patientKey: p.key, patientName: p.name, patientLine: p.sexAge, rx: rx));
+    }
+    for (final (i, n) in sampleNotes.indexed) {
+      final at = now.subtract(Duration(days: n.daysAgo));
+      notes.add(ConsultNote(
+        id: 'note-sample-$i',
+        patientKey: who(n.patient).key,
+        at: at,
+        complaint: n.complaint,
+        findings: n.findings,
+        advice: n.advice,
+        followUp: n.followUpInDays == null ? null : DateTime(now.year, now.month, now.day).add(Duration(days: n.followUpInDays!)),
+      ));
+    }
+    inbox.sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
+    patients.sort((a, b) => b.lastShared.compareTo(a.lastShared));
+    prescriptions.sort((a, b) => b.rx.issuedAt.compareTo(a.rx.issuedAt));
+    notes.sort((a, b) => b.at.compareTo(a.at));
+    await _saveInbox();
+    await _savePractice();
   }
 
   /// Drops every share whose access window has ended.

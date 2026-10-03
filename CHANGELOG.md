@@ -172,6 +172,14 @@ always goes up (Android refuses to install a lower one).
 
 ## Doctor web app
 
+### 1.5.0 (3 Oct 2026)
+- **Sample patients** (demo builds only, `LT_DEMO_TOOLS=true`): My code → Add sample patients
+  fills the app with six made-up patients, each named "(sample)". Three have access open with a
+  full summary (diabetes with home readings, heart disease with family illnesses, anaemia with
+  all reports), three are closed in the register. Six prescriptions signed on this device and
+  four consult notes with follow-ups. Adding again replaces the samples; real patients are
+  untouched.
+
 ### 1.4.2 (3 Oct 2026) — fixes from the review of 1.4.1
 - **A share is "confirmed" only with the sender's proof**: matching the registry's key was not
   enough, because anyone can look that key up. The share must also prove it was made with the
