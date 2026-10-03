@@ -165,7 +165,9 @@ copy predate the claim fixes; the app's wording is authoritative).
     days (renewed by the doctor app); online, the phone also asks the registry that the doctor
     is still approved with the same keys (`DoctorStatus`). Revocation is bound to keys, and an
     enrolment waiting for review is never replaced. The doctor app files a share under a
-    LifeTrack ID only when the registry has that ID on the share's reply key.
+    LifeTrack ID only when the share proves it holds its reply key (`SenderProof`, 1.18.2) and
+    the registry has that ID on that key — the ID lookup is public, so the match alone is not
+    proof.
 16. Access levels are presets over data classes plus an optional filter — Summary (default),
     All my reports, Family illnesses, Home readings (vitals, last 30 days; off unless ticked). A level never widens `authorize`; the patient may always
     grant less. Results show their age, never "valid" or "expired".

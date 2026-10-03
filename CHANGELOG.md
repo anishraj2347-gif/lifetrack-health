@@ -6,6 +6,20 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.18.2 (3 Oct 2026) — fixes from the review of 1.18.1
+- **Shares prove who sent them**: a share that carries a LifeTrack ID now also carries a proof
+  (HMAC under X25519(reply key, doctor's key), bound to the grant and the ID) that it came from
+  the phone holding the reply key. The registry lookup is public, so ID + key alone could be
+  copied into a fake share.
+- **An old family link no longer stops the others**: updates skip links made before 1.18.1, and
+  one failed send no longer ends the round.
+- **Unlinking an old family link still deletes the other phone's copy** (#1e): the unlink goes
+  without a secret, and is accepted unproven for an unsecured link only — it can only delete.
+- **Server**: `--trust-proxy` counts rate limits per `X-Forwarded-For` caller (last hop) when a
+  proxy you run is in front, instead of everyone sharing 127.0.0.1's budget. Opening, replacing
+  and deleting backups are rate-limited per caller; wrong opens of account codes that do not
+  exist are no longer written to the failure file.
+
 ### 1.18.1 (3 Oct 2026) — security
 - **DigiLocker check needs the hand-back code**: the page that ends the sign-in shows an
   8-character code; the result is released only to the app it is typed into. Before, someone
@@ -157,6 +171,13 @@ always goes up (Android refuses to install a lower one).
 - Rebuilt phase-2 app: records, insights, consent, clinical sharing with verified doctors.
 
 ## Doctor web app
+
+### 1.4.2 (3 Oct 2026) — fixes from the review of 1.4.1
+- **A share is "confirmed" only with the sender's proof**: matching the registry's key was not
+  enough, because anyone can look that key up. The share must also prove it was made with the
+  reply key's private half; without that it is filed apart as "identity not confirmed".
+- **A revocation survives a restart**: the certificate is dropped and the reason kept, so the
+  app stays "Not approved" instead of showing itself approved and failing every pickup.
 
 ### 1.4.1 (3 Oct 2026) — security
 - **Shares are checked against the patient's LifeTrack ID**: a share is filed under its ID only

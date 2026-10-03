@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:lifetrack_doctor/patients.dart';
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:lifetrack_doctor/practice.dart';
@@ -191,5 +193,56 @@ void main() {
       expect(await s.receive(await sealTo(s, {'type': 'close', 'grantId': real.grantId, 'closeSecret': 'guess'}, 'c2'), DateTime.now()), isFalse);
       expect(s.inbox, [real]);
     });
+
+    test("copying a patient's real ID and registered key from the public lookup is not enough", () async {
+      SharedPreferences.setMockInitialValues(await legacyPrefs());
+      // The patient's phone: its reply key is what the registry has on the ID.
+      final reply = await X25519().newKeyPair();
+      final replyKey = base64Encode((await reply.extractPublicKey()).bytes);
+      final id = LifeTrackId.generate();
+      final registry = MockClient((r) async => r.url.path == '/v1/ids/$id'
+          ? http.Response(jsonEncode({'id': id, 'mailbox': 'p-${'a' * 64}', 'key': replyKey}), 200)
+          : http.Response('{}', 404));
+      final s = await DoctorSession.load(base, cipher: MemoryCipher(), client: registry);
+      final doctorKey = (await s.enc!.extractPublicKey()).bytes;
+      Map<String, Object?> bundle(String? proof) => {
+            'patient': {'name': 'Anjali Sharma', 'lifeTrackId': id},
+            'replyTo': {'mailbox': 'p-${'a' * 64}', 'key': replyKey},
+            'senderProof': ?proof,
+          };
+
+      // A forger has the ID and the key (both public), but not the reply
+      // private key: no proof, a proof from their own key, or one made for
+      // another grant.
+      final mine = await X25519().newKeyPair();
+      final ownKey = await SenderProof.make(replyKeyPair: mine, doctorKey: doctorKey, grantId: 'g1', lifeTrackId: id);
+      final otherGrant = await SenderProof.make(replyKeyPair: reply, doctorKey: doctorKey, grantId: 'g-other', lifeTrackId: id);
+      for (final (i, proof) in [null, ownKey, otherGrant, 'not base64!'].indexed) {
+        await s.receive(await sealTo(s, bundle(proof), 'g1'), DateTime.now());
+        expect(s.inbox.first.verified, isFalse, reason: 'forgery $i');
+      }
+
+      // The patient's own phone proves it holds the key.
+      final real = await SenderProof.make(replyKeyPair: reply, doctorKey: doctorKey, grantId: 'g2', lifeTrackId: id);
+      await s.receive(await sealTo(s, bundle(real), 'g2'), DateTime.now());
+      expect(s.inbox.first.verified, isTrue);
+      expect(s.inbox.first.lifeTrackId, id);
+    });
+  });
+
+  test('a revoked device stays revoked after a restart, and drops its certificate', () async {
+    SharedPreferences.setMockInitialValues(await legacyPrefs());
+    final registry = MockClient((r) async => http.Response(jsonEncode({'status': 'revoked', 'note': 'Licence suspended.'}), 200));
+    final cipher = MemoryCipher();
+    final s = await DoctorSession.load(base, cipher: cipher, client: registry);
+    expect(s.state, EnrolmentState.approved);
+    await s.refreshStatus();
+    expect(s.state, EnrolmentState.revoked);
+    expect(s.certificateQr, isNull);
+
+    final again = await DoctorSession.load(base, cipher: cipher);
+    expect(again.state, EnrolmentState.revoked);
+    expect(again.certificateQr, isNull);
+    expect(again.note, 'Licence suspended.');
   });
 }

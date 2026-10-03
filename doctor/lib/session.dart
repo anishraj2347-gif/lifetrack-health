@@ -22,9 +22,9 @@ class ReceivedShare {
   final DateTime expiresAt;
   final DateTime receivedAt;
 
-  /// True when the LifeTrack ID in the share is registered to the very key
-  /// the share asks replies to go to — i.e. it came from that person's
-  /// phone. Anyone can seal a "share" to this device's public key and write
+  /// True when the share proves it was sent by the holder of its reply key,
+  /// and the LifeTrack ID in it is registered to that key — i.e. it came
+  /// from that person's phone. Anyone can seal a "share" to this device's public key and write
   /// any name and ID into it; only a confirmed one is filed under that ID.
   final bool verified;
 
@@ -62,12 +62,13 @@ enum EnrolmentState { none, pending, approved, rejected, revoked }
 /// ([LocalCipher]). Values written by older versions in the clear are
 /// sealed the first time they are read.
 class DoctorSession {
-  DoctorSession._(this.prefs, this.base, this.cipher);
+  DoctorSession._(this.prefs, this.base, this.cipher, [http.Client? client]) : _http = client ?? http.Client();
 
   static const _kEnc = 'lt.doctor.enc';
   static const _kSign = 'lt.doctor.sign';
   static const _kProfile = 'lt.doctor.profile';
   static const _kCert = 'lt.doctor.cert';
+  static const _kRevoked = 'lt.doctor.revoked';
   static const _kInbox = 'lt.doctor.inbox';
   static const _kPatients = 'lt.doctor.patients';
   static const _kRx = 'lt.doctor.prescriptions';
@@ -181,7 +182,7 @@ class DoctorSession {
   }
 
   static String newNoteId() => 'note-${DateTime.now().microsecondsSinceEpoch}';
-  final http.Client _http = http.Client();
+  final http.Client _http;
 
   SimpleKeyPair? enc;
   SimpleKeyPair? sign;
@@ -227,8 +228,8 @@ class DoctorSession {
   /// Names whose shares the patient closed since the screen last showed it.
   final List<String> closedByPatient = [];
 
-  static Future<DoctorSession> load(Uri base, {LocalCipher? cipher}) async {
-    final s = DoctorSession._(await SharedPreferences.getInstance(), base, cipher ?? platformCipher());
+  static Future<DoctorSession> load(Uri base, {LocalCipher? cipher, http.Client? client}) async {
+    final s = DoctorSession._(await SharedPreferences.getInstance(), base, cipher ?? platformCipher(), client);
     s.themeChoice = await s._get(_kTheme) ?? 'system';
     final encSeed = await s._get(_kEnc);
     final signSeed = await s._get(_kSign);
@@ -238,6 +239,12 @@ class DoctorSession {
       s.profile = (jsonDecode(await s._get(_kProfile) ?? '{}') as Map).cast();
       s.certificateQr = await s._get(_kCert);
       s.state = s.certificateQr != null ? EnrolmentState.approved : EnrolmentState.pending;
+      // A revocation is remembered: a restart must not show this device as
+      // approved again on the strength of an old certificate.
+      if (await s._get(_kRevoked) case final why?) {
+        s.state = EnrolmentState.revoked;
+        s.note = why.isEmpty ? null : why;
+      }
       await s._fingerprint();
       await s._loadPractice();
       await s._restoreInbox();
@@ -318,14 +325,25 @@ class DoctorSession {
       final mine = (await enc!.extractPublicKey()).bytes;
       final theirs = DoctorCertificate.decode(cert).encryptionKey;
       if (base64Encode(mine) != base64Encode(theirs)) {
-        state = EnrolmentState.revoked;
-        note = 'Your registration number was approved for another device. Contact LifeTrack.';
+        await _revoked('Your registration number was approved for another device. Contact LifeTrack.');
         return;
       }
       certificateQr = cert;
       await _set(_kCert, cert);
+      await prefs.remove(_kRevoked);
     }
+    if (next == EnrolmentState.revoked) return _revoked(note);
     state = next;
+  }
+
+  /// Drops the certificate and remembers why, so the app stops picking up
+  /// and stays "Not approved" across restarts.
+  Future<void> _revoked(String? why) async {
+    state = EnrolmentState.revoked;
+    note = why;
+    certificateQr = null;
+    await prefs.remove(_kCert);
+    await _set(_kRevoked, why ?? '');
   }
 
   Future<String> mailbox() async => RelayApi.doctorMailbox((await enc!.extractPublicKey()).bytes);
@@ -383,7 +401,7 @@ class DoctorSession {
       bundle: bundle,
       expiresAt: DateTime.parse(header['exp']! as String),
       receivedAt: now,
-      verified: await _confirmSender(bundle),
+      verified: await _confirmSender(bundle, grantId),
     );
     inbox.removeWhere((s) => s.patientKey == share.patientKey || s.grantId == grantId);
     inbox.insert(0, share);
@@ -392,15 +410,20 @@ class DoctorSession {
     return true;
   }
 
-  /// Whether the LifeTrack ID a share names is registered to the key the
-  /// share asks replies to go to. Only that person's phone can register or
-  /// move its ID, so a match means the share is theirs. Offline or unknown:
-  /// not confirmed.
-  Future<bool> _confirmSender(Map<String, Object?> bundle) async {
+  /// Whether the share came from the phone its LifeTrack ID belongs to. Two
+  /// checks, both needed: the share proves its sender holds the reply key
+  /// ([SenderProof] — the registry lookup is public, so anyone could copy a
+  /// patient's ID and key into a share), and the registry has that ID on
+  /// that key (only that person's phone can register or move it). Offline,
+  /// unknown or unproven: not confirmed.
+  Future<bool> _confirmSender(Map<String, Object?> bundle, String grantId) async {
     final id = LifeTrackId.parse('${(bundle['patient']! as Map)['lifeTrackId']}');
     final key = (bundle['replyTo']! as Map)['key'];
-    if (id == null || key is! String || key.isEmpty) return false;
+    final proof = bundle['senderProof'];
+    if (id == null || key is! String || key.isEmpty || proof is! String) return false;
     try {
+      final proven = await SenderProof.check(doctorKeyPair: enc!, replyKey: base64Decode(key), grantId: grantId, lifeTrackId: id, proof: proof);
+      if (!proven) return false;
       final r = await _http.get(base.resolve('/v1/ids/$id'));
       if (r.statusCode != 200) return false;
       return (jsonDecode(r.body) as Map)['key'] == key;

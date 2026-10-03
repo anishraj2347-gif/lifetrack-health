@@ -71,7 +71,7 @@ class FamilyLink {
   /// the inviter's phone. Every later message on the link carries it, so a
   /// person who only saw the invite code (often sent over a chat app) cannot
   /// send updates or unlink in either name. Null on links made before
-  /// 1.18.1: those accept no messages and must be linked again.
+  /// 1.18.1: those carry nothing but an unlink and must be linked again.
   final String? secret;
 
   bool get secured => secret != null;
@@ -259,8 +259,9 @@ class FamilyLinkService {
   Future<void> unlink({required String ownerId, required FamilyLink link, required DateTime at}) async {
     try {
       // A link from an older version has no secret to prove the message
-      // with; it is removed here only.
-      if (link.secured) await _send(link, {'type': 'family_unlink', 'linkId': link.id}, at);
+      // with; its unlink goes without one, and the other phone accepts that
+      // for an unsecured link only (an unlink can only delete, never add).
+      await _send(link, {'type': 'family_unlink', 'linkId': link.id}, at, legacyUnlink: !link.secured);
     } finally {
       await _save([...(await links()).where((l) => l.id != link.id)]);
       await audit.append(AuditEntry(at: at, actorId: 'patient:$ownerId', patientId: ownerId, action: AuditAction.grantRevoked, tokenId: 'family-link-${link.id}', detail: 'Unlinked from ${link.name}'));
@@ -304,7 +305,9 @@ class FamilyLinkService {
           final all = await links();
           final gone = all.where((l) => l.id == p['linkId']).toList();
           if (gone.isEmpty) throw const LinkRefused('an unlink for a link that no longer exists');
-          _proven(gone.single, p);
+          // A link from before 1.18.1 has no secret; its unlink is accepted
+          // unproven so the copy it holds can still be deleted (#1e).
+          if (gone.single.secured) _proven(gone.single, p);
           await _save([...all.where((l) => l.id != p['linkId'])]);
           for (final l in gone) {
             await audit.append(AuditEntry(at: at, actorId: 'family:${l.name}', patientId: ownerId, action: AuditAction.grantRevoked, tokenId: 'family-link-${l.id}', detail: '${l.name} unlinked; what they shared was deleted'));
@@ -366,10 +369,10 @@ class FamilyLinkService {
         'medicines': link.iShareMedicines ? [for (final m in meds) {'title': m.title, 'dose': m.dose?.display, 'endsOn': m.endDate?.toIso8601String()}] : null,
       };
 
-  Future<void> _send(FamilyLink link, Map<String, Object?> payload, DateTime at) async {
+  Future<void> _send(FamilyLink link, Map<String, Object?> payload, DateTime at, {bool legacyUnlink = false}) async {
     final secret = link.secret;
-    if (secret == null) throw const LinkRefused('This link was made by an older version. Unlink, then link again.');
-    payload = {...payload, 'linkSecret': secret};
+    if (secret == null && !legacyUnlink) throw const LinkRefused('This link was made by an older version. Unlink, then link again.');
+    if (secret != null) payload = {...payload, 'linkSecret': secret};
     final key = base64Decode(link.theirKey);
     final exp = at.add(const Duration(hours: 47));
     // Unique per message: two sends in the same instant must not overwrite

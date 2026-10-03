@@ -19,6 +19,12 @@ import 'package:shelf/shelf_io.dart' as io;
 ///
 ///   dart run bin/server.dart [--port 8787] [--data data]
 ///       [--public-base https://lifetrack.example] [--allow-origin https://doctor.example]
+///       [--trust-proxy]
+///
+/// `--trust-proxy`: a reverse proxy you run is in front and appends the
+/// caller's address to X-Forwarded-For; rate limits then count per caller
+/// instead of treating everyone as 127.0.0.1. Never set it without a proxy:
+/// a client could then choose its own address.
 ///
 /// Browsers may call it only from loopback pages and `--allow-origin`s, and
 /// only under loopback Host names or the host of `--public-base` (refusing
@@ -58,6 +64,7 @@ Future<void> main(List<String> args) async {
     identity: identity,
     requireIdentity: args.contains('--require-identity'),
     publicBase: publicBase,
+    trustProxy: args.contains('--trust-proxy'),
     origins: OriginPolicy(
       publicHosts: {?publicBase?.host},
       allowedOrigins: {for (var i = 0; i < args.length - 1; i++) if (args[i] == '--allow-origin') args[i + 1]},
@@ -69,6 +76,11 @@ Future<void> main(List<String> args) async {
     ..writeln('LifeTrack local server on http://${server.address.address}:${server.port}')
     ..writeln('Registry public key (pin this in the apps): $pub')
     ..writeln('Admin token is in ${dataDir.path}/admin_token')
+    ..writeln(args.contains('--trust-proxy')
+        ? 'Rate limits: per X-Forwarded-For client (--trust-proxy)'
+        : publicBase != null
+            ? 'Rate limits: per connection — behind a proxy every caller shares one budget; add --trust-proxy'
+            : 'Rate limits: per connection')
     ..writeln(identity == null ? 'Identity checks: off' : 'Identity checks: PRACTICE DigiLocker (not real)${args.contains('--require-identity') ? ', required for new IDs' : ''}');
 }
 

@@ -26,6 +26,7 @@ class LifeTrackApi {
     this.requireIdentity = false,
     this.origins = const OriginPolicy(),
     this.publicBase,
+    this.trustProxy = false,
     RateLimiter? limiter,
     DateTime Function()? clock,
   })  : clock = clock ?? DateTime.now,
@@ -52,6 +53,10 @@ class LifeTrackApi {
   /// out (the DigiLocker sign-in). Null: the request's own (already checked)
   /// host.
   final Uri? publicBase;
+
+  /// Rate limits count per `X-Forwarded-For` client (see [clientOf]); set
+  /// only when a reverse proxy you run sits in front.
+  final bool trustProxy;
   final RateLimiter limiter;
 
   /// Body sizes. A backup carries every original page; a share up to 5 MB;
@@ -70,6 +75,11 @@ class LifeTrackApi {
     RateRule('PUT', RegExp(r'^/v1/relay/'), 120, const Duration(minutes: 1)),
     RateRule('GET', RegExp(r'^/v1/relay/'), 120, const Duration(minutes: 1)),
     RateRule('GET', RegExp(r'^/v1/vault/'), 30, const Duration(minutes: 1)),
+    // Opening, replacing and deleting a backup prove a password; each
+    // account also locks after 10 wrong proofs an hour (VaultStore).
+    RateRule('POST', RegExp(r'^/v1/vault/[^/]+/open$'), 20, const Duration(hours: 1)),
+    RateRule('PUT', RegExp(r'^/v1/vault/'), 120, const Duration(hours: 1)),
+    RateRule('DELETE', RegExp(r'^/v1/vault/'), 20, const Duration(hours: 1)),
     RateRule('POST', RegExp(r'^/v1/admin/'), 60, const Duration(minutes: 1)),
     RateRule('GET', RegExp(r'^/v1/admin/'), 60, const Duration(minutes: 1)),
   ];
@@ -108,7 +118,7 @@ class LifeTrackApi {
       ..get('/v1/practice-digilocker/approve', _practiceApprove);
     return const Pipeline()
         .addMiddleware(origins.middleware())
-        .addMiddleware(rateLimit(limiter, rateRules))
+        .addMiddleware(rateLimit(limiter, rateRules, trustProxy: trustProxy))
         .addHandler(r.call);
   }
 
@@ -352,10 +362,10 @@ class LifeTrackApi {
     if (await vault.lockedOut(account, now)) return _error(429, 'Too many wrong passwords. Try again in an hour.');
     final e = await vault.get(account);
     final given = (await _readJson(req))?['verifier'];
-    if (e == null) {
-      await vault.failed(account, now);
-      return _error(403, 'Wrong account code or password.');
-    }
+    // No backup: nothing to guess at, so nothing is counted — counting
+    // made-up account codes would grow the failure file without bound.
+    // (Whether a code exists is no secret: the salt route answers 404.)
+    if (e == null) return _error(403, 'Wrong account code or password.');
     final refused = await _proveVault(account, e, given is String ? given : null, now);
     if (refused != null) return refused;
     return _json({'wrappedDataKey': e['wrappedDataKey'], 'blob': e['blob'], 'updatedAt': e['updatedAt']});

@@ -215,6 +215,45 @@ void main() {
     expect(l.theirEmergency!['blood'], 'O+');
   });
 
+  /// Turns this phone's links into ones made before 1.18.1 (no secret).
+  Future<void> makeLegacy(AppServices s, {bool Function(FamilyLink)? only}) async {
+    final all = await s.links!.links();
+    await s.links!.sealed.write('family_links', [
+      for (final l in all) (only == null || only(l)) ? ({...l.toJson()}..remove('sec')) : l.toJson(),
+    ]);
+  }
+
+  test('a link from an older version does not stop updates reaching the other links', () async {
+    final anjali = await phone('Anjali Sharma', 1);
+    final ravi = await phone('Ravi Sharma', 3);
+    final vikram = await phone('Vikram Sharma', 2);
+    await vikram.joinFamily(code: (await anjali.createFamilyInvite()).encode(), shareEmergency: true, shareMedicines: false);
+    await vikram.joinFamily(code: (await ravi.createFamilyInvite()).encode(), shareEmergency: true, shareMedicines: false);
+    await anjali.checkInbox();
+    await ravi.checkInbox();
+    await makeLegacy(vikram, only: (l) => l.name == 'Anjali Sharma');
+    expect((await vikram.links!.links()).first.secured, isFalse, reason: 'the old link comes first, so it used to stop the loop');
+
+    await vikram.saveEmergencyCard(vikram.selfPatientId!, const EmergencyCard(bloodType: 'A+'));
+    await ravi.checkInbox();
+    expect((await ravi.links!.links()).single.theirEmergency!['blood'], 'A+');
+  });
+
+  test('unlinking a link from an older version still makes the other phone delete its copy', () async {
+    final anjali = await phone('Anjali Sharma', 1);
+    final vikram = await phone('Vikram Sharma', 2);
+    await vikram.emergency.save(vikram.selfPatientId!, const EmergencyCard(bloodType: 'B+'));
+    await vikram.joinFamily(code: (await anjali.createFamilyInvite()).encode(), shareEmergency: true, shareMedicines: false);
+    await anjali.checkInbox();
+    await makeLegacy(anjali);
+    await makeLegacy(vikram);
+
+    await vikram.unlinkFamily((await vikram.links!.links()).single);
+    final (_, handled, refused) = await anjali.checkInbox();
+    expect((handled, refused), (1, 0));
+    expect(await anjali.links!.links(), isEmpty, reason: 'his Emergency ID is deleted from her phone (#1e)');
+  });
+
   test('saving still works when the relay is unreachable', () async {
     final flaky = _FlakyRelay();
     relay = flaky;

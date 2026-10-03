@@ -256,13 +256,14 @@ void main() {
     Future<Map<String, String>> signed(String qr, String mailbox, {SimpleKeyPair? key}) =>
         RelayApi.doctorPickupHeaders(certificateQr: qr, signingKey: key ?? sign, mailbox: mailbox, at: now);
     Map<String, String> expires() => {RelayApi.hExpires: now.add(const Duration(hours: 1)).toIso8601String()};
-    Future<Handler> fresh({RelayStore? relayStore}) async => LifeTrackApi(
+    Future<Handler> fresh({RelayStore? relayStore, bool trustProxy = false}) async => LifeTrackApi(
           registry: await DoctorRegistry.open(signingKey: await Ed25519().newKeyPair()),
           relay: relayStore ?? RelayStore(),
           vault: VaultStore(vaultDir),
           ids: await IdRegistry.open(),
           adminToken: admin,
           clock: () => now,
+          trustProxy: trustProxy,
         ).handler;
 
     test('keys waiting for review cannot be swapped by a second enrolment', () async {
@@ -384,6 +385,38 @@ void main() {
     test('oversized bodies are refused before they are read whole', () async {
       expect((await call('POST', '/v1/ids', body: {'id': 'x' * (LifeTrackApi.maxJson + 1)})).statusCode, 400);
       expect((await call('PUT', '/v1/relay/d-${'a' * 16}/g', body: Uint8List(LifeTrackApi.maxShare + 1), headers: expires())).statusCode, 413);
+    });
+
+    test('behind a trusted proxy, each caller has its own budget and cannot pick its address', () async {
+      final api = await fresh(trustProxy: true);
+      Future<int> lookup(String forwarded) async =>
+          (await api(Request('GET', Uri.parse('http://localhost/v1/ids/${LifeTrackId.generate()}'), headers: {'x-forwarded-for': forwarded}))).statusCode;
+      for (var i = 0; i < 60; i++) {
+        expect(await lookup('203.0.113.7'), 404);
+      }
+      expect(await lookup('203.0.113.7'), 429);
+      // A spoofed first entry does not help: the proxy appends the real one.
+      expect(await lookup('198.51.100.1, 203.0.113.7'), 429);
+      expect(await lookup('203.0.113.8'), 404, reason: 'another phone is not held back by the first');
+
+      // Without --trust-proxy the header is ignored: everyone is one client.
+      final plain = await fresh();
+      for (var i = 0; i < 60; i++) {
+        await plain(Request('GET', Uri.parse('http://localhost/v1/ids/${LifeTrackId.generate()}'), headers: {'x-forwarded-for': '10.0.0.$i'}));
+      }
+      expect((await plain(Request('GET', Uri.parse('http://localhost/v1/ids/${LifeTrackId.generate()}'), headers: {'x-forwarded-for': '10.0.0.99'}))).statusCode, 429);
+    });
+
+    test('guessing backup account codes is throttled and writes nothing to disk', () async {
+      final api = await fresh();
+      final codes = <int>[];
+      for (var i = 0; i < 21; i++) {
+        final acct = 'LT-GUESS-${i.toString().padLeft(5, '0')}';
+        codes.add((await api(Request('POST', Uri.parse('http://localhost/v1/vault/$acct/open'), body: jsonEncode({'verifier': 'x'})))).statusCode);
+      }
+      expect(codes.take(20).toSet(), {403});
+      expect(codes.last, 429);
+      expect(File('${vaultDir.path}/_failures.json').existsSync(), isFalse);
     });
   });
 }

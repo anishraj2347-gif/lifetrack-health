@@ -2,6 +2,7 @@
 library;
 
 export 'src/doctor_certificate.dart';
+export 'src/sender_proof.dart';
 export 'src/share_envelope.dart';
 export 'src/signed_prescription.dart';
 export 'src/identity_attestation.dart';

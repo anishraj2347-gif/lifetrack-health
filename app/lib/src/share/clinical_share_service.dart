@@ -181,12 +181,17 @@ class ClinicalShareService {
               tokenId: grant.id, actorId: actor, patientId: patientId, purpose: GrantPurpose.clinicalConsult, at: at, from: at.subtract(const Duration(days: 30)))
           : const [],
       profileUpdatedAt: repository.profileOf(patientId).updatedAt,
-    )
-      ..['replyTo'] = (await replyIdentity(patientId)).replyTo
+    );
+    final reply = await replyIdentity(patientId);
+    bundle
+      ..['replyTo'] = reply.replyTo
       ..['sharedBy'] = sharedBy
       ..['closeSecret'] = await _closeSecret(patientId, grant.id);
     if (lifeTrackIdOf?.call(patientId) case final id?) {
       bundle['patient'] = {...(bundle['patient']! as Map).cast<String, Object?>(), 'lifeTrackId': id};
+      // Proves this phone holds the reply key the ID is registered to; the
+      // registry lookup alone is public and proves nothing (doctor app).
+      bundle['senderProof'] = await SenderProof.make(replyKeyPair: reply.keyPair, doctorKey: doctor.encryptionKey, grantId: grant.id, lifeTrackId: id);
     }
     await _attachOriginals(bundle, released);
 

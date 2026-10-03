@@ -1074,10 +1074,18 @@ class AppServices {
     final self = selfPatient;
     if (links == null || self == null) return;
     final card = await emergency.load(self.id);
+    Object? failed;
     for (final l in await links!.links()) {
-      if (!l.iShareEmergency && !l.iShareMedicines) continue;
-      await links!.sendUpdate(ownerId: self.id, link: l, emergency: card, activeMedicines: _activeMedicines(self.id), at: clock());
+      // A link from an older version cannot send (the screen says to link
+      // again); it must not stop the others from getting the update.
+      if (!l.secured || (!l.iShareEmergency && !l.iShareMedicines)) continue;
+      try {
+        await links!.sendUpdate(ownerId: self.id, link: l, emergency: card, activeMedicines: _activeMedicines(self.id), at: clock());
+      } on Object catch (e) {
+        failed ??= e;
+      }
     }
+    if (failed != null) throw failed;
   }
 
   Future<FamilyLink> changeFamilySharing(FamilyLink link, {required bool emergency, required bool medicines}) async {

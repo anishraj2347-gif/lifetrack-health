@@ -39,20 +39,32 @@ class RateRule {
 }
 
 /// The caller's address, or `local` for in-process requests (tests).
-String clientOf(Request req) =>
-    (req.context['shelf.io.connection_info'] as HttpConnectionInfo?)?.remoteAddress.address ?? 'local';
+///
+/// The server listens on loopback only, so behind a reverse proxy every
+/// connection comes from 127.0.0.1 and would share one budget. With
+/// [trustProxy] (`--trust-proxy`, only when a proxy you run is in front), the
+/// client is the last `X-Forwarded-For` entry — the address that proxy saw
+/// and appended; entries a client wrote itself come before it and are
+/// ignored.
+String clientOf(Request req, {bool trustProxy = false}) {
+  if (trustProxy) {
+    final hops = (req.headers['x-forwarded-for'] ?? '').split(',').map((h) => h.trim()).where((h) => h.isNotEmpty);
+    if (hops.isNotEmpty) return hops.last;
+  }
+  return (req.context['shelf.io.connection_info'] as HttpConnectionInfo?)?.remoteAddress.address ?? 'local';
+}
 
 Response _err(int status, String message) =>
     Response(status, body: jsonEncode({'error': message}), headers: {'content-type': 'application/json'});
 
 /// Refuses a client that has used up the budget of the first rule matching
 /// the request.
-Middleware rateLimit(RateLimiter limiter, List<RateRule> rules) => (inner) => (req) {
+Middleware rateLimit(RateLimiter limiter, List<RateRule> rules, {bool trustProxy = false}) => (inner) => (req) {
       final path = '/${req.url.path}';
       for (var i = 0; i < rules.length; i++) {
         final r = rules[i];
         if (r.method != req.method || !r.path.hasMatch(path)) continue;
-        if (!limiter.allow('${clientOf(req)}|$i', r.limit, r.window)) return _err(429, 'Too many requests. Try again later.');
+        if (!limiter.allow('${clientOf(req, trustProxy: trustProxy)}|$i', r.limit, r.window)) return _err(429, 'Too many requests. Try again later.');
         break;
       }
       return inner(req);

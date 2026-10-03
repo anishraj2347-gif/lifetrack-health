@@ -223,9 +223,15 @@ void main() {
 
     test('the share carries the patient\'s LifeTrack ID, so the doctor can ask again later', () async {
       final d = await doctor();
-      await service.share(patientId: 'p1', doctor: await service.scan(d.qr, now), levels: {AccessLevel.summary}, at: now);
+      final r = await service.share(patientId: 'p1', doctor: await service.scan(d.qr, now), levels: {AccessLevel.summary}, at: now);
       final b = await pickUpAndOpen(d);
       expect((b['patient']! as Map)['lifeTrackId'], '148209375516');
+      // …and proves it came from the phone holding the reply key, which the
+      // doctor app needs before filing it under that ID.
+      final replyKey = base64Decode((b['replyTo']! as Map)['key']! as String);
+      final proof = b['senderProof']! as String;
+      expect(await SenderProof.check(doctorKeyPair: d.enc, replyKey: replyKey, grantId: r.grant.id, lifeTrackId: '148209375516', proof: proof), isTrue);
+      expect(await SenderProof.check(doctorKeyPair: d.enc, replyKey: replyKey, grantId: r.grant.id, lifeTrackId: '148209375524', proof: proof), isFalse);
     });
 
     test('with a test filter, prescriptions and scans from the same months stay home', () async {
