@@ -1,13 +1,15 @@
 # NTCC project report
 
-`LifeTrack_Health_NTCC_Report.docx` is the submitted report; `LifeTrack_Health_NTCC_Report_preview.pdf`
-is a LibreOffice rendering for checking layout (its table of contents is empty — Word fills it in).
+`LifeTrack_Health_NTCC_Report.pdf` is the version to submit; `LifeTrack_Health_NTCC_Report.docx` is
+the editable copy (Word fills in its table of contents when opened — click Yes).
 
-Rebuild after editing `build.js`:
+Rebuild both after editing `build.js` (needs node, LibreOffice and poppler):
 
-    cd docs/report && npm install && npm run build
+    cd docs/report && npm install && ./make_pdf.sh
+
+`make_pdf.sh` builds the Word file, renders it once to find the page of every heading, and prints
+those numbers into the PDF's table of contents.
 
 - `fig/` — diagrams (`.dot` sources rendered with Graphviz; `seq.svg` → `seq.png`).
 - `shots/` — app screenshots used in Chapter 5.
-- Yellow `[[...]]` placeholders in `build.js` are fields the team fills in (names, enrolment
-  numbers, programme, designation, session, date). Fill them in `build.js` so a rebuild keeps them.
+- Personal details (name, enrolment number, programme, guide, session) are filled in `build.js`; edit them there so a rebuild keeps them.

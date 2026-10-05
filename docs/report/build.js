@@ -13,7 +13,7 @@ const FONT = 'Times New Roman';
 const W = 9026; // A4 text width at 1" margins (DXA)
 
 // ---------- helpers ----------
-// Text with **bold**, *italic*, `code` and [[placeholder]] (highlighted for the team to fill in).
+// Text with **bold**, *italic*, `code` and [[placeholder]] (highlighted for the author to fill in).
 function runs(text, opts = {}) {
   const out = [];
   const re = /(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|`[^`]+`|\[\[[^\]]+\]\])/g;
@@ -32,8 +32,9 @@ function runs(text, opts = {}) {
 }
 const P = (text, o = {}) => new Paragraph({ children: runs(text, o.run || {}), alignment: o.align ?? AlignmentType.JUSTIFIED, spacing: { after: 160, line: 360 }, ...o.para });
 const C = (text, o = {}) => P(text, { ...o, align: AlignmentType.CENTER });
-const H1 = (text) => new Paragraph({ heading: HeadingLevel.HEADING_1, pageBreakBefore: true, children: [new TextRun(text)] });
-const H2 = (text) => new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun(text)] });
+const headings = []; // [level, text] in order, for the printed contents page
+const H1 = (text) => { headings.push([1, text]); return new Paragraph({ heading: HeadingLevel.HEADING_1, pageBreakBefore: true, children: [new TextRun(text)] }); };
+const H2 = (text) => { headings.push([2, text]); return new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun(text)] }); };
 const H3 = (text) => new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun(text)] });
 const B = (text, level = 0) => new Paragraph({ numbering: { reference: 'bul', level }, children: runs(text), alignment: AlignmentType.JUSTIFIED, spacing: { after: 80, line: 340 } });
 const N = (text, ref = 'num') => new Paragraph({ numbering: { reference: ref, level: 0 }, children: runs(text), alignment: AlignmentType.JUSTIFIED, spacing: { after: 80, line: 340 } });
@@ -102,43 +103,40 @@ const cover = [
   ...blank(1),
   C('NTCC Project Report', { run: { size: 26 } }),
   C('submitted in partial fulfilment of the requirements for the degree of', { run: { size: 24 } }),
-  C('[[Programme, e.g. Bachelor of Science in Information Technology (B.Sc. IT)]]', { run: { size: 24, bold: true } }),
+  C('Bachelor of Science in Information Technology (B.Sc. IT)', { run: { size: 24, bold: true } }),
   ...blank(1),
   C('Submitted by', { run: { size: 24 } }),
-  C('[[Student 1 name — Enrolment no.]]', { run: { size: 24 } }),
-  C('[[Student 2 name — Enrolment no.]]', { run: { size: 24 } }),
-  C('[[Student 3 name — Enrolment no.]]', { run: { size: 24 } }),
-  C('[[Student 4 name — Enrolment no.]]', { run: { size: 24 } }),
+  C('**Anish Raj**', { run: { size: 24 } }),
+  C('Enrolment No. A45304925031', { run: { size: 24 } }),
   ...blank(1),
   C('Under the supervision of', { run: { size: 24 } }),
   C('**Dr. Priyadarshini Gupta**', { run: { size: 24 } }),
-  C('[[Designation]], Amity Institute of Information Technology', { run: { size: 24 } }),
+  C('Assistant Professor, Amity Institute of Information Technology', { run: { size: 24 } }),
   ...blank(2),
   C('**AMITY INSTITUTE OF INFORMATION TECHNOLOGY**', { run: { size: 26 } }),
   C('**AMITY UNIVERSITY PATNA**', { run: { size: 26 } }),
   C('Patna – 801503', { run: { size: 24 } }),
-  C('Academic Session [[2025–2028]]  ·  October 2026', { run: { size: 24 } }),
+  C('Academic Session 2025–2028  ·  October 2026', { run: { size: 24 } }),
 ];
 
 const declaration = [
   new Paragraph({ heading: HeadingLevel.TITLE, pageBreakBefore: true, children: [new TextRun('DECLARATION')] }),
-  P('We hereby declare that the project report entitled **“LifeTrack Health: A Patient-Owned, Local-First Health Record with Consent-Controlled Sharing”**, submitted to Amity Institute of Information Technology, Amity University Patna, in partial fulfilment of the requirements for the degree of [[Programme]], is a record of original work carried out by us under the supervision of Dr. Priyadarshini Gupta.'),
-  P('The software described in this report was designed, built and tested by the project team. Published standards, laws and libraries used in the work are acknowledged in the References. This report has not been submitted, in part or in full, to any other university or institution for the award of any degree or diploma.'),
+  P('I hereby declare that the project report entitled **“LifeTrack Health: A Patient-Owned, Local-First Health Record with Consent-Controlled Sharing”**, submitted to Amity Institute of Information Technology, Amity University Patna, in partial fulfilment of the requirements for the degree of Bachelor of Science in Information Technology (B.Sc. IT), is a record of original work carried out by me under the supervision of Dr. Priyadarshini Gupta.'),
+  P('The software described in this report was designed, built and tested by me. Published standards, laws and libraries used in the work are acknowledged in the References, and the software tools used, including an AI coding assistant, in the Acknowledgement. This report has not been submitted, in part or in full, to any other university or institution for the award of any degree or diploma.'),
   ...blank(2),
-  ...table(['Name', 'Enrolment number', 'Signature'], [
-    ['[[Student 1]]', '[[Enrolment no.]]', ''], ['[[Student 2]]', '[[Enrolment no.]]', ''],
-    ['[[Student 3]]', '[[Enrolment no.]]', ''], ['[[Student 4]]', '[[Enrolment no.]]', ''],
-  ], [3600, 3000, 2426], 'Project team').slice(1),
-  P('Place: Patna\t\t\t\t\t\tDate: [[Date of submission]]', { align: AlignmentType.LEFT }),
+  P('**Anish Raj**', { align: AlignmentType.LEFT }),
+  P('Enrolment No. A45304925031', { align: AlignmentType.LEFT }),
+  P('Signature: ____________________', { align: AlignmentType.LEFT }),
+  P('Place: Patna\t\t\t\t\t\tDate: ____________', { align: AlignmentType.LEFT }),
 ];
 
 const certificate = [
   new Paragraph({ heading: HeadingLevel.TITLE, pageBreakBefore: true, children: [new TextRun('CERTIFICATE')] }),
-  P('This is to certify that the project report entitled **“LifeTrack Health: A Patient-Owned, Local-First Health Record with Consent-Controlled Sharing”**, submitted by [[Student 1]], [[Student 2]], [[Student 3]] and [[Student 4]] in partial fulfilment of the requirements for the degree of [[Programme]] at Amity Institute of Information Technology, Amity University Patna, is a bona fide record of work carried out by them under my supervision during the academic session [[2025–2028]].'),
+  P('This is to certify that the project report entitled **“LifeTrack Health: A Patient-Owned, Local-First Health Record with Consent-Controlled Sharing”**, submitted by Anish Raj (Enrolment No. A45304925031) in partial fulfilment of the requirements for the degree of Bachelor of Science in Information Technology (B.Sc. IT) at Amity Institute of Information Technology, Amity University Patna, is a bona fide record of work carried out under my supervision during the academic session 2025–2028.'),
   P('To the best of my knowledge, the work presented in this report is original and has not been submitted elsewhere for the award of any degree or diploma.'),
   ...blank(4),
   P('**Dr. Priyadarshini Gupta**', { align: AlignmentType.LEFT }),
-  P('[[Designation]]', { align: AlignmentType.LEFT }),
+  P('Assistant Professor', { align: AlignmentType.LEFT }),
   P('Amity Institute of Information Technology, Amity University Patna', { align: AlignmentType.LEFT }),
   P('Signature: ____________________\t\tDate: ____________', { align: AlignmentType.LEFT }),
 ];
@@ -146,13 +144,13 @@ const certificate = [
 const AB = { para: { spacing: { after: 120, line: 320 } } };
 const ack = [
   new Paragraph({ heading: HeadingLevel.TITLE, pageBreakBefore: true, children: [new TextRun('ACKNOWLEDGEMENT')] }),
-  P('We express our sincere gratitude to our supervisor, **Dr. Priyadarshini Gupta**, for her guidance, encouragement and critical feedback throughout this project. Her questions about how an analytical or clinical claim can be proven correct shaped the testing approach described in this report.'),
-  P('We thank the Director and faculty of Amity Institute of Information Technology, Amity University Patna, for providing the environment and resources to carry out this work, and our classmates for testing early versions of the apps and reporting what confused them.'),
-  P('We also acknowledge the open-source communities behind Flutter, Dart, the `cryptography` package, Tesseract OCR and the many other libraries this project builds on.'),
-  P('Finally, we thank our families for their patience and support.'),
+  P('I express my sincere gratitude to my supervisor, **Dr. Priyadarshini Gupta**, for her guidance, encouragement and critical feedback throughout this project. Her questions about how an analytical or clinical claim can be proven correct shaped the testing approach described in this report.'),
+  P('I thank the Director and faculty of Amity Institute of Information Technology, Amity University Patna, for providing the environment and resources to carry out this work, and my classmates for testing early versions of the apps and reporting what confused them.'),
+  P('I also acknowledge the open-source communities behind Flutter, Dart, the `cryptography` package, Tesseract OCR and the many other libraries this project builds on.'),
+  P('Parts of the code and of this report were drafted with the help of an AI coding assistant (Claude, by Anthropic). I directed the work, reviewed what it produced, and ran and checked the tests reported here.'),
+  P('Finally, I thank my family for their patience and support.'),
   ...blank(2),
-  P('[[Student 1]]', { align: AlignmentType.RIGHT }), P('[[Student 2]]', { align: AlignmentType.RIGHT }),
-  P('[[Student 3]]', { align: AlignmentType.RIGHT }), P('[[Student 4]]', { align: AlignmentType.RIGHT }),
+  P('Anish Raj', { align: AlignmentType.RIGHT }),
 ];
 
 const abstract = [
@@ -164,11 +162,18 @@ const abstract = [
   P('**Keywords:** personal health record, patient consent, end-to-end encryption, local-first software, Flutter, digital health India, DPDP Act 2023.', AB),
 ];
 
-const toc = [
-  new Paragraph({ heading: HeadingLevel.TITLE, pageBreakBefore: true, children: [new TextRun('TABLE OF CONTENTS')] }),
-  new TableOfContents('Table of Contents', { hyperlink: true, headingStyleRange: '1-2' }),
-  P('(If page numbers do not appear, right-click the table in Word and choose “Update Field”.)', { run: { italics: true, size: 20 } }),
-];
+// The Word file carries a contents field that Word fills in on opening. For the
+// PDF, make_pdf.sh measures where each heading lands and passes TOC_PAGES
+// (a JSON map of heading → page), and the contents are printed as text.
+const tocPages = process.env.TOC_PAGES ? JSON.parse(fs.readFileSync(process.env.TOC_PAGES, 'utf8')) : null;
+const tocTitle = new Paragraph({ heading: HeadingLevel.TITLE, pageBreakBefore: true, children: [new TextRun('TABLE OF CONTENTS')] });
+const toc = [tocTitle, new TableOfContents('Table of Contents', { hyperlink: true, headingStyleRange: '1-2' })];
+const printedToc = () => [tocTitle, ...headings.map(([level, text]) => new Paragraph({
+  tabStops: [{ type: TabStopType.RIGHT, position: W, leader: 'dot' }],
+  indent: { left: level === 1 ? 0 : 400 },
+  spacing: { before: level === 1 ? 120 : 0, after: 40 },
+  children: [new TextRun({ text, bold: level === 1, size: 22 }), new TextRun({ text: `\t${tocPages[text] ?? ''}`, bold: level === 1, size: 22 })],
+}))];
 
 // ---------- Chapter 1 ----------
 const ch1 = [
@@ -462,7 +467,7 @@ const ch7 = [
     ['7. Verifiable privacy promises', 'Achieved: invariant tests in the build; 354 tests passing'],
   ], [3800, 5226], 'Objectives and outcomes'),
   H2('7.2 Changes from the original proposal'),
-  P('The proposal planned a mobile app, a separate web analytics dashboard and a clinician portal, with a FHIR R4 data model and a synthetic-dataset approach to verifying analytics. During development the team made three deliberate changes:'),
+  P('The proposal planned a mobile app, a separate web analytics dashboard and a clinician portal, with a FHIR R4 data model and a synthetic-dataset approach to verifying analytics. During development I made three deliberate changes:'),
   B('**Analytics moved onto the phone.** A web dashboard would need a server that can read records, which contradicts the project’s central promise. The analytics were instead built into the patient app as on-device insights.'),
   B('**The clinician portal became LifeTrack Clinic**, a full doctor app with verified identity, request by ID and signed prescriptions, because safe sharing proved to be the most valuable feature for reducing repeat tests.'),
   B('**FHIR alignment was reduced to provenance.** Every record keeps its source and provenance so that a later FHIR export is possible, but FHIR resources and export were not implemented in this phase.'),
@@ -527,13 +532,13 @@ function refPara(t, i) {
   parts.forEach((s, j) => { if (s) kids.push(new TextRun({ text: s, italics: j % 2 === 1 })); });
   return new Paragraph({ children: kids, spacing: { after: 120, line: 300 }, indent: { left: 567, hanging: 567 } });
 }
-const references = [new Paragraph({ heading: HeadingLevel.HEADING_1, pageBreakBefore: true, children: [new TextRun('References')] }), ...refs.map(refPara)];
+const references = [H1('References'), ...refs.map(refPara)];
 
 // ---------- Appendices ----------
 chap = 'A';
 figNo = 0; tabNo = 0;
 const appA = [
-  new Paragraph({ heading: HeadingLevel.HEADING_1, pageBreakBefore: true, children: [new TextRun('Appendix A: Version History')] }),
+  H1('Appendix A: Version History'),
   P('Selected releases from the project changelog. A feature raises the middle number, a fix the last.'),
   ...table(['Version', 'Date', 'Highlights'], [
     ['Patient 1.0.0', '29 Sep 2026', 'App scaffold, consent core, sealed storage, backup vault, Emergency ID'],
@@ -551,7 +556,7 @@ const appA = [
   ], [2200, 1700, 5126], 'Version history'),
 ];
 const appB = [
-  new Paragraph({ heading: HeadingLevel.HEADING_1, pageBreakBefore: true, children: [new TextRun('Appendix B: Running the System')] }),
+  H1('Appendix B: Running the System'),
   H3('Start the server'),
   P('`cd server && dart run bin/server.dart --practice-digilocker`', { align: AlignmentType.LEFT }),
   P('The server prints its address (http://127.0.0.1:8787), the registry public key to pin in the apps, and where the admin token is kept.'),
@@ -567,7 +572,7 @@ const appB = [
 
 // ---------- document ----------
 const docOpts = ({
-  creator: 'LifeTrack Health project team',
+  creator: 'LifeTrack Health',
   title: 'LifeTrack Health — NTCC Project Report',
   styles: {
     default: { document: { run: { font: FONT, size: 24 } } },
@@ -602,12 +607,13 @@ const lists = [
 
 const doc = new Document({ ...docOpts, features: { updateFields: true }, sections: [
   { properties: { page }, children: cover },
-  { properties: { page: { ...page, pageNumbers: { start: 1, formatType: NumberFormat.LOWER_ROMAN } } }, footers: footer(), children: [...declaration, ...certificate, ...ack, ...abstract, ...toc, ...lists] },
+  { properties: { page: { ...page, pageNumbers: { start: 1, formatType: NumberFormat.LOWER_ROMAN } } }, footers: footer(), children: [...declaration, ...certificate, ...ack, ...abstract, ...(tocPages ? printedToc() : toc), ...lists] },
   { properties: { page: { ...page, pageNumbers: { start: 1, formatType: NumberFormat.DECIMAL } } }, footers: footer(), children: body },
 ] });
 
 Packer.toBuffer(doc).then((buf) => {
-  const out = path.join(__dirname, 'LifeTrack_Health_NTCC_Report.docx');
+  const out = process.env.OUT || path.join(__dirname, 'LifeTrack_Health_NTCC_Report.docx');
   fs.writeFileSync(out, buf);
+  if (process.env.HEADINGS_OUT) fs.writeFileSync(process.env.HEADINGS_OUT, JSON.stringify(headings));
   console.log('wrote', out, figures.length, 'figures', tables.length, 'tables');
 });
