@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const {
-  Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, ImageRun, Table, TableRow, TableCell,
+  Document, Packer, Paragraph, Header, TextRun, HeadingLevel, AlignmentType, ImageRun, Table, TableRow, TableCell,
   WidthType, ShadingType, BorderStyle, PageBreak, TableOfContents, Footer, PageNumber, LevelFormat,
   NumberFormat, TabStopType, VerticalAlign, TableLayoutType,
 } = require('docx');
@@ -87,13 +87,25 @@ function table(header, rows, widths, caption) {
     new Table({
       width: { size: total, type: WidthType.DXA }, columnWidths: widths, layout: TableLayoutType.FIXED,
       rows: [new TableRow({ tableHeader: true, children: header.map((t, i) => cell(t, i, true)) }),
-        ...rows.map((r) => new TableRow({ children: r.map((t, i) => cell(t, i, false)) }))],
+        ...rows.map((r) => new TableRow({ cantSplit: true, children: r.map((t, i) => cell(t, i, false)) }))],
     }),
     new Paragraph({ spacing: { after: 160 }, children: [] }),
   ];
 }
 let chap = 0;
-function chapter(n, title) { chap = n; figNo = 0; tabNo = 0; return H1(`Chapter ${n}: ${title}`); }
+let lstNo = 0;
+// A code listing: monospace, shaded, kept on one page where possible.
+function listing(lines, caption) {
+  lstNo++;
+  const kids = lines.map((l, i) => new TextRun({ text: l.length ? l : ' ', font: 'Courier New', size: 16, break: i ? 1 : 0 }));
+  return [
+    new Table({ width: { size: W, type: WidthType.DXA }, columnWidths: [W], layout: TableLayoutType.FIXED, rows: [new TableRow({ cantSplit: true, children: [new TableCell({
+      borders, shading: { type: ShadingType.CLEAR, fill: 'F2F2F2', color: 'auto' }, margins: { top: 80, bottom: 80, left: 120, right: 120 },
+      children: [new Paragraph({ spacing: { line: 240 }, children: kids })] })] })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 60, after: 240 }, children: [new TextRun({ text: `Listing ${chap}.${lstNo}: ${caption}`, italics: true, size: 20 })] }),
+  ];
+}
+function chapter(n, title) { chap = n; figNo = 0; tabNo = 0; lstNo = 0; return H1(`Chapter ${n}: ${title}`); }
 
 // ---------- front matter ----------
 const cover = [
@@ -156,9 +168,9 @@ const ack = [
 const abstract = [
   new Paragraph({ heading: HeadingLevel.TITLE, pageBreakBefore: true, children: [new TextRun('ABSTRACT')] }),
   P('In India a patient’s medical history is usually spread across the clinics, hospitals and laboratories they have visited, with the patient carrying paper reports between them. When the history is not available, investigations are repeated, medicines are duplicated and family patterns are missed. The cause is usually scattered data, not poor clinical judgement. The patient is the only person present at every encounter, yet rarely holds a complete record.', AB),
-  P('LifeTrack Health is a working prototype I built to change that: a health record that the patient owns and that lives on their own phone. It has four parts: an Android patient app built in Flutter; LifeTrack Clinic, a doctor app; a small Dart server that acts as a doctor registry, an encrypted relay and a backup store; and a shared protocol package. Records live on the patient’s phone, sealed with AES-256-GCM under a hardware-backed device key. A doctor sees records only after the patient scans the doctor’s registry-verified code and approves a level of access (Summary, All reports, Family illnesses or Home readings) for a chosen time between one hour and two days. The share is encrypted on the phone to that doctor’s device key alone (X25519 with AES-GCM); the server carries it but can never open it. Prescriptions return to the patient signed with the doctor’s Ed25519 key.', AB),
+  P('LifeTrack Health is a working prototype of a health record that the patient owns and keeps on their own phone. It has four parts: an Android patient app built in Flutter; LifeTrack Clinic, a doctor app; a small Dart server that acts as a doctor registry, an encrypted relay and a backup store; and a shared protocol package. Records live on the patient’s phone, sealed with AES-256-GCM under a hardware-backed device key. A doctor sees records only after the patient scans the doctor’s registry-verified code and approves a level of access (Summary, All reports, Family illnesses or Home readings) for a chosen time between one hour and two days. The share is encrypted on the phone to that doctor’s device key alone (X25519 with AES-GCM); the server carries it but can never open it. Prescriptions return to the patient signed with the doctor’s Ed25519 key.', AB),
   P('The patient app also reads photographed or PDF lab reports on the device with Tesseract OCR, compares results with published reference ranges without ever stating a diagnosis, tracks medicines with reminders, keeps a child vaccination schedule, manages a family under a head-of-family model, offers an Emergency ID readable from the lock screen, and makes an end-to-end encrypted backup protected by an app-generated password and Shamir 2-of-3 recovery codes. Every read, share, refusal and export is written to an append-only audit log before it happens.', AB),
-  P('I wrote the system in Dart and Flutter (about 21,700 lines of application code). It has 354 automated tests at unit, widget, invariant and end-to-end integration level, and all of them pass with a clean static analysis. The invariant tests turn the project’s privacy promises into checks that fail the build: no screen may claim the server “cannot read” the data, for example, and no agent may issue itself a grant. The biggest pieces of work still open are ABDM/ABHA integration and a legal review before any pilot with real patients.', AB),
+  P('The system is written in Dart and Flutter (about 21,700 lines of application code). It has 354 automated tests at unit, widget, invariant and end-to-end integration level, and all of them pass with a clean static analysis. The invariant tests turn the project’s privacy promises into checks that fail the build: no screen may claim the server “cannot read” the data, for example, and no agent may issue itself a grant. The principal open items are ABDM/ABHA integration and a legal review before any pilot with real patients.', AB),
   P('**Keywords:** personal health record, patient consent, end-to-end encryption, local-first software, Flutter, digital health India, DPDP Act 2023.', AB),
 ];
 
@@ -188,7 +200,7 @@ const ch1 = [
   B('**Missed hereditary patterns.** Illnesses in the family are rarely recorded in a way a doctor can use.'),
   P('Existing solutions either keep the data inside one institution (hospital EMRs), are designed for large organisations (enterprise systems), establish identity without holding the record (government health IDs), or store documents without making them useful or safely shareable (document-locker apps). The project therefore asks: **can a patient keep a complete, useful health record on their own phone and share exactly the right part with exactly the right doctor, for a limited time, without any server ever being able to read it?**'),
   H2('1.3 Motivation'),
-  P('Health data is among the most sensitive personal data. A design in which a company’s servers hold readable copies of millions of records creates a single point of failure for breaches, misuse and function creep. In a local-first design the main copy lives on the patient’s device and leaves it only encrypted, and only when the patient asks. That removes the central store of readable records. I chose this project because building such a system end to end, with the cryptography, the consent rules and a doctor-side app, meant working across mobile development, security, distributed systems, user-interface design and law.'),
+  P('Health data is among the most sensitive personal data. A design in which a company’s servers hold readable copies of millions of records creates a single point of failure for breaches, misuse and function creep. In a local-first design the main copy lives on the patient’s device and leaves it only encrypted, and only when the patient asks. That removes the central store of readable records. Building such a system end to end, with the cryptography, the consent rules and a doctor-side app, requires work across mobile development, security, distributed systems, user-interface design and law, which made it a suitable scope for this project.'),
   H2('1.4 Objectives'),
   N('Build a patient-owned record on the phone that holds prescriptions, lab reports, scans, notes, allergies, conditions, vitals and vaccinations for every member of a family, with all data encrypted at rest.'),
   N('Make clinician access explicit, time-limited and revocable: the patient approves a level of access for one verified doctor for a chosen time, and can shorten, extend or end it.'),
@@ -200,7 +212,15 @@ const ch1 = [
   H2('1.5 Scope'),
   P('**In scope.** An Android patient app; a doctor app (Flutter, runs in a browser or on a phone); a local server providing a doctor registry, an encrypted relay, a LifeTrack ID directory, a backup vault and an identity-check flow; and a shared protocol package. Sample (synthetic) patients and doctors are used throughout.'),
   P('**Out of scope for this phase.** Real patient data; live ABDM/ABHA exchange; real DigiLocker partner integration (a “practice” stand-in drives the same flow); cloud-based AI analysis (designed as “Plane C” but disabled); iOS OCR; clinical decision support and predictive modelling; deployment on the public internet.'),
-  H2('1.6 Organisation of the report'),
+  H2('1.6 Methodology'),
+  P('Development followed an incremental model in five stages. Each stage ended with working, tested software rather than documents alone.'),
+  N('Requirements and threat analysis: the patient, doctor and family needs listed in Chapter 3, together with the ways health data can leak (a readable server copy, an over-broad grant, a misleading claim on screen).', 'num3'),
+  N('Architecture and invariants: the three-plane structure, the single consent authority and eighteen written invariants (rules the code must never break), each tied to a test.', 'num3'),
+  N('Incremental feature releases: each feature (records, insights, sharing, reminders, family, backup, OCR and so on) was built as a separate version with its own tests and a changelog line.', 'num3'),
+  N('Security review rounds: two dedicated hardening releases fixed issues found by reviewing the code against the invariants.', 'num3'),
+  N('Integration and device testing: both apps were run against the real server handler in automated integration tests, and the release build was tested by hand on an Android phone.', 'num3'),
+  P('The guiding rule across all stages, taken from the project proposal, was that a claim about the system is accepted only when a test can prove it.'),
+  H2('1.7 Organisation of the report'),
   P('Chapter 2 reviews existing systems, standards and laws. Chapter 3 sets out the requirements and feasibility. Chapter 4 describes the architecture, data design and security design. Chapter 5 explains the implementation, module by module, with screenshots. Chapter 6 covers testing and results. Chapter 7 discusses outcomes against the objectives, and Chapter 8 concludes with limitations and future work. Appendices give the version history and instructions to run the system.'),
 ];
 
@@ -229,7 +249,7 @@ const ch2 = [
   H2('2.4 Design principles drawn from the literature'),
   P('The local-first software movement argues that the user’s device should hold the authoritative copy of their data, with the network used to sync and collaborate, not to hold the data. End-to-end encryption, familiar from messaging, shows that a relay can carry data it cannot read. Clinical-safety guidance for software as a medical device distinguishes between displaying information (low risk) and diagnosing or predicting (regulated). LifeTrack combines these: a local-first record, an end-to-end encrypted relay, and insights that state only position and movement and route the patient to a person.'),
   H2('2.5 Research gap'),
-  P('I could not find a widely available system that combines (a) a patient-held, encrypted, family-aware record, (b) on-device interpretation of results that is deliberately non-diagnostic, (c) sharing to a registry-verified doctor that the server cannot read, with a time limit the patient sets, and (d) privacy promises enforced by automated tests. LifeTrack Health is a prototype of that combination.'),
+  P('A review of available systems found none that combines (a) a patient-held, encrypted, family-aware record, (b) on-device interpretation of results that is deliberately non-diagnostic, (c) sharing to a registry-verified doctor that the server cannot read, with a time limit the patient sets, and (d) privacy promises enforced by automated tests. LifeTrack Health is a prototype of that combination.'),
 ];
 
 // ---------- Chapter 3 ----------
@@ -294,7 +314,11 @@ const ch3 = [
     ['Tools', 'Android SDK, adb, Git and GitHub, VS Code / Android Studio', 'Not needed'],
     ['Key libraries', 'cryptography, flutter_secure_storage, local_auth, flutter_zxing, qr_flutter, Tesseract4Android, flutter_local_notifications, archive, printing', 'Bundled in the apps'],
   ], [1800, 3800, 3426], 'Hardware and software requirements'),
-  H2('3.5 Feasibility study'),
+  H2('3.5 Use cases'),
+  P('Figure 3.1 shows the actors and the main use cases. The patient (as head of the family) has the most; a doctor reaches the system only through verified enrolment and patient-approved shares.'),
+  ...figure(path.join(FIG, 'usecase.png'), 'Use-case diagram', 600, 520),
+  ...table(['ID', 'Use case', 'Actor', 'Main flow'], [["UC-1", "Add or scan a record", "Patient", "Types a record, or photographs/imports a report; OCR fills a draft; the patient ticks uncertain fields and confirms."], ["UC-2", "Share with a doctor", "Patient", "Scans the doctor’s code; the phone verifies the certificate; the patient picks a level and time; the encrypted bundle is sent."], ["UC-3", "Respond to an access request", "Patient", "A signed request from a verified doctor appears; the patient approves (possibly at a lower level or shorter time) or declines."], ["UC-4", "End or change access", "Patient", "From “Who has access now”, shortens, extends or ends a share; the doctor’s copy is replaced or closed."], ["UC-5", "Back up and restore", "Patient", "Turns on backup and receives the generated password and recovery codes; on a new, empty phone restores with them."], ["UC-6", "Read the Emergency ID", "Paramedic", "Opens the card from the lock screen without unlocking; the read is logged."], ["UC-7", "Enrol and get verified", "Doctor", "Enters registration details; the administrator approves; the device receives a signed 30-day certificate."], ["UC-8", "View records and prescribe", "Doctor", "Opens an arrived share, reviews the summary, writes and signs a prescription that returns to the patient."], ["UC-9", "Approve or revoke a doctor", "Administrator", "Reviews pending enrolments and approves, rejects or revokes them with the admin token."]], [800, 1900, 1550, 4776], 'Main use cases'),
+  H2('3.6 Feasibility study'),
   B('**Technical.** Flutter and Dart provide mature cryptography, camera, QR and notification support; Tesseract runs fully on-device. Every required flow works end to end in the prototype.'),
   B('**Economic.** All tools and libraries are free and open source. The server is a single small Dart process; hosting costs would be minimal because it stores only ciphertext and short-lived messages.'),
   B('**Operational.** Patients already use smartphones and QR codes; doctors already use computers in clinics. The share flow requires one scan and one approval.'),
@@ -337,7 +361,7 @@ const ch4 = [
   P('Figure 4.4 shows the complete share sequence. The doctor’s device generates its own key pairs; the registry signs a certificate binding the doctor’s registration number to those keys. The patient’s phone verifies the certificate against the registry key pinned in the app and, when online, asks the registry that the doctor is still approved with the same keys. Only then does it show the doctor’s name and registration number. The share is encrypted on the phone to the doctor’s X25519 key; the audit entry is written before the bundle leaves; the relay deletes it after pickup or at expiry.'),
   ...figure(path.join(FIG, 'seq.png'), 'Clinical share and prescription sequence', 600, 600),
   H3('Backup vault'),
-  P('People tend to choose weak passwords, and in an encrypted backup the password is the weakest link. So LifeTrack generates the password itself: 20 characters, about 100 bits of entropy, shown once with an account code and recovery codes. Figure 4.5 shows the key hierarchy. Argon2id stretches the password; HKDF derives a vault key and a login verifier. The vault key wraps a random data key, which encrypts the backup. The data key is also split into three Shamir shares, any two of which recover it. The server keeps only a hash of the verifier and rate-limits wrong proofs to ten per hour, a limit that survives restarts.'),
+  P('User-chosen passwords are typically weak, and in an encrypted backup the password is the weakest link. LifeTrack therefore generates the password: 20 characters, about 100 bits of entropy, shown once with an account code and recovery codes. Figure 4.5 shows the key hierarchy. Argon2id stretches the password; HKDF derives a vault key and a login verifier. The vault key wraps a random data key, which encrypts the backup. The data key is also split into three Shamir shares, any two of which recover it. The server keeps only a hash of the verifier and rate-limits wrong proofs to ten per hour, a limit that survives restarts.'),
   ...figure(path.join(FIG, 'keys.png'), 'Backup key hierarchy', 380),
   H3('Other protections'),
   B('**App lock.** The app opens behind the phone’s own lock (fingerprint, face or PIN). A phone without a screen lock is asked to set one and the records stay closed. The app re-locks after one minute away.'),
@@ -348,6 +372,23 @@ const ch4 = [
   B('**Server hardening.** Bound to 127.0.0.1 by default; DNS-rebinding and cross-origin pages refused; body size limits; per-caller rate limits; ID lookups throttled so the number space cannot be walked; enrolments awaiting review cannot be replaced; revocation follows keys.'),
   H2('4.7 LifeTrack ID'),
   P('Each profile gets a random 12-digit LifeTrack ID shown as `XXXX XXXX XXXX`. The last digit is a Verhoeff check digit, which catches every single-digit error and every swap of neighbouring digits. IDs always start with 1, so they can never be confused with an Aadhaar number. The server maps an ID only to a reply mailbox and key. It holds no name and no records, and only the token held on the phone can move or delete it.'),
+  H2('4.8 Entity-relationship model'),
+  P('Figure 4.6 shows how the entities in Section 4.5 relate. Everything belongs to a Patient profile. A profile has many records, vital readings, grants and audit entries, and exactly one clinical profile and one Emergency ID. Custody links a grantor (a parent or custodian) to a dependent profile. Each grant has its own trail of audit entries, so every read made under a grant can be listed.'),
+  ...figure(path.join(FIG, 'er.png'), 'Entity-relationship diagram', 560),
+  P('Because the data lives on the phone as sealed JSON documents rather than in a relational database, the relationships are held as identifiers inside the documents. The audit log is append-only and is also sealed on disk.'),
+  H2('4.9 Key algorithms'),
+  H3('Verhoeff check digit'),
+  P('The twelfth digit of a LifeTrack ID is computed with the Verhoeff algorithm, which uses the multiplication table of the dihedral group D5, a permutation table and an inverse table. Unlike a simple sum-of-digits check, it detects every single-digit error and every transposition of two adjacent digits, the two most common mistakes when an ID is read out or typed. The first digit is fixed at 1 so that no LifeTrack ID can be mistaken for, or validate as, an Aadhaar number.'),
+  H3('Password derivation'),
+  P('The backup password is stretched with Argon2id using the OWASP minimum parameters: 19 MiB of memory (19,456 KiB), 2 passes and 1 lane, producing a 32-byte root key. At this cost the derivation is slow enough to drop frames, so it runs on a background isolate. HKDF-SHA256 then derives two independent 32-byte keys from the root using different labels: the vault key (lifetrack/v1/vault-key), which never leaves the phone, and the login verifier (lifetrack/v1/login-verifier), which is sent to the server so that it can release the locked backup. Test builds use weaker parameters, and that code path throws an error in a release build.'),
+  H3('Shamir secret sharing'),
+  P('The random data key that encrypts the backup is split with Shamir’s scheme over the finite field GF(2^8) into three shares, any two of which rebuild it; one share alone reveals nothing. Each share carries its index, the threshold and an identifier of the split, and is printed as a recovery code of the form LT1-index-threshold-splitId-hex. Combining fewer shares than the threshold, or shares from different splits, is refused instead of producing a wrong key.'),
+  H3('Insight rules'),
+  P('Plane A compares the latest result for each test with a reference interval for the patient’s age, sex and pregnancy status, checks it against a critical-value table, and looks for movement between consecutive results. A change counts as a trend only when it is larger than a fixed threshold for that test (Table 4.2). Each finding has one of four severities: a note, discuss at the next visit, contact a doctor today, or urgent care.'),
+  ...table(['Test', 'Unit', 'Minimum change', 'Worse direction'], [
+    ['HbA1c', '%', '0.5', 'Up'], ['Fasting glucose', 'mg/dL', '15', 'Up'], ['LDL cholesterol', 'mg/dL', '20', 'Up'],
+    ['HDL cholesterol', 'mg/dL', '8', 'Down'], ['Haemoglobin', 'g/dL', '1.0', 'Down'], ['Creatinine', 'mg/dL', '0.3', 'Up'],
+  ], [3000, 1800, 2100, 2126], 'Trend thresholds used by Plane A'),
 ];
 
 // ---------- Chapter 5 ----------
@@ -410,21 +451,37 @@ const ch5 = [
   B('**Version control.** Git with a private GitHub repository; every change is a reviewed commit.'),
   B('**Versioning rule.** Every update raises the version (a feature raises the middle number, a fix the last) and adds a line to the changelog in the same commit. At the time of writing the patient app is at 1.19.0 and the doctor app at 1.8.0 (Appendix A).'),
   B('**Security reviews.** Two dedicated hardening releases (patient 1.13.0 and 1.18.1/1.18.2, doctor 1.4.1/1.4.2) fixed issues found in review, such as binding the identity result to a hand-back code and proving the sender of a share.'),
-  B('**Release build.** A script builds an obfuscated APK; the symbol map stays on my development machine.'),
+  B('**Release build.** A script builds an obfuscated APK; the symbol map is kept on the development machine.'),
+  H2('5.7 Selected implementation details'),
+  P('This section shows four short excerpts from the patient app’s source code. They are the places where the main rules of Chapter 4 are enforced. Listings are shortened only where marked with “...”.'),
+  H3('Consent check'),
+  P('Every read by anyone other than the patient ends in ConsentStore.authorize (Listing 5.1). The caller passes only the grant id; the method looks up the stored grant and checks every field, in a fixed order, against the request. Each failure throws a typed denial, which RecordAccess writes to the audit log as a refusal. A one-time grant, such as the one Plane C would use, is marked spent on its first use.'),
+  ...listing(["ConsentToken authorize({required String tokenId, required String actorId,", " required String patientId, required DataClass dataClass,", " required GrantPurpose purpose, required DateTime at}) {", "  final t = _issued[tokenId];", "  if (t == null) throw ConsentDenied(DenialReason.unknown, tokenId);", "  if (_revoked.contains(tokenId)) throw ConsentDenied(DenialReason.revoked, tokenId);", "  if (_spent.contains(tokenId)) throw ConsentDenied(DenialReason.spent, tokenId);", "  if (at.isBefore(t.issuedAt)) throw ConsentDenied(DenialReason.notYetValid, tokenId);", "  if (!at.isBefore(t.expiresAt)) throw ConsentDenied(DenialReason.expired, tokenId);", "  if (t.patientId != patientId) throw ConsentDenied(DenialReason.wrongPatient, tokenId);", "  if (t.grantedToActorId != actorId) throw ConsentDenied(DenialReason.wrongActor, tokenId);", "  if (t.purpose != purpose) throw ConsentDenied(DenialReason.wrongPurpose, tokenId);", "  if (!t.covers(dataClass)) throw ConsentDenied(DenialReason.outOfScope, tokenId);", "  if (t.type == GrantType.oneTime) _spent.add(tokenId);", "  return t;", "}"], 'ConsentStore.authorize (lib/src/consent/consent_store.dart)'),
+  H3('Sealed storage'),
+  P('All records, grants and audit entries pass through SealedStore (Listing 5.2). Each blob is encrypted under the device key and bound to its own name, so a blob copied to another name fails to open. A blob in the older version-1 frame is upgraded to version 2 the first time it is read.'),
+  ...listing(["Future<Object?> read(String name) async {", "  final frame = await bytes.read(name);", "  if (frame == null) return null;", "  final body = await VaultCodec.open(frame, key, name: name);", "  if (VaultCodec.versionOf(frame) == 1) await write(name, body);", "  return body;", "}", "", "Future<void> write(String name, Object? body) async =>", "    bytes.write(name, await VaultCodec.seal(body, key, name: name));"], 'SealedStore read and write (lib/src/storage/sealed_store.dart)'),
+  H3('Audit before egress'),
+  P('Listing 5.3 is the end of the clinical-share flow. The bundle is sealed to the doctor’s key first, then the audit entry is written, and only then is the envelope handed to the relay. If the network call fails, the attempt is still on record.'),
+  ...listing(["final envelope = await ShareEnvelope.seal(bundle: bundle,", "    recipientKey: doctor.encryptionKey, keyId: keyId,", "    grantId: grant.id, expiresAt: grant.expiresAt);", "// Audited before it leaves: a failed send is still recorded.", "await audit.append(AuditEntry(at: at, actorId: grant.grantorId,", "    patientId: patientId, action: AuditAction.clinicalShare, tokenId: grant.id,", "    detail: 'Sent to ${doctor.name} (${doctor.registrationNo}), encrypted to their device'));", "await relay.deposit(mailbox: mailbox, grantId: grant.id,", "    envelope: envelope, expiresAt: grant.expiresAt);"], 'Writing the audit entry before the share is sent (lib/src/share/clinical_share_service.dart)'),
+  H3('Banned-phrase filter'),
+  P('Every Plane A output is checked against a list of banned phrases covering diagnoses, forecasts and treatment advice (Listing 5.4). An insight that contains one is dropped, not reworded, so the filter can only remove output and never invent new wording.'),
+  ...listing(["const bannedPhrases = <String>[", "  // assertions", "  'diagnos', 'you have', 'you are', 'disease', 'is normal', 'healthy', ...", "  // forecasts and hedges", "  'risk of', 'likely', 'may indicate', 'suggests', 'progression to', 'predict', ...", "  // treatment advice", "  'stop taking', 'increase your dose', 'reduce your dose', 'skip',", "];", "", "String? firstBannedPhrase(String text) {", "  final t = text.toLowerCase();", "  for (final p in bannedPhrases) {", "    if (t.contains(p)) return p;", "  }", "  return null;", "}"], 'Banned-phrase list and check, shortened (lib/src/ai/plane_a/banned_phrases.dart)'),
+  H3('Vaccination schedule'),
+  P('The child vaccination schedule follows India’s Universal Immunisation Programme as published by the Ministry of Health and Family Welfare: 26 doses from birth (BCG, OPV 0, hepatitis B) to 16 years. Each dose has an age at which it falls due, and the app computes due dates from the child’s date of birth. The screen advises following the child’s doctor where a private schedule adds vaccines.'),
 ];
 
 // ---------- Chapter 6 ----------
 const ch6 = [
   chapter(6, 'Testing and Results'),
   H2('6.1 Testing strategy'),
-  P('Testing followed one principle from the project proposal: a claim is accepted only if a test can prove it. I wrote five kinds of tests:'),
+  P('Testing followed one principle from the project proposal: a claim is accepted only if a test can prove it. Five kinds of tests were developed:'),
   B('**Unit tests** for pure logic: reference ranges, trend thresholds, Verhoeff digits, Shamir splitting, frame encoding, grant checks.'),
   B('**Widget tests** that drive real screens: adding records, sharing, back-button behaviour, dark mode.'),
   B('**Invariant tests** that read the source code itself and fail the build if a rule is broken. For example, the build fails if any file other than the one network file can open a socket, if the release manifest gains the INTERNET permission without review, if code under `lib/src/ai/` calls `ConsentStore.issue` or `DateTime.now()`, or if any UI string claims that LifeTrack or the server “cannot read” the patient’s data. These tests strip comments first, so a comment cannot hide or fake a violation.'),
   B('**Contrast tests** that walk every visible text on every main screen, in light and dark mode, to the solid colour behind it and check WCAG AA contrast.'),
   B('**Integration tests** that run the real code of both apps against the real server handler: scan, share, confirmed sender, prescription back, request by ID, decline, time change and revocation.'),
   H2('6.2 Results'),
-  P('I ran all the tests on 5 October 2026 on the current version (patient app 1.19.0, doctor app 1.8.0). Static analysis (`flutter analyze` / `dart analyze`) reported no issues in any package.'),
+  P('All tests were run on 5 October 2026 against the current version (patient app 1.19.0, doctor app 1.8.0). Static analysis (`flutter analyze` / `dart analyze`) reported no issues in any package.'),
   ...table(['Part', 'Static analysis', 'Tests passed', 'Failed'], [
     ['Patient app (app/)', 'No issues', '285', '0'], ['Doctor app (doctor/)', 'No issues', '18', '0'],
     ['Server (server/)', 'No issues', '37', '0'], ['Shared protocol', 'No issues', '8', '0'],
@@ -450,7 +507,10 @@ const ch6 = [
     ['15', 'Any visible text in light or dark mode', 'Meets WCAG AA contrast', 'Pass'],
   ], [500, 3300, 4000, 1226], 'Selected test cases'),
   H2('6.4 Manual testing on a device'),
-  P('I installed the release APK on an Android phone (Samsung Galaxy S25) connected to the local server over USB, and went through the share, request-by-ID, prescription and backup flows by hand. A medicine reminder fired on the phone with the medicine names hidden on the lock screen, as designed. So far I have tested OCR mainly on synthetic report images. Testing it on a wider set of real photographed reports is future work.'),
+  P('The release APK was installed on an Android phone (Samsung Galaxy S25) connected to the local server over USB, and the share, request-by-ID, prescription and backup flows were tested manually. A medicine reminder fired on the device with medicine names hidden on the lock screen, as designed. OCR has so far been tested mainly on synthetic report images; evaluation on a wider set of real photographed reports is future work.'),
+  H2('6.5 Example of an invariant test'),
+  P('Listing 6.1 is taken from the invariant test that guards the AI planes. It loads the source of every file under lib/src/ai, strips the comments (codeOf), and fails if any of them calls ConsentStore.issue, imports the grant code, or reads the wall-clock time. If a future change gave an agent a way to grant itself access, the build would fail before the change could be released.'),
+  ...listing(["group('agents (lib/src/ai) never', () {", "  final ai = [for (final f in lib) if (rel(f).startsWith('lib/src/ai/')) f];", "", "  test('issue a grant (CLAUDE.md #5)', () {", "    for (final f in ai) {", "      final code = codeOf(f);", "      expect(code.contains('.issue('), isFalse, reason: rel(f));", "      expect(code.contains('grants.dart'), isFalse, reason: rel(f));", "    }", "  });", "", "  test('read wall-clock time - the clock is always a parameter', () {", "    for (final f in ai) {", "      expect(codeOf(f).contains('DateTime.now()'), isFalse, reason: rel(f));", "    }", "  });", "});"], 'Part of plane_boundary_test.dart (app/test/invariants)'),
 ];
 
 // ---------- Chapter 7 ----------
@@ -467,15 +527,18 @@ const ch7 = [
     ['7. Verifiable privacy promises', 'Achieved: invariant tests in the build; 354 tests passing'],
   ], [3800, 5226], 'Objectives and outcomes'),
   H2('7.2 Changes from the original proposal'),
-  P('The proposal planned a mobile app, a separate web analytics dashboard and a clinician portal, with a FHIR R4 data model and a synthetic-dataset approach to verifying analytics. During development I changed three things from the proposal:'),
-  B('**Analytics moved onto the phone.** A web dashboard would need a server that can read records, which goes against the project’s central promise. I built the analytics into the patient app instead, as on-device insights.'),
+  P('The proposal planned a mobile app, a separate web analytics dashboard and a clinician portal, with a FHIR R4 data model and a synthetic-dataset approach to verifying analytics. Three changes were made to the proposal during development:'),
+  B('**Analytics moved onto the phone.** A web dashboard would need a server that can read records, which contradicts the project’s central promise. The analytics were therefore built into the patient app as on-device insights.'),
   B('**The clinician portal became LifeTrack Clinic**, a full doctor app with verified identity, request by ID and signed prescriptions, because safe sharing turned out to be the most useful feature for reducing repeat tests.'),
   B('**FHIR alignment was reduced to provenance.** Every record keeps its source and provenance so that a later FHIR export is possible, but FHIR resources and export were not implemented in this phase.'),
-  P('I kept the proposal’s “ground-truth” principle and widened it. Instead of one synthetic dataset, every rule the system promises is written as a test with a known expected result.'),
+  P('The proposal’s “ground-truth” principle was retained and extended. Instead of one synthetic dataset, every rule the system promises is written as a test with a known expected result.'),
   H2('7.3 Discussion'),
-  P('The main thing I learned is that privacy has to be part of the structure of the code from the start. It cannot be added later as a feature. Making ConsentStore the only grant authority and RecordAccess the only non-patient read path meant that sharing, insights and the cloud plane all inherited the same checks and the same audit trail. Expressing the rules as source-scanning tests turned code review questions (“does anything else open a socket?”) into automatic answers.'),
-  P('The second lesson is that honest wording is a requirement too. Early screens said the doctor “keeps no copy” and that the server “cannot read” the data. I removed both claims: a doctor is legally required to keep their consultation record, and an offline password-guessing attack on a human-chosen password would make “cannot read” untrue. The app now generates the password and the UI makes only claims the code can back, enforced by a test.'),
-  P('Finally, working on provenance showed me that a doctor will reuse a result instead of ordering it again only if they trust where it came from. Access control alone is not enough; the doctor needs the laboratory, the sample date, the printed range and the original image. These are shown on every result.'),
+  P('The principal lesson of the project is that privacy must be part of the structure of the code from the outset; it cannot be added later as a feature. Making ConsentStore the only grant authority and RecordAccess the only non-patient read path meant that sharing, insights and the cloud plane all inherited the same checks and the same audit trail. Expressing the rules as source-scanning tests turned code review questions (“does anything else open a socket?”) into automatic answers.'),
+  P('A second lesson is that accurate wording is itself a requirement. Early screens said the doctor “keeps no copy” and that the server “cannot read” the data. Both claims were removed: a doctor is legally required to keep their consultation record, and an offline password-guessing attack on a human-chosen password would make “cannot read” untrue. The app now generates the password and the UI makes only claims the code can back, enforced by a test.'),
+  P('Finally, the work on provenance showed that a doctor will reuse a result instead of ordering it again only if they trust where it came from. Access control alone is not enough; the doctor needs the laboratory, the sample date, the printed range and the original image. These are shown on every result.'),
+  H2('7.4 Comparison with existing solutions'),
+  P('Table 7.2 compares LifeTrack Health with the two most common existing categories from Chapter 2. The entries for existing categories describe typical systems in each category, not any single product.'),
+  ...table(['Feature', 'Hospital EMR', 'Document locker', 'LifeTrack Health'], [["Patient holds the complete record", "No", "Documents only", "Yes"], ["Works offline", "Inside the hospital", "No", "Yes"], ["Results compared with ranges", "Within one hospital", "No", "Yes, on the device"], ["Time-limited sharing with one doctor", "No", "Link or consent artefact", "Yes, 1 hour to 2 days"], ["Doctor verified before sharing", "Staff only", "Varies", "Yes, certificate"], ["Server can read shared data", "Yes", "Yes", "No (encrypted)"], ["Family profiles, proxy consent", "No", "Limited", "Yes"], ["Privacy rules tested automatically", "Not published", "Not published", "Yes (invariant tests)"]], [3500, 1700, 1700, 2126], 'Comparison with existing categories'),
 ];
 
 // ---------- Chapter 8 ----------
@@ -484,7 +547,7 @@ const ch8 = [
   H2('8.1 Conclusion'),
   P('LifeTrack Health shows that a patient can hold a complete, useful health record on their own phone and share exactly the right part of it with a verified doctor for a limited time, while the server that carries the data can never read it. The prototype covers the full loop (capture, understanding, sharing, prescribing back, reminders, emergencies, family, backup and export) across a patient app, a doctor app and a server, and every privacy and safety promise it makes is checked by an automated test. All 354 tests pass and static analysis is clean.'),
   H2('8.2 Limitations'),
-  B('I have used only synthetic patients and doctors, never real patient data.'),
+  B('Only synthetic patients and doctors have been used; no real patient data has been processed.'),
   B('The identity check uses a practice stand-in for DigiLocker until partner registration; the optional mode that requires Aadhaar-based verification for every profile must be reviewed by legal counsel in light of *Puttaswamy* (2018) and the 2019 Aadhaar amendment before any pilot.'),
   B('ABHA numbers are typed in and shown as “not verified”; ABDM integration is not yet built.'),
   B('OCR is English-only, Android-only, and not yet measured on a large set of real photographed reports.'),
@@ -587,11 +650,18 @@ const docOpts = ({
     { reference: 'bul', levels: [{ level: 0, format: LevelFormat.BULLET, text: '•', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] },
     { reference: 'num', levels: [{ level: 0, format: LevelFormat.DECIMAL, text: '%1.', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] },
     { reference: 'num2', levels: [{ level: 0, format: LevelFormat.DECIMAL, text: '%1.', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] },
+    { reference: 'num3', levels: [{ level: 0, format: LevelFormat.DECIMAL, text: '%1.', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] },
   ] },
 });
 
 const page = { size: { width: 11906, height: 16838 }, margin: { top: 1440, bottom: 1440, left: 1440, right: 1440 } };
 const footer = (fmt) => ({ default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ children: [PageNumber.CURRENT], size: 20 })] })] }) });
+
+// Body pages carry a small running header with a rule under it.
+const runningHeader = { default: new Header({ children: [new Paragraph({
+  alignment: AlignmentType.RIGHT, border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: '999999', space: 4 } },
+  children: [new TextRun({ text: 'LifeTrack Health  |  NTCC Project Report', size: 18, color: '666666', italics: true })],
+})] }) };
 
 // Build chapters first so figure/table lists are complete.
 const body = [...ch1, ...ch2, ...ch3, ...ch4, ...ch5, ...ch6, ...ch7, ...ch8, ...references, ...appA, ...appB];
@@ -601,14 +671,20 @@ const lists = [
   new Paragraph({ heading: HeadingLevel.TITLE, pageBreakBefore: true, children: [new TextRun('LIST OF TABLES')] }),
   ...tables.filter((t) => !t.includes('Project team')).map((t) => new Paragraph({ children: [new TextRun({ text: t, size: 22 })], spacing: { after: 80 } })),
   new Paragraph({ heading: HeadingLevel.TITLE, pageBreakBefore: true, children: [new TextRun('LIST OF ABBREVIATIONS')] }),
-  ...[['ABDM', 'Ayushman Bharat Digital Mission'], ['ABHA', 'Ayushman Bharat Health Account'], ['AES-GCM', 'Advanced Encryption Standard, Galois/Counter Mode'], ['APK', 'Android Package'], ['DFD', 'Data Flow Diagram'], ['DPDP', 'Digital Personal Data Protection (Act, 2023)'], ['EMR', 'Electronic Medical Record'], ['FHIR', 'Fast Healthcare Interoperability Resources'], ['HKDF', 'HMAC-based Key Derivation Function'], ['OCR', 'Optical Character Recognition'], ['QR', 'Quick Response (code)'], ['SaMD', 'Software as a Medical Device'], ['UI', 'User Interface'], ['WCAG', 'Web Content Accessibility Guidelines']]
+  ...[['ABDM', 'Ayushman Bharat Digital Mission'], ['ABHA', 'Ayushman Bharat Health Account'], ['AES-GCM', 'Advanced Encryption Standard, Galois/Counter Mode'], ['APK', 'Android Package'], ['DFD', 'Data Flow Diagram'], ['DPDP', 'Digital Personal Data Protection (Act, 2023)'], ['EMR', 'Electronic Medical Record'], ['ER', 'Entity-Relationship'], ['GF', 'Galois Field'], ['FHIR', 'Fast Healthcare Interoperability Resources'], ['HKDF', 'HMAC-based Key Derivation Function'], ['OCR', 'Optical Character Recognition'], ['QR', 'Quick Response (code)'], ['SaMD', 'Software as a Medical Device'], ['UI', 'User Interface'], ['UIP', 'Universal Immunisation Programme'], ['WCAG', 'Web Content Accessibility Guidelines']]
     .map(([a, b]) => new Paragraph({ tabStops: [{ type: TabStopType.LEFT, position: 1800 }], children: [new TextRun({ text: a, bold: true }), new TextRun(`\t${b}`)], spacing: { after: 60 } })),
 ];
 
 const doc = new Document({ ...docOpts, features: { updateFields: true }, sections: [
-  { properties: { page }, children: cover },
+  { properties: { page: { ...page, borders: {
+      pageBorders: { display: 'allPages', offsetFrom: 'page' },
+      pageBorderTop: { style: BorderStyle.DOUBLE, size: 12, color: '333333', space: 24 },
+      pageBorderBottom: { style: BorderStyle.DOUBLE, size: 12, color: '333333', space: 24 },
+      pageBorderLeft: { style: BorderStyle.DOUBLE, size: 12, color: '333333', space: 24 },
+      pageBorderRight: { style: BorderStyle.DOUBLE, size: 12, color: '333333', space: 24 },
+    } } }, children: cover },
   { properties: { page: { ...page, pageNumbers: { start: 1, formatType: NumberFormat.LOWER_ROMAN } } }, footers: footer(), children: [...declaration, ...certificate, ...ack, ...abstract, ...(tocPages ? printedToc() : toc), ...lists] },
-  { properties: { page: { ...page, pageNumbers: { start: 1, formatType: NumberFormat.DECIMAL } } }, footers: footer(), children: body },
+  { properties: { page: { ...page, pageNumbers: { start: 1, formatType: NumberFormat.DECIMAL } } }, headers: runningHeader, footers: footer(), children: body },
 ] });
 
 Packer.toBuffer(doc).then((buf) => {

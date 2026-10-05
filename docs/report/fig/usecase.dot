@@ -1,0 +1,19 @@
+digraph G { rankdir=LR; bgcolor=white; fontname="Helvetica"; nodesep=0.12; ranksep=0.6; newrank=true;
+node[fontname="Helvetica",fontsize=13]; edge[color="#666666",arrowhead=none];
+node[shape=box,style="rounded,filled",color="#555555",fillcolor="#F4F3EF"];
+pat[label="Patient /\nhead of family",fillcolor="#E8F5B8"]; fam[label="Linked family\nmember"]; para[label="Paramedic /\nbystander"];
+doc[label="Doctor",fillcolor="#E8F5B8"]; adm[label="Registry\nadministrator"];
+subgraph cluster_s { label="LifeTrack Health"; fontsize=14; style=rounded; color="#999999";
+node[shape=ellipse,style=filled,fillcolor="#FFFFFF",color="#777777",height=0.42,margin="0.08,0.02"];
+u1[label="Add / scan records"]; u2[label="View insights"]; u3[label="Medicine reminders"]; u4[label="Manage family"];
+u5[label="Share with a doctor"]; u6[label="Approve / decline request"]; u7[label="Back up / restore"]; u8[label="Export data"];
+u10[label="Share Emergency ID / medicines"]; u9[label="Read Emergency ID"];
+u11[label="Enrol and get verified"]; u12[label="Request access by ID"]; u13[label="View shared records"]; u14[label="Sign prescription"];
+u15[label="Approve / revoke doctors"];
+{rank=same; u1 u2 u3 u4 u5 u6 u7 u8 u10 u9}
+{rank=same; u12 u13 u14 u11 u15}
+u5 -> u12 [style=invis]; u6 -> u13 [style=invis]; u7 -> u14 [style=invis]; u8 -> u11 [style=invis]; u10 -> u15 [style=invis];
+}
+pat -> {u1 u2 u3 u4 u5 u6 u7 u8 u10}; fam -> u10; para -> u9;
+{u11 u12 u13 u14} -> doc; u15 -> adm;
+}

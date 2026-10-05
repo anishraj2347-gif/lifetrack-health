@@ -1,0 +1,13 @@
+digraph G { rankdir=LR; bgcolor=white; fontname="Helvetica"; nodesep=0.35; ranksep=0.8;
+node[fontname="Helvetica",fontsize=10,shape=record,style="filled",fillcolor="#F4F3EF",color="#555555"]; edge[fontname="Helvetica",fontsize=9,color="#555555"];
+P[label="{Patient|id\lname, date of birth, sex\lABHA (optional)\lLifeTrack ID\l}",fillcolor="#E8F5B8"];
+C[label="{Custody|grantor → dependent\lfamily role\lkind: parent / custodian\l}"];
+R[label="{HealthRecord|id, kind, date\lsource, provenance\llab results[ ]\lmedicines[ ]\loriginal (attachment)\l}"];
+CP[label="{ClinicalProfile|allergies\lconditions\lfamily illnesses\l}"];
+V[label="{VitalReading|type (BP, sugar)\lvalue, time\l}"];
+E[label="{EmergencyCard|blood type, conditions\lmedicines, contact\lABHA last 4\l}"];
+T[label="{ConsentToken|id, grantee, purpose\llevel, filter\lissued, expires\lrevoked / spent\l}"];
+A[label="{AuditEntry|time, actor, action\ltoken, detail\l}"];
+P -> R [label="1 : many"]; P -> CP [label="1 : 1"]; P -> V [label="1 : many"]; P -> E [label="1 : 1"];
+P -> C [label="1 : many"]; P -> T [label="1 : many"]; T -> A [label="1 : many"]; P -> A [label="1 : many"];
+}
