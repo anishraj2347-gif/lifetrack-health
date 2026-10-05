@@ -1,0 +1,8 @@
+digraph G { rankdir=LR; bgcolor=white; fontname="Helvetica"; node[fontname="Helvetica",fontsize=11]; edge[fontname="Helvetica",fontsize=9,color="#555555"];
+patient[label="Patient /\nhead of family",shape=box,style=filled,fillcolor="#F4F3EF"]; doctor[label="Registered\ndoctor",shape=box,style=filled,fillcolor="#F4F3EF"]; admin[label="Registry\nadministrator",shape=box,style=filled,fillcolor="#F4F3EF"]; digi[label="DigiLocker\n(identity provider)",shape=box,style=filled,fillcolor="#F4F3EF"]; family[label="Linked family\nmember's phone",shape=box,style=filled,fillcolor="#F4F3EF"];
+sys[label="0\nLifeTrack Health\nsystem",shape=circle,style=filled,fillcolor="#E8F5B8",width=1.8,fixedsize=true];
+patient -> sys [label="records, photos of reports,\nconsent decisions, vitals"]; sys -> patient [label="timeline, insights,\nreminders, access log, export"];
+doctor -> sys [label="enrolment, access request,\nsigned prescription"]; sys -> doctor [label="approved, time-limited\nclinical share"];
+admin -> sys [label="approve / reject / revoke"]; sys -> admin [label="pending enrolments"];
+digi -> sys [label="verified name, DOB, sex"]; sys -> digi [label="sign-in request"];
+sys -> family [label="Emergency ID, medicine list\n(only if ticked)"]; }

@@ -1,0 +1,9 @@
+digraph G { rankdir=TB; bgcolor=white; fontname="Helvetica"; nodesep=0.25; ranksep=0.35; node[fontname="Helvetica",fontsize=11,shape=box,style="rounded,filled",fillcolor="#F4F3EF",color="#555555",width=2.4]; edge[color="#555555",arrowsize=0.7];
+ui[label="UI screens (Records, Insights, Share, Me, Reminders)\nrender Insight objects only",width=5.2,fillcolor="#E8F5B8"];
+svc[label="AppServices — single entry point\nactingGrantor() decides who may consent",width=5.2];
+{rank=same; a[label="Plane A\non-device insights"]; b[label="Plane B\nscan → draft record\n(Tesseract OCR)"]; c[label="Plane C\ncloud analysis\n(disabled)",fillcolor="#FFFFFF",style="rounded,dashed"]; sh[label="Share / family link\nX25519 + AES-GCM"];}
+cs[label="ConsentStore — the only grant authority\nRecordAccess — the only non-patient read path",width=5.2];
+au[label="Audit log (append-only, sealed)",width=5.2];
+st[label="SealedStore  →  FileByteStore\nAES-256-GCM frames, atomic writes",width=5.2];
+key[label="Device key in Android Keystore",shape=cylinder,fillcolor="#FFFFFF",width=3];
+ui -> svc; svc -> a; svc -> b; svc -> c; svc -> sh; a -> cs; sh -> cs; c -> cs; cs -> au; b -> st; cs -> st; au -> st; st -> key; }

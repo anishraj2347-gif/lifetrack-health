@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="708" font-family="Helvetica" font-size="13"><rect width="100%" height="100%" fill="white"/>
+<defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#444"/></marker></defs>
+<rect x="30" y="10" width="160" height="44" rx="8" fill="#E8F5B8" stroke="#555"/>
+<text x="110" y="37" text-anchor="middle" font-weight="bold">Doctor app</text>
+<line x1="110" y1="54" x2="110" y2="698" stroke="#999" stroke-dasharray="5,4"/>
+<rect x="250" y="10" width="160" height="44" rx="8" fill="#E8F5B8" stroke="#555"/>
+<text x="330" y="30" text-anchor="middle" font-weight="bold">Server</text>
+<text x="330" y="46" text-anchor="middle" font-weight="bold">(registry + relay)</text>
+<line x1="330" y1="54" x2="330" y2="698" stroke="#999" stroke-dasharray="5,4"/>
+<rect x="470" y="10" width="160" height="44" rx="8" fill="#E8F5B8" stroke="#555"/>
+<text x="550" y="37" text-anchor="middle" font-weight="bold">Patient app</text>
+<line x1="550" y1="54" x2="550" y2="698" stroke="#999" stroke-dasharray="5,4"/>
+<rect x="680" y="10" width="160" height="44" rx="8" fill="#E8F5B8" stroke="#555"/>
+<text x="760" y="37" text-anchor="middle" font-weight="bold">Patient</text>
+<line x1="760" y1="54" x2="760" y2="698" stroke="#999" stroke-dasharray="5,4"/>
+<line x1="110" y1="94" x2="330" y2="94" stroke="#444" marker-end="url(#a)"/>
+<text x="220.0" y="88" text-anchor="middle" fill="#222" stroke="white" stroke-width="5" paint-order="stroke">1. Enrol; admin approves → device certificate (Ed25519, 30 days)</text>
+<path d="M110,132 h28 v16 h-26" fill="none" stroke="#444" marker-end="url(#a)"/>
+<text x="146" y="144" text-anchor="start" fill="#222" stroke="white" stroke-width="5" paint-order="stroke">2. Show verified QR code</text>
+<line x1="760" y1="186" x2="550" y2="186" stroke="#444" marker-end="url(#a)"/>
+<text x="655.0" y="180" text-anchor="middle" fill="#222" stroke="white" stroke-width="5" paint-order="stroke">3. Scan doctor's code</text>
+<path d="M550,224 h28 v16 h-26" fill="none" stroke="#444" marker-end="url(#a)"/>
+<text x="586" y="236" text-anchor="start" fill="#222" stroke="white" stroke-width="5" paint-order="stroke">4. Verify certificate against pinned registry key</text>
+<line x1="550" y1="278" x2="330" y2="278" stroke="#444" marker-end="url(#a)"/>
+<text x="440.0" y="272" text-anchor="middle" fill="#222" stroke="white" stroke-width="5" paint-order="stroke">5. Is this doctor still approved with these keys?</text>
+<line x1="550" y1="324" x2="760" y2="324" stroke="#444" marker-end="url(#a)"/>
+<text x="655.0" y="318" text-anchor="middle" fill="#222" stroke="white" stroke-width="5" paint-order="stroke">6. Show doctor name, registration no., levels</text>
+<line x1="760" y1="370" x2="550" y2="370" stroke="#444" marker-end="url(#a)"/>
+<text x="655.0" y="364" text-anchor="middle" fill="#222" stroke="white" stroke-width="5" paint-order="stroke">7. Approve level + time (1 h default, up to 2 days)</text>
+<path d="M550,408 h28 v16 h-26" fill="none" stroke="#444" marker-end="url(#a)"/>
+<text x="586" y="420" text-anchor="start" fill="#222" stroke="white" stroke-width="5" paint-order="stroke">8. Write clinicalShare audit entry — before sending</text>
+<line x1="550" y1="462" x2="330" y2="462" stroke="#444" marker-end="url(#a)"/>
+<text x="440.0" y="456" text-anchor="middle" fill="#222" stroke="white" stroke-width="5" paint-order="stroke">9. Deposit share sealed to doctor's key (X25519 + AES-GCM)</text>
+<line x1="110" y1="508" x2="330" y2="508" stroke="#444" marker-end="url(#a)"/>
+<text x="220.0" y="502" text-anchor="middle" fill="#222" stroke="white" stroke-width="5" paint-order="stroke">10. Signed pickup — relay deletes after pickup</text>
+<path d="M110,546 h28 v16 h-26" fill="none" stroke="#444" marker-end="url(#a)"/>
+<text x="146" y="558" text-anchor="start" fill="#222" stroke="white" stroke-width="5" paint-order="stroke">11. Read records until access ends</text>
+<line x1="110" y1="600" x2="330" y2="600" stroke="#444" marker-end="url(#a)"/>
+<text x="220.0" y="594" text-anchor="middle" fill="#222" stroke="white" stroke-width="5" paint-order="stroke">12. Signed prescription to patient's reply mailbox</text>
+<line x1="330" y1="646" x2="550" y2="646" stroke="#444" marker-end="url(#a)"/>
+<text x="440.0" y="640" text-anchor="middle" fill="#222" stroke="white" stroke-width="5" paint-order="stroke">13. Collect; verify doctor's signature, file as doctor-issued</text>
+</svg>

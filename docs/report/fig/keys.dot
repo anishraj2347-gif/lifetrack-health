@@ -1,0 +1,4 @@
+digraph G { rankdir=TB; bgcolor=white; fontname="Helvetica"; node[fontname="Helvetica",fontsize=11,shape=box,style="rounded,filled",fillcolor="#F4F3EF",color="#555555"]; edge[fontname="Helvetica",fontsize=9,color="#555555"];
+pw[label="App-generated password\n20 characters · ~100 bits",fillcolor="#E8F5B8"]; ar[label="Argon2id\n19 MiB · 2 passes"]; hk[label="HKDF-SHA256"];
+vk[label="Vault key"]; lv[label="Login verifier\n(server keeps only its hash)"]; dk[label="Data key"]; wr[label="Wrapped data key"]; sh[label="Shamir 2-of-3 shares\n→ recovery codes",fillcolor="#FFFFFF"]; bl[label="Backup blob\nAES-256-GCM",shape=cylinder,fillcolor="#FFFFFF"];
+pw -> ar -> hk; hk -> vk; hk -> lv; vk -> wr [label="wraps"]; dk -> wr; dk -> sh [label="split"]; dk -> bl [label="encrypts"]; }

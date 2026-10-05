@@ -1,0 +1,7 @@
+{
+  "name": "lifetrack-ntcc-report",
+  "private": true,
+  "description": "Builds the NTCC project report (Word) for LifeTrack Health",
+  "scripts": { "build": "node build.js" },
+  "dependencies": { "docx": "^9.8.1" }
+}

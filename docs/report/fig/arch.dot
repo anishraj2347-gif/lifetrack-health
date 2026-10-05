@@ -1,0 +1,11 @@
+digraph G { rankdir=TB; bgcolor=white; newrank=true; fontname="Helvetica"; nodesep=0.35; ranksep=0.7; node[fontname="Helvetica",fontsize=11,shape=box,style="rounded,filled",fillcolor="#F4F3EF",color="#555555"]; edge[fontname="Helvetica",fontsize=9,color="#555555"];
+subgraph cluster_p { label="Patient's phone (Android)"; style="rounded"; color="#888888"; fontsize=12;
+  pa[label="LifeTrack patient app (Flutter)\nrecords · consent · insights · scan · family · backup",fillcolor="#E8F5B8"];
+  ps[label="Sealed storage\nAES-256-GCM, device key",shape=cylinder,fillcolor="#FFFFFF"]; pa -> ps; {rank=same; pa; ps;} }
+subgraph cluster_s { label="LifeTrack server (Dart, shelf) — never holds a key that opens records"; labelloc=b; style="rounded"; color="#888888"; fontsize=12;
+  idv[label="Identity check\n(DigiLocker stand-in)"]; ids[label="LifeTrack ID map\nID → mailbox + key"]; vault[label="Backup vault\nciphertext only"]; relay[label="Relay\nsealed shares until\npickup or expiry"]; reg[label="Doctor registry\nsigns certificates"]; }
+subgraph cluster_d { label="Doctor's device (browser or phone)"; style="rounded"; color="#888888"; fontsize=12;
+  da[label="LifeTrack Clinic doctor app (Flutter)\nshares · notes · prescriptions",fillcolor="#E8F5B8"]; }
+pa -> idv [label="create profile"]; pa -> ids [label="register ID"]; pa -> vault [label="encrypted backup"]; pa -> relay [label="share sealed to\ndoctor's key",dir=both]; pa -> reg [label="still approved?",style=dashed];
+relay -> da [label="signed pickup;\nprescription back",dir=both]; reg -> da [label="enrol / renew",dir=back];
+ }
