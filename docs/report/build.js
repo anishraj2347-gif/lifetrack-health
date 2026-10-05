@@ -388,6 +388,8 @@ const ch5 = [
   ...figure(path.join(DEMO, 'doctor-05-share-arrived.png'), 'LifeTrack Clinic: verified code, request by ID and an arrived share', 560),
   P('Opening a share shows the patient’s allergies prominently, current and past medicines with their status, conditions and the latest tests with their source and age, and a link to the original report image. Beside it, the doctor writes a prescription — medicine, active ingredient, morning-afternoon-night dose, timing relative to food, duration and a note — and signs and sends it (Figure 5.4). The prescription can also be printed with the registration number and a signature fingerprint. The doctor app keeps its own notes and a patient register, sealed in the browser.'),
   ...figure(path.join(DEMO, 'doctor-07-prescription.png'), 'LifeTrack Clinic: a shared summary and a prescription being written', 560),
+  P('The app has three tabs: Patients, Prescriptions and Profile. The Profile tab (Figure 5.5) shows the licence details from the approved enrolment, which the doctor cannot edit, and when the certificate next renews. It also holds the practice details printed on paper prescriptions, the privacy settings (the app lock is always on, and hiding from screenshots is a switch), the appearance setting and a count of what this device keeps.'),
+  ...figure(path.join(DEMO, 'doctor-09-profile.png'), 'LifeTrack Clinic: the Profile tab', 560),
   H2('5.5 Server'),
   P('The server is a single Dart process using shelf. Its routes are grouped under `/v1/`:'),
   ...table(['Route group', 'Purpose'], [
