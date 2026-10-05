@@ -1,6 +1,7 @@
-// Renders the main screens in dark mode to PNGs for a visual check:
-//   flutter test test/tool/dark_screens_test.dart --dart-define=SHOTS=<dir>
+// Renders the five main tabs to PNGs for a visual check (and the report):
+//   flutter test test/tool/dark_screens_test.dart --dart-define=SHOTS=<dir> [--dart-define=MODE=light]
 // Skipped unless SHOTS is set.
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -11,7 +12,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lifetrack/src/app/app_services.dart';
 import 'package:lifetrack/src/crypto/key_derivation.dart';
+import 'package:lifetrack/src/identity/lifetrack_ids.dart';
 import 'package:lifetrack/src/model/patient.dart';
+import 'package:lifetrack/src/share/relay.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
 import 'package:lifetrack/src/ui/lifetrack_app.dart';
 import 'package:lifetrack/src/ui/theme.dart';
@@ -27,12 +30,24 @@ void main() {
         loader.addFont(Future.value(ByteData.sublistView(f.readAsBytesSync())));
       }
       await loader.load();
+      // Icon fonts, so icons are drawn instead of empty boxes.
+      const lucide = 'packages/lucide_icons_flutter';
+      for (final (family, asset) in [
+        ('Lucide', 'assets/lucide.ttf'),
+        for (final w in [100, 200, 300, 400, 500, 600]) ('Lucide$w', 'assets/build_font/LucideVariable-w$w.ttf'),
+      ]) {
+        await (FontLoader('$lucide/$family')..addFont(rootBundle.load('$lucide/$asset'))).load();
+      }
+      await (FontLoader('MaterialIcons')..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
     });
     late AppServices s;
     await tester.runAsync(() async {
       s = await AppServices.open(
         bytes: InMemoryByteStore(), deviceKey: SecretKey(List.filled(32, 5)), remote: InMemoryRemoteVaultStore(),
         kdf: KdfParams.weakForTests(), cloudFactory: defaultCloud, clock: () => DateTime(2026, 10, 1, 10), demoTools: true,
+        // Sharing switched on (in memory), so the Share tab shows what a real build shows.
+        share: ShareConfig(relayUrl: 'http://127.0.0.1:1', registryKey: base64Encode((await (await Ed25519().newKeyPair()).extractPublicKey()).bytes)),
+        relayOverride: (_) => InMemoryRelay(), idDirectoryOverride: () => InMemoryIdDirectory(),
       );
       await s.createProfile(name: 'Anjali Sharma', dob: DateTime(1984), sex: Sex.female);
       await s.addSampleRecords();
@@ -59,7 +74,7 @@ void main() {
     }
 
     await shot('1-reminders');
-    for (final (i, tab) in ['Records', 'Share', 'Me'].indexed) {
+    for (final (i, tab) in ['Records', 'Insights', 'Share', 'Me'].indexed) {
       await tester.tap(find.bySemanticsLabel(tab));
       await shot('${i + 2}-${tab.toLowerCase()}');
     }
