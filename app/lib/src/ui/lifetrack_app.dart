@@ -292,7 +292,7 @@ class _HomeShellState extends State<HomeShell> {
           tint: LT.primary,
           opacity: 0.80,
           lightText: true,
-          padding: EdgeInsets.all(5),
+          padding: EdgeInsets.all(7),
           // One animation drives both the lime pill and the labels: each
           // label turns dark only as the pill arrives under it, so nothing
           // ever sits dark-on-black mid-slide. No overshoot, so the pill never
@@ -308,12 +308,17 @@ class _HomeShellState extends State<HomeShell> {
                   child: FractionallySizedBox(
                     widthFactor: 1 / _tabs.length,
                     heightFactor: 1,
-                    child: DecoratedBox(
+                    // Inset so a ring of the dark bar shows all round it —
+                    // the pill sits inside the bar, even on the end tabs.
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                      child: DecoratedBox(
                       decoration: ShapeDecoration(
                         shape: StadiumBorder(),
                         gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color.alphaBlend(Colors.white.withValues(alpha: 0.25), LT.accent), LT.accent]),
-                        shadows: [BoxShadow(color: LT.accent.withValues(alpha: 0.35), blurRadius: 12)],
+                        shadows: [BoxShadow(color: LT.accent.withValues(alpha: 0.30), blurRadius: 10)],
                       ),
+                    ),
                     ),
                   ),
                 ),

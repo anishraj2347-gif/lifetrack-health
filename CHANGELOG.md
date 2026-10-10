@@ -6,6 +6,10 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.37.2 (11 Oct 2026)
+- **Bottom bar**: the lime pill now sits inside the bar with a dark rim all round, instead of
+  filling the slot edge to edge and spilling over the bar's rounded ends on Reminders and Me.
+
 ### 1.37.1 (11 Oct 2026)
 - **Tab switching looks right**: the lime pill and the tab names now move together — a name turns
   dark only as the pill slides under it, so it never vanishes against the black bar mid-switch.
