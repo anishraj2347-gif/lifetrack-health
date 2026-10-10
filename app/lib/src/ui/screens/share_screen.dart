@@ -60,7 +60,7 @@ class ShareScreen extends StatelessWidget {
       Masthead(
         eyebrow: 'Share',
         title: 'Show a doctor your records',
-        trailing: Badge2(grants.isEmpty ? 'No access' : '${grants.length} active', tone: grants.isEmpty ? BadgeTone.outline : BadgeTone.trace),
+        trailing: Badge2(grants.isEmpty ? 'Not shared' : '${grants.length} active', tone: grants.isEmpty ? BadgeTone.outline : BadgeTone.trace),
       ),
       if (grants.isEmpty) PhotoBanner(Photos.doctor, height: 150),
       SizedBox(height: 12),
@@ -99,15 +99,46 @@ class ShareScreen extends StatelessWidget {
             Icon(LucideIcons.chevronRight, color: LT.inactive),
           ]),
         ),
-        Padding(
-          padding: EdgeInsets.fromLTRB(16, 6, 16, 6),
-          child: SlabButton('Check for prescriptions and updates', variant: ButtonVariant.outline, icon: LucideIcons.inbox, onPressed: () => _check(context)),
-        ),
       ] else
         Note('Sharing with a doctor\'s device is not set up in this build. "Show on my phone" works without it.', icon: LucideIcons.cloudOff),
       TestsYouHaveCard(margin: EdgeInsets.fromLTRB(16, 0, 16, 12)),
       if (sharing != null) const _Requests(),
-      Eyebrow('Who has access now'),
+      // The inbox check sits with who has access: prescriptions come back
+      // from the doctors listed here. Pull down does the same.
+      Padding(
+        padding: EdgeInsets.fromLTRB(20, 14, 12, 6),
+        child: Row(children: [
+          Expanded(child: Text('Who has access now', style: LT.eyebrow.copyWith(fontWeight: FontWeight.w600))),
+          if (sharing != null)
+            Tooltip(
+              message: 'Check for prescriptions and updates',
+              child: Semantics(
+                button: true,
+                label: 'Check for prescriptions and updates',
+                excludeSemantics: true,
+                child: Material(
+                  color: LT.raised,
+                  shape: StadiumBorder(side: BorderSide(color: Colors.white.withValues(alpha: LT.dark ? 0.08 : 0.9))),
+                  child: InkWell(
+                    customBorder: StadiumBorder(),
+                    onTap: () => _check(context),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: 40),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(LucideIcons.inbox, size: 16, color: LT.ink),
+                          SizedBox(width: 8),
+                          Text('Check inbox', style: TextStyle(fontFamily: LT.body, fontSize: 13, fontWeight: FontWeight.w600, color: LT.ink)),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ]),
+      ),
       if (grants.isEmpty)
         ShadCard(
           child: Row(children: [
@@ -190,6 +221,8 @@ class ShareScreen extends StatelessWidget {
   /// ends at the new time.
   Future<void> _changeTime(BuildContext context, ConsentToken g) async {
     final s = AppScope.of(context);
+    // The length chosen last time is marked, so the sheet starts from it.
+    final current = g.expiresAt.difference(g.issuedAt).inMinutes / 60;
     final hours = await showModalBottomSheet<int>(
       context: context,
       builder: (c) => SafeArea(
@@ -201,7 +234,7 @@ class ShareScreen extends StatelessWidget {
             Text('Counted from now. Now until ${dateTime(g.expiresAt)}.', style: LT.small),
             SizedBox(height: 14),
             Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final h in AccessRequest.accessChoices) Chip2(hoursLabel(h), selected: false, onTap: () => Navigator.of(c).pop(h)),
+              for (final h in AccessRequest.accessChoices) Chip2(hoursLabel(h), selected: (current - h).abs() < 0.1, onTap: () => Navigator.of(c).pop(h)),
             ]),
           ]),
         ),

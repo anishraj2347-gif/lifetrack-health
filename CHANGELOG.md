@@ -6,6 +6,16 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.33.0 (10 Oct 2026)
+- **Me**: a title like the other tabs ("Profile and settings"), then your own black card — lime
+  avatar, name, verified or not, and your LifeTrack ID on a chip you tap to copy.
+- **This phone**: app lock, hide from screenshots and appearance are now one card. Appearance is
+  a sliding three-way switch (Follow phone · Light · Dark) instead of three loose chips.
+- **Share**: the badge reads "Not shared" and sits level with the top of the title. "Check for
+  prescriptions and updates" is a small "Check inbox" pill beside "Who has access now" (pull
+  down still works too). "Change time" now starts with the current length marked.
+- Every page header keeps its badge or icon at the top right, not beside the title's last line.
+
 ### 1.32.0 (10 Oct 2026)
 - **Slimmer top bar**: the long empty bar is gone. The LifeTrack name sits on a small glass pill
   on the left and your avatar on its own round pill on the right, with the colour wash showing

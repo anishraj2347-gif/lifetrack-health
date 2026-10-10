@@ -41,8 +41,12 @@ void main() {
     expect(s.currentPatient!.name, 'Anjali Sharma', reason: 'after tapping You');
     await tester.tap(find.bySemanticsLabel('Share'));
     await tester.pumpAndSettle();
+    final check = find.byTooltip('Check for prescriptions and updates');
+    await tester.scrollUntilVisible(check, 200, scrollable: find.byType(Scrollable).first);
+    await tester.runAsync(() => Scrollable.ensureVisible(tester.element(check), alignment: 0.5));
+    await tester.pumpAndSettle();
     await tester.runAsync(() async {
-      await tester.tap(find.text('Check for prescriptions and updates'));
+      await tester.tap(check);
       await Future<void>.delayed(const Duration(milliseconds: 300));
     });
     await tester.pumpAndSettle();

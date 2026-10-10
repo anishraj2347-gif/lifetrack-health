@@ -142,6 +142,8 @@ void main() {
     await start(tester, u);
     await tester.tap(find.bySemanticsLabel('Me'));
     await tester.pumpAndSettle();
+    // The phone's settings sit below the profile card; scroll them into view.
+    await tester.scrollUntilVisible(find.text('Hide from screenshots'), 200, scrollable: find.byType(Scrollable).first);
     await tester.runAsync(() => Scrollable.ensureVisible(tester.element(find.byType(Switch).first), alignment: 0.5));
     await tester.pumpAndSettle();
     u.answer = false;

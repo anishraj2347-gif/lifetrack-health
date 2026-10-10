@@ -31,54 +31,72 @@ class MeScreen extends StatelessWidget {
     final s = AppScope.of(context);
     final p = s.currentPatient!;
     final initials = p.name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).take(2).map((w) => w[0].toUpperCase()).join();
+    final self = p.id == s.selfPatientId;
     return ListView(children: [
-      Padding(
-        padding: EdgeInsets.fromLTRB(20, 20, 20, 20),
-        child: Row(children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: LT.band,
-            child: Text(initials, style: LT.label.copyWith(fontSize: 18, fontWeight: FontWeight.w600)),
-          ),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(p.name, style: LT.title.copyWith(fontSize: 22)),
-              SizedBox(height: 8),
-              if (s.isDemo)
-                Badge2('Sample records', tone: BadgeTone.caution)
-              else if (p.verification case final v?)
-                Badge2('Verified · ${v.method.label}', tone: BadgeTone.trace)
-              else
-                Badge2('Not verified', tone: BadgeTone.outline),
-              if (s.lifeTrackIdOf(p.id) case final id?) ...[
-                SizedBox(height: 8),
-                Semantics(
-                  button: true,
-                  label: 'Copy LifeTrack ID ${LifeTrackId.display(id)}',
-                  excludeSemantics: true,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(LT.radius),
-                    onTap: () {
-                      Clipboard.setData(ClipboardData(text: id));
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('LifeTrack ID copied.')));
-                    },
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: 48),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Flexible(child: Text('LifeTrack ID  ${LifeTrackId.display(id)}', style: LT.small.copyWith(color: LT.ink, fontWeight: FontWeight.w600, letterSpacing: 0.5))),
-                        SizedBox(width: 8),
-                        Icon(LucideIcons.copy, size: 16, color: LT.ink2),
+      Masthead(eyebrow: 'Me', title: self ? 'Profile and settings' : "${p.name.split(' ').first}'s profile"),
+      // The person whose records are open, as a black card like the family
+      // overview's: lime avatar (the one selected), name, check, ID.
+      ShadCard(
+        color: LT.primary,
+        margin: EdgeInsets.fromLTRB(16, 10, 16, 12),
+        padding: EdgeInsets.fromLTRB(18, 18, 18, 14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              width: 56,
+              height: 56,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: LT.accent, shape: BoxShape.circle),
+              child: Text(initials, style: TextStyle(fontFamily: LT.display, fontSize: 19, fontWeight: FontWeight.w700, color: LT.onAccent)),
+            ),
+            SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(p.name, style: TextStyle(fontFamily: LT.display, fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: -0.4, color: LT.onDark)),
+                SizedBox(height: 6),
+                if (s.isDemo)
+                  Badge2('Sample records', tone: BadgeTone.caution)
+                else if (p.verification case final v?)
+                  Badge2('Verified · ${v.method.label}', tone: BadgeTone.trace)
+                else
+                  Badge2('Not verified', tone: BadgeTone.outline),
+              ]),
+            ),
+          ]),
+          if (s.lifeTrackIdOf(p.id) case final id?) ...[
+            SizedBox(height: 14),
+            Semantics(
+              button: true,
+              label: 'Copy LifeTrack ID ${LifeTrackId.display(id)}',
+              excludeSemantics: true,
+              child: Material(
+                color: LT.onDarkChip,
+                shape: StadiumBorder(),
+                child: InkWell(
+                  customBorder: StadiumBorder(),
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: id));
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('LifeTrack ID copied.')));
+                  },
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: 48),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(children: [
+                        Text('LifeTrack ID', style: TextStyle(fontSize: 12, color: LT.onDarkMuted)),
+                        SizedBox(width: 10),
+                        Expanded(child: Text(LifeTrackId.display(id), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 1, color: LT.onDark, fontFeatures: [FontFeature.tabularFigures()]))),
+                        Icon(LucideIcons.copy, size: 16, color: LT.onDark),
                       ]),
                     ),
                   ),
                 ),
-              ] else if (s.ids != null) ...[
-                SizedBox(height: 8),
-                Text('LifeTrack ID: assigned when the phone reaches LifeTrack', style: LT.small),
-              ],
-            ]),
-          ),
+              ),
+            ),
+          ] else if (s.ids != null) ...[
+            SizedBox(height: 12),
+            Text('LifeTrack ID: assigned when the phone reaches LifeTrack', style: TextStyle(fontSize: 14, color: LT.onDarkMuted)),
+          ],
         ]),
       ),
       if (!p.isVerified && !s.isDemo && s.verifier != null && p.id == s.selfPatientId)
@@ -100,7 +118,7 @@ class MeScreen extends StatelessWidget {
         ),
       // Settings for the person on screen, then settings for the phone
       // itself — so it is clear which follow a switch of profile.
-      Eyebrow(p.id == s.selfPatientId ? 'Your profile' : "${p.name.split(' ').first}'s profile", padding: EdgeInsets.fromLTRB(20, 4, 20, 10)),
+      Eyebrow(self ? 'Your profile' : "${p.name.split(' ').first}'s profile", padding: EdgeInsets.fromLTRB(20, 10, 20, 10)),
       ShadCard(
         padding: EdgeInsets.zero,
         child: Column(children: [
@@ -113,64 +131,36 @@ class MeScreen extends StatelessWidget {
         ]),
       ),
       Eyebrow('This phone'),
-      if (AppLockGate.of(context) case final lock? when lock.available)
-        ShadCard(
-          padding: EdgeInsets.fromLTRB(16, 8, 8, 8),
-          child: Row(children: [
-            IconTile(LucideIcons.lock),
-            SizedBox(width: 14),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('App lock', style: LT.label),
-                SizedBox(height: 4),
-                Text('Fingerprint, face or phone PIN when LifeTrack opens', style: LT.small),
-              ]),
-            ),
-            Switch(
-              value: s.appLockEnabled,
-              onChanged: (v) async {
-                if (await lock.setEnabled(v) && context.mounted) AppScope.changed(context);
-              },
-            ),
-          ]),
-        ),
+      // One card for the phone's own settings, rows divided like the profile's.
       ShadCard(
-        padding: EdgeInsets.fromLTRB(16, 8, 8, 8),
-        child: Row(children: [
-          IconTile(LucideIcons.eyeOff),
-          SizedBox(width: 14),
-          Expanded(
+        padding: EdgeInsets.zero,
+        child: Column(children: [
+          if (AppLockGate.of(context) case final lock? when lock.available)
+            _switchRow(LucideIcons.lock, 'App lock', 'Fingerprint, face or phone PIN when LifeTrack opens', s.appLockEnabled, (v) async {
+              if (await lock.setEnabled(v) && context.mounted) AppScope.changed(context);
+            }),
+          _switchRow(LucideIcons.eyeOff, 'Hide from screenshots', 'Screenshots, screen recordings and the Recent apps preview come out blank while LifeTrack is open', s.screenPrivacyEnabled, (v) async {
+            await s.setScreenPrivacy(v);
+            if (context.mounted) AppScope.changed(context);
+          }),
+          Padding(
+            padding: EdgeInsets.fromLTRB(14, 14, 14, 16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Hide from screenshots', style: LT.label),
-              SizedBox(height: 4),
-              Text('Screenshots, screen recordings and the Recent apps preview come out blank while LifeTrack is open', style: LT.small),
-            ]),
-          ),
-          Switch(
-            value: s.screenPrivacyEnabled,
-            onChanged: (v) async {
-              await s.setScreenPrivacy(v);
-              if (context.mounted) AppScope.changed(context);
-            },
-          ),
-        ]),
-      ),
-      ShadCard(
-        child: Row(children: [
-          const IconTile(LucideIcons.sunMoon),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Appearance', style: LT.label),
-              const SizedBox(height: 8),
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                for (final (v, label) in const [('system', 'Follow phone'), ('light', 'Light'), ('dark', 'Dark')])
-                  Chip2(label, selected: s.themeChoice == v, onTap: () => crossfadeTheme(context, () async {
-                    await s.setThemeChoice(v);
-                    appearance.value = themeModeOf(v);
-                    if (context.mounted) AppScope.changed(context);
-                  })),
+              Row(children: [
+                const IconTile(LucideIcons.sunMoon),
+                const SizedBox(width: 14),
+                Expanded(child: Text('Appearance', style: LT.label)),
               ]),
+              const SizedBox(height: 12),
+              Segmented(
+                options: const [('system', 'Follow phone'), ('light', 'Light'), ('dark', 'Dark')],
+                value: s.themeChoice,
+                onChanged: (v) => crossfadeTheme(context, () async {
+                  await s.setThemeChoice(v);
+                  appearance.value = themeModeOf(v);
+                  if (context.mounted) AppScope.changed(context);
+                }),
+              ),
             ]),
           ),
         ]),
@@ -261,6 +251,23 @@ class MeScreen extends StatelessWidget {
       ),
     ]);
   }
+
+  Widget _switchRow(IconData icon, String title, String sub, bool value, ValueChanged<bool> onChanged) => Container(
+        padding: EdgeInsets.fromLTRB(14, 12, 8, 12),
+        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: LT.rule))),
+        child: Row(children: [
+          IconTile(icon),
+          SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: LT.label),
+              SizedBox(height: 4),
+              Text(sub, style: LT.small),
+            ]),
+          ),
+          Switch(value: value, onChanged: onChanged),
+        ]),
+      );
 
   Widget _link(BuildContext context, IconData icon, String title, String sub, Widget page, {bool last = false}) => InkWell(
         onTap: () async {

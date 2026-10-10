@@ -19,8 +19,10 @@ class Masthead extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         padding: EdgeInsets.fromLTRB(20, 18, 20, 8),
+        // A trailing badge or icon sits level with the top line, not adrift
+        // beside the last line of a two-line title.
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: Column(
@@ -33,7 +35,7 @@ class Masthead extends StatelessWidget {
                 ],
               ),
             ),
-            ?trailing,
+            if (trailing != null) ...[SizedBox(width: 12), Padding(padding: EdgeInsets.only(top: 2), child: trailing)],
           ],
         ),
       );
@@ -182,6 +184,79 @@ class Chip2 extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A segmented control (light / dark and the like): a pale track with a
+/// black thumb that slides to the choice. Each option is a button for
+/// screen readers, "selected" on the current one.
+class Segmented<T> extends StatelessWidget {
+  const Segmented({super.key, required this.options, required this.value, required this.onChanged});
+  final List<(T, String)> options;
+  final T value;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final i = options.indexWhere((o) => o.$1 == value).clamp(0, options.length - 1);
+    return Container(
+      padding: EdgeInsets.all(4),
+      decoration: ShapeDecoration(
+        color: LT.raised,
+        shape: StadiumBorder(side: BorderSide(color: Colors.white.withValues(alpha: LT.dark ? 0.06 : 0.9))),
+      ),
+      child: Stack(children: [
+        Positioned.fill(
+          child: AnimatedAlign(
+            alignment: Alignment(options.length == 1 ? 0 : -1 + 2 * i / (options.length - 1), 0),
+            duration: Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+            child: FractionallySizedBox(
+              widthFactor: 1 / options.length,
+              heightFactor: 1,
+              child: DecoratedBox(
+                decoration: ShapeDecoration(
+                  shape: StadiumBorder(),
+                  gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color.alphaBlend(Colors.white.withValues(alpha: 0.12), LT.button), LT.button]),
+                  shadows: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 10, offset: Offset(0, 3))],
+                ),
+              ),
+            ),
+          ),
+        ),
+        Row(children: [
+          for (final (j, (v, label)) in options.indexed)
+            Expanded(
+              child: Semantics(
+                button: true,
+                selected: j == i,
+                inMutuallyExclusiveGroup: true,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    if (j == i) return;
+                    HapticFeedback.selectionClick();
+                    onChanged(v);
+                  },
+                  child: GlassTone(
+                    tone: j == i ? LT.button : LT.raised,
+                    child: Container(
+                      constraints: BoxConstraints(minHeight: 44),
+                      alignment: Alignment.center,
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                      child: AnimatedDefaultTextStyle(
+                        duration: Duration(milliseconds: 200),
+                        style: TextStyle(fontFamily: LT.body, fontSize: 14, fontWeight: j == i ? FontWeight.w600 : FontWeight.w500, color: j == i ? LT.onButton : LT.ink),
+                        child: Text(label, textAlign: TextAlign.center, maxLines: 2),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ]),
+      ]),
     );
   }
 }
