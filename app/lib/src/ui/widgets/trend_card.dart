@@ -45,7 +45,11 @@ class TrendCard extends StatefulWidget {
     return out;
   }
 
-  static const _rows = 6;
+  static const _rows = 8;
+
+  /// Dots across each column: a block of dots reads as a dot-matrix chart
+  /// rather than a thin string of beads lost in a wide column.
+  static const _across = 3;
 
   /// Rows lit for a value: at least one. The scale starts at 80% of this
   /// patient's lowest result, so a small change draws as a small change.
@@ -92,6 +96,8 @@ class _TrendCardState extends State<TrendCard> {
     final hi = values.reduce((a, b) => a > b ? a : b);
         final sel = _picked == null || _picked! >= points.length ? points.length - 1 : _picked!;
     final shown = points[sel];
+    // Month names alone repeat across years ("Sep … Sep"): add the year then.
+    final years = points.first.$1.year != points.last.$1.year;
     String fmt(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
 
     return ShadCard(
@@ -174,23 +180,30 @@ class _TrendCardState extends State<TrendCard> {
                     Expanded(
                       child: AnimatedContainer(
                         duration: Duration(milliseconds: 180),
-                        padding: EdgeInsets.only(bottom: 2),
+                        padding: EdgeInsets.only(bottom: 6),
                         decoration: BoxDecoration(
-                          color: i == sel ? LT.onDarkChip.withValues(alpha: 0.35) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
+                          color: i == sel ? LT.onDarkChip.withValues(alpha: 0.45) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.end, children: [
+                          SizedBox(height: 6),
                           for (var r = _rows - 1; r >= 0; r--)
                             Padding(
                               padding: EdgeInsets.only(top: 4),
-                              child: _dot(
-                                filled: r < TrendCard._level(p.$2, lo, hi),
-                                now: i == sel,
-                                delay: i * 40 + (_rows - r) * 15,
-                              ),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                for (var c = 0; c < TrendCard._across; c++)
+                                  Padding(
+                                    padding: EdgeInsets.only(left: c == 0 ? 0 : 4),
+                                    child: _dot(
+                                      filled: r < TrendCard._level(p.$2, lo, hi),
+                                      now: i == sel,
+                                      delay: i * 40 + (_rows - r) * 12,
+                                    ),
+                                  ),
+                              ]),
                             ),
-                          SizedBox(height: 6),
-                          Text(shortMonth(p.$1), style: TextStyle(fontSize: 12, fontWeight: i == sel ? FontWeight.w600 : FontWeight.w400, color: i == sel ? LT.onDark : LT.onDarkMuted)),
+                          SizedBox(height: 8),
+                          Text(years ? "${shortMonth(p.$1)} '${(p.$1.year % 100).toString().padLeft(2, '0')}" : shortMonth(p.$1), style: TextStyle(fontSize: 12, fontWeight: i == sel ? FontWeight.w600 : FontWeight.w400, color: i == sel ? LT.onDark : LT.onDarkMuted)),
                         ]),
                       ),
                     ),
@@ -214,8 +227,8 @@ class _TrendCardState extends State<TrendCard> {
 
   Widget _plainDot({required bool filled, required bool now}) => AnimatedContainer(
         duration: Duration(milliseconds: 180),
-        width: 10,
-        height: 10,
+        width: 7,
+        height: 7,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: filled ? (now ? LT.accent : LT.onDark) : LT.onDarkChip,

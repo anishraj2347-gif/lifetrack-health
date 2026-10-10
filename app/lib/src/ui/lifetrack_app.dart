@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -184,7 +186,8 @@ class _HomeShellState extends State<HomeShell> {
     child: _shell(),
   );
 
-  static const _topBarHeight = 52.0;
+  /// 44 dp, or taller when the phone's text is large, so nothing clips.
+  static double _topBarHeight(BuildContext context) => math.max(44, MediaQuery.textScalerOf(context).scale(16) * 1.6);
   static const _topGap = 8.0;
 
   /// Content runs under both glass bars: the tab sees the bars as extra
@@ -194,7 +197,8 @@ class _HomeShellState extends State<HomeShell> {
     body: Builder(builder: (context) {
       final mq = MediaQuery.of(context);
       // A floating glass pill like the tab bar, with a little air around it.
-      final top = mq.padding.top + _topGap + _topBarHeight + _topGap;
+      final bar = _topBarHeight(context);
+      final top = mq.padding.top + _topGap + bar + _topGap;
       return Stack(children: [
         MediaQuery(
           data: mq.copyWith(padding: mq.padding.copyWith(top: top)),
@@ -221,14 +225,7 @@ class _HomeShellState extends State<HomeShell> {
           top: mq.padding.top + _topGap,
           left: 12,
           right: 12,
-          child: DecoratedBox(
-            decoration: ShapeDecoration(shape: StadiumBorder(), shadows: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.35 : 0.10), blurRadius: 24, offset: Offset(0, 8))]),
-            child: Glass(
-              tint: LT.ground,
-              opacity: 0.72,
-              child: SizedBox(height: _topBarHeight, child: _TopBar()),
-            ),
-          ),
+          child: SizedBox(height: bar, child: _TopBar()),
         ),
       ]);
     }),
@@ -328,21 +325,34 @@ class _HomeShellState extends State<HomeShell> {
       );
 }
 
-/// The app's name above every main screen. Light/dark lives in Me → Appearance.
+/// The app's name above every main screen, and whose records are open: two
+/// compact glass pills with the page's colour wash between them, rather
+/// than one long bar with an empty middle (founder, 10 Oct 2026).
+/// Light/dark lives in Me → Appearance.
 class _TopBar extends StatelessWidget {
   const _TopBar();
 
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.fromLTRB(12, 0, 6, 0),
-        child: Row(children: [
-          BrandMark(size: 30),
-          SizedBox(width: 10),
-          Expanded(child: Text('LifeTrack', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.display, fontSize: 17, fontWeight: FontWeight.w600, color: LT.ink, letterSpacing: -0.3))),
-          SizedBox(width: 8),
-          Flexible(child: Align(alignment: Alignment.centerRight, child: PersonButton())),
-        ]),
+  static Widget pill(Widget child, {EdgeInsets padding = EdgeInsets.zero}) => DecoratedBox(
+        decoration: ShapeDecoration(shape: StadiumBorder(), shadows: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.35 : 0.10), blurRadius: 20, offset: Offset(0, 6))]),
+        child: Glass(tint: LT.ground, opacity: 0.72, padding: padding, child: child),
       );
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+        Flexible(
+          flex: 3,
+          child: Align(alignment: Alignment.centerLeft, child: pill(
+            padding: EdgeInsets.fromLTRB(7, 0, 16, 0),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              BrandMark(size: 30),
+              SizedBox(width: 9),
+              Flexible(child: Text('LifeTrack', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.display, fontSize: 16, fontWeight: FontWeight.w600, color: LT.ink, letterSpacing: -0.3))),
+            ]),
+          )),
+        ),
+        SizedBox(width: 8),
+        Flexible(flex: 2, child: Align(alignment: Alignment.centerRight, child: pill(Padding(padding: EdgeInsets.all(2), child: PersonButton(flat: true))))),
+      ]);
 }
 
 class _BootError extends StatelessWidget {

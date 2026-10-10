@@ -6,6 +6,21 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.32.0 (10 Oct 2026)
+- **Slimmer top bar**: the long empty bar is gone. The LifeTrack name sits on a small glass pill
+  on the left and your avatar on its own round pill on the right, with the colour wash showing
+  between them. It is lower too (44 instead of 52), and grows only when the phone's text is large.
+- **Inner screens**: the back arrow is now a round glass button, and menus (⋮) sit on their own
+  small pill on the right — no more wide empty strip across the top.
+- **Records**: search and the filter chips stay pinned on a strip of glass while the list scrolls
+  under it. "Add record" is a floating button at the bottom right that steps aside while you
+  scroll down. List items rise in one after another.
+- **Results over time**: the chart is now a proper dot matrix (blocks of small dots), and months
+  carry the year when the results span years ("Sep '25 · Mar '26 · Sep '26"). The small tiles show
+  the test, the latest value large, and "3 results · 22 Sep"; an odd last tile spans the row.
+- **A record**: more room under the top bar, and Doctor / Clinic / Source read as label over
+  value instead of a ragged right-hand column.
+
 ### 1.31.0 (10 Oct 2026)
 - **Today on Reminders**: a black card with a ring of today's progress ("1 of 2 done today") and
   what is next; when the last one is ticked, "All done for today". The current dose time has a

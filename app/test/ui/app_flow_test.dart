@@ -79,7 +79,8 @@ void main() {
     await onboardWithSamples(tester);
     await tester.scrollUntilVisible(find.text('Lipid panel'), 200, scrollable: find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Lipid panel'));
+    // Two lipid panels in the samples (March and September); the newer is first.
+    await tester.tap(find.text('Lipid panel').first);
     await tester.pumpAndSettle();
     expect(find.text('118 mg/dL'), findsOneWidget);
     expect(find.textContaining('Turn on Insights'), findsOneWidget);

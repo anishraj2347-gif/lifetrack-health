@@ -68,7 +68,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(TestTrendScreen), findsNothing);
     expect(big().analyte, 'hba1c');
-    expect(find.text('Latest · 3×'), findsOneWidget);
+    expect(find.textContaining('Latest · 3 results'), findsOneWidget);
     expect(find.text('LDL cholesterol'), findsOneWidget, reason: 'now a tile');
 
     // Tapping the big card opens that test's every result.

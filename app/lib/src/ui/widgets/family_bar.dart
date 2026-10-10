@@ -306,7 +306,10 @@ Future<void> showPersonSheet(BuildContext context) async {
 /// The top bar's person button: avatar (lime — the one selected) and first
 /// name, on every tab, so it is always plain whose records are open.
 class PersonButton extends StatelessWidget {
-  const PersonButton({super.key});
+  const PersonButton({super.key, this.flat = false});
+
+  /// Drawn without its own fill, for when it sits on a glass pill.
+  final bool flat;
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
@@ -320,8 +323,8 @@ class PersonButton extends StatelessWidget {
       label: self ? 'Viewing your own records. Switch person or add family.' : "Viewing ${p.name}'s records. Switch person.",
       excludeSemantics: true,
       child: Material(
-        color: LT.raised.withValues(alpha: 0.7),
-        shape: StadiumBorder(side: BorderSide(color: Colors.white.withValues(alpha: LT.dark ? 0.08 : 0.9))),
+        color: flat ? Colors.transparent : LT.raised.withValues(alpha: 0.7),
+        shape: flat ? StadiumBorder() : StadiumBorder(side: BorderSide(color: Colors.white.withValues(alpha: LT.dark ? 0.08 : 0.9))),
         child: InkWell(
           customBorder: StadiumBorder(),
           onTap: () => showPersonSheet(context),

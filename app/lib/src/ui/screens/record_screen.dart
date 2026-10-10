@@ -85,7 +85,7 @@ class _RecordScreenState extends State<RecordScreen> {
       body: ListView(
         children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
+            padding: EdgeInsets.fromLTRB(20, 12, 20, 16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -181,13 +181,19 @@ class _RecordScreenState extends State<RecordScreen> {
     decoration: BoxDecoration(
       border: last ? null : Border(bottom: BorderSide(color: LT.rule)),
     ),
+    // Label above value: long values ("Photo of the original, values
+    // confirmed by you") read as a sentence instead of a ragged right column.
     child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: LT.ink3),
+        Padding(padding: EdgeInsets.only(top: 2), child: Icon(icon, size: 16, color: LT.ink3)),
         SizedBox(width: 12),
-        Expanded(child: Text(label, style: LT.small)),
-        Flexible(
-          child: Text(value, style: LT.label.copyWith(fontSize: 14), textAlign: TextAlign.right),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label, style: LT.meta),
+            SizedBox(height: 2),
+            Text(value, style: LT.label.copyWith(fontSize: 15)),
+          ]),
         ),
       ],
     ),

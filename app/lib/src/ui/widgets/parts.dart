@@ -130,7 +130,7 @@ class SlabButton extends StatelessWidget {
 
 /// Toggle pill (shadcn ToggleGroup item).
 class Chip2 extends StatelessWidget {
-  const Chip2(this.label, {super.key, required this.selected, this.onTap, this.exclusive = true});
+  const Chip2(this.label, {super.key, required this.selected, this.onTap, this.exclusive = true, this.dense = false});
   final String label;
   final bool selected;
   final VoidCallback? onTap;
@@ -138,6 +138,9 @@ class Chip2 extends StatelessWidget {
   /// One of a set (sex, duration): screen readers say "1 of 3, selected".
   /// False for a lone on/off chip such as "Last 2 years only".
   final bool exclusive;
+
+  /// A slimmer chip for a strip of filters.
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -168,9 +171,9 @@ class Chip2 extends StatelessWidget {
                     },
               customBorder: StadiumBorder(),
               child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: 48),
+                constraints: BoxConstraints(minHeight: dense ? 40 : 48),
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  padding: EdgeInsets.symmetric(horizontal: dense ? 16 : 18, vertical: dense ? 8 : 10),
                   // Sized to its label: a chip in a Wrap must not stretch to the full row.
                   child: Center(widthFactor: 1, heightFactor: 1, child: Text(text, style: TextStyle(fontFamily: LT.body, fontSize: 14, fontWeight: FontWeight.w500, color: selected ? LT.onButton : LT.ink))),
                 ),
@@ -339,6 +342,8 @@ class Appear extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return child;
+    // Inside a [Stagger] the list item already rises in; once is enough.
+    if (delay == Duration.zero && context.dependOnInheritedWidgetOfExactType<_Staggered>() != null) return child;
     final total = delay + Duration(milliseconds: 280);
     final start = delay.inMilliseconds / total.inMilliseconds;
     return TweenAnimationBuilder<double>(
@@ -352,6 +357,22 @@ class Appear extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A list item that rises in a beat after the one above it (30 ms apart,
+/// the first six only), so a page arrives as a cascade rather than at once.
+class Stagger extends StatelessWidget {
+  const Stagger({super.key, required this.index, required this.child});
+  final int index;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => Appear(delay: Duration(milliseconds: 30 * (index < 6 ? index : 6)), child: _Staggered(child: child));
+}
+
+class _Staggered extends InheritedWidget {
+  const _Staggered({required super.child});
+  @override
+  bool updateShouldNotify(_Staggered oldWidget) => false;
 }
 
 /// Marks a dark surface, so parts placed on it (badges) use light colours.
@@ -807,8 +828,13 @@ class GlassTone extends StatelessWidget {
   Widget build(BuildContext context) => child;
 }
 
-/// An app bar of frosted glass over the page. Screens whose body is a plain
-/// ListView set `extendBodyBehindAppBar` so their content slides under it.
+/// The inner screens' bar: a round glass back button and, when there are
+/// any, the actions on their own glass pill — floating over the page's
+/// wash like the main top bar, instead of one wide empty strip behind a
+/// lone arrow (founder, 10 Oct 2026). A [title], when given, sits on a
+/// compact pill beside the back button; most screens put their title in
+/// the page instead. Screens whose body is a plain ListView set
+/// `extendBodyBehindAppBar` so their content slides under it.
 class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   const GlassAppBar({super.key, this.title, this.actions, this.automaticallyImplyLeading = true});
   final Widget? title;
@@ -818,26 +844,36 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
+  static Widget _pill(Widget child, {bool circle = false, EdgeInsets padding = EdgeInsets.zero}) => DecoratedBox(
+        decoration: ShapeDecoration(shape: StadiumBorder(), shadows: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.35 : 0.10), blurRadius: 18, offset: Offset(0, 6))]),
+        child: Glass(tint: LT.ground, opacity: 0.72, padding: padding, child: circle ? SizedBox.square(dimension: 44, child: Center(child: child)) : child),
+      );
+
   @override
   Widget build(BuildContext context) {
     final canPop = automaticallyImplyLeading && (ModalRoute.of(context)?.impliesAppBarDismissal ?? false);
     return AppBar(
-      title: title,
-      actions: actions == null ? null : [...actions!, SizedBox(width: 8)],
       automaticallyImplyLeading: false,
-      leadingWidth: 60,
-      leading: canPop ? Padding(padding: EdgeInsets.only(left: 10), child: BackButton()) : null,
       backgroundColor: Colors.transparent,
-      // A floating glass pill, like the tab bar and the main top bar.
-      flexibleSpace: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(8, 4, 8, 2),
-          child: DecoratedBox(
-            decoration: ShapeDecoration(shape: StadiumBorder(), shadows: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.35 : 0.10), blurRadius: 20, offset: Offset(0, 6))]),
-            child: Glass(tint: LT.ground, opacity: 0.72, child: SizedBox.expand()),
-          ),
-        ),
+      titleSpacing: 0,
+      toolbarHeight: kToolbarHeight,
+      title: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12),
+        child: Row(children: [
+          if (canPop) _pill(circle: true, BackButton(style: IconButton.styleFrom(minimumSize: Size.square(44)))),
+          if (title != null) ...[
+            if (canPop) SizedBox(width: 8),
+            Flexible(
+              child: _pill(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                DefaultTextStyle.merge(style: TextStyle(fontFamily: LT.body, fontSize: 15, fontWeight: FontWeight.w600, color: LT.ink), maxLines: 1, overflow: TextOverflow.ellipsis, child: title!),
+              ),
+            ),
+          ],
+          Spacer(),
+          if (actions != null && actions!.isNotEmpty)
+            _pill(padding: EdgeInsets.symmetric(horizontal: 2), Row(mainAxisSize: MainAxisSize.min, children: actions!)),
+        ]),
       ),
     );
   }

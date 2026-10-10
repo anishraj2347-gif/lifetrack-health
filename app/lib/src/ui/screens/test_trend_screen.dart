@@ -129,32 +129,44 @@ class MoreTrends extends StatelessWidget {
     if (series.isEmpty) return SizedBox.shrink();
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Wrap(spacing: 10, runSpacing: 10, children: [
-        for (final t in series)
+      child: LayoutBuilder(builder: (context, box) {
+        final half = (box.maxWidth - 10) / 2;
+        return Wrap(spacing: 10, runSpacing: 10, children: [
+        for (final (i, t) in series.indexed)
           SizedBox(
-              width: (MediaQuery.sizeOf(context).width - 32 - 10) / 2,
+              // An odd last tile spans the row instead of leaving a hole.
+              width: i == series.length - 1 && series.length.isOdd ? box.maxWidth : half,
               child: ShadCard(
                 margin: EdgeInsets.zero,
-                padding: EdgeInsets.all(14),
+                padding: EdgeInsets.fromLTRB(14, 12, 14, 14),
                 onTap: onSelect != null
                     ? () => onSelect!(t)
                     : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TestTrendScreen(analyte: t.analyte, unit: t.unit))),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
-                    Icon(LucideIcons.chartLine, size: 18, color: LT.ink),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text('${identical(t, latest) ? 'Latest · ' : ''}${t.points.length}×', style: LT.meta, textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ),
+                    Expanded(child: Text(analyteName(t.analyte), style: LT.label.copyWith(fontSize: 14, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    SizedBox(width: 6),
+                    Icon(LucideIcons.chartLine, size: 16, color: LT.ink3),
                   ]),
-                  SizedBox(height: 8),
-                  Text(analyteName(t.analyte), style: LT.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  SizedBox(height: 6),
+                  Text.rich(
+                    TextSpan(children: [
+                      TextSpan(text: TestTrendScreen.fmt(t.points.last.$2.value), style: LT.data.copyWith(fontSize: 20, letterSpacing: -0.4)),
+                      TextSpan(text: ' ${t.unit}', style: LT.meta),
+                    ]),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   SizedBox(height: 2),
-                  Text('${TestTrendScreen.fmt(t.points.last.$2.value)} ${t.unit} · ${fullDate(t.points.last.$1.effectiveDate)}', style: LT.small, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text('${identical(t, latest) ? 'Latest · ' : ''}${t.points.length} results · ${_short(t.points.last.$1.effectiveDate, (latest ?? t).points.last.$1.effectiveDate.year)}', style: LT.meta, maxLines: 1, overflow: TextOverflow.ellipsis),
                 ]),
               ),
             ),
-      ]),
+        ]);
+      }),
     );
   }
+
+  /// "22 Sep" in the year of the newest result, "22 Sep 2025" before it.
+  static String _short(DateTime d, int year) => '${d.day} ${shortMonth(d)}${d.year == year ? '' : ' ${d.year}'}';
 }
