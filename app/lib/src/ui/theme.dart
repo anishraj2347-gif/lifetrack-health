@@ -86,7 +86,7 @@ abstract final class LT {
   static const body = 'Poppins';
   static const mono = 'Poppins';
 
-  static TextStyle get eyebrow => TextStyle(fontFamily: body, fontSize: 13, fontWeight: FontWeight.w500, color: ink3);
+  static TextStyle get eyebrow => TextStyle(fontFamily: body, fontSize: 13, fontWeight: FontWeight.w500, color: ink2);
   static TextStyle get title => TextStyle(fontFamily: display, fontSize: 26, fontWeight: FontWeight.w600, height: 1.15, letterSpacing: -0.6, color: ink);
   static TextStyle get hero => TextStyle(fontFamily: display, fontSize: 30, fontWeight: FontWeight.w600, height: 1.12, letterSpacing: -0.8, color: ink);
   static TextStyle get lede => TextStyle(fontFamily: body, fontSize: 15, height: 1.55, color: ink2);
@@ -97,6 +97,16 @@ abstract final class LT {
   static TextStyle get small => TextStyle(fontFamily: body, fontSize: 14, height: 1.5, color: ink2);
   static TextStyle get meta => TextStyle(fontFamily: body, fontSize: 12.5, height: 1.4, color: ink3);
   static TextStyle get data => TextStyle(fontFamily: mono, fontSize: 14.5, fontWeight: FontWeight.w600, color: ink, fontFeatures: [FontFeature.tabularFigures()]);
+
+  /// The colour wash behind every page: soft, warm blobs that are never a
+  /// health colour (no red, no green) and never lime.
+  static List<(Alignment, double, Color)> get washes => dark
+      ? [(Alignment(-1.1, -0.9), 1.1, Color(0xFF243848)), (Alignment(1.2, -0.2), 1.0, Color(0xFF382A44)), (Alignment(-0.4, 1.1), 1.2, Color(0xFF42321F))]
+      : [(Alignment(-1.1, -0.9), 1.1, Color(0xFFBFD4EC)), (Alignment(1.2, -0.2), 1.0, Color(0xFFDCCBEE)), (Alignment(-0.4, 1.1), 1.2, Color(0xFFF4D2B8))];
+
+  /// What a glass card can have behind it at worst, for contrast: the
+  /// darkest wash in light mode (dark text), the lightest in dark mode.
+  static Color get washExtreme => _p(0xFFC8D7E8, 0xFF2E3A46);
 
   static ThemeData theme() {
     final none = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(radius)), borderSide: BorderSide(color: raised));
@@ -113,9 +123,16 @@ abstract final class LT {
     return ThemeData(
       useMaterial3: true,
       brightness: dark ? Brightness.dark : Brightness.light,
-      scaffoldBackgroundColor: ground,
+      // Pages paint their own colour wash (see Backdrop), so scaffolds are clear.
+      scaffoldBackgroundColor: Colors.transparent,
       fontFamily: body,
-      splashFactory: NoSplash.splashFactory,
+      // A soft material ripple under the finger.
+      splashFactory: InkRipple.splashFactory,
+      splashColor: (dark ? Colors.white : Colors.black).withValues(alpha: 0.06),
+      highlightColor: Colors.transparent,
+      pageTransitionsTheme: PageTransitionsTheme(builders: {
+        for (final p in TargetPlatform.values) p: const BackdropTransitions(),
+      }),
       colorScheme: scheme,
       dividerColor: rule,
       appBarTheme: AppBarTheme(
@@ -167,4 +184,47 @@ abstract final class LT {
       ),
     );
   }
+}
+
+/// The page background: the ground colour with the soft colour wash.
+class Backdrop extends StatelessWidget {
+  const Backdrop({super.key, required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+        color: LT.ground,
+        child: Stack(fit: StackFit.passthrough, children: [
+          Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _WashPainter(LT.washes)))),
+          child,
+        ]),
+      );
+}
+
+class _WashPainter extends CustomPainter {
+  _WashPainter(this.washes);
+  final List<(Alignment, double, Color)> washes;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = size.shortestSide;
+    for (final (at, scale, c) in washes) {
+      final centre = at.alongSize(size);
+      canvas.drawCircle(
+        centre,
+        r * scale,
+        Paint()..shader = RadialGradient(colors: [c.withValues(alpha: 0.85), c.withValues(alpha: 0)]).createShader(Rect.fromCircle(center: centre, radius: r * scale)),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_WashPainter old) => old.washes.first.$3 != washes.first.$3;
+}
+
+/// The usual page transition, with every page painted on the [Backdrop].
+class BackdropTransitions extends PageTransitionsBuilder {
+  const BackdropTransitions();
+  static const _inner = ZoomPageTransitionsBuilder();
+  @override
+  Widget buildTransitions<T>(PageRoute<T> route, BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) =>
+      _inner.buildTransitions(route, context, animation, secondaryAnimation, Backdrop(child: child));
 }

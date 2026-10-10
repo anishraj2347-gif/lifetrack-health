@@ -6,6 +6,14 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.27.0 (10 Oct 2026)
+- **Liquid glass everywhere**: every screen sits on a soft wash of sky, lilac and peach (never a
+  health colour, never lime). Cards are frosted glass with a bright rim, a sheen across the top
+  and a soft shadow; black cards and buttons have a glossy finish; chips, notes and icon tiles
+  match. Taps show a soft material ripple. Plain cards are see-through rather than live-blurred,
+  so long lists stay smooth; the bars keep the live blur.
+- Section labels are a shade darker so they stay readable over the wash.
+
 ### 1.26.0 (10 Oct 2026)
 - **Glass bars**: the bottom tab bar, the top bar and the header of every inner screen are now
   frosted glass. What scrolls underneath shows through, blurred and tinted, with a thin bright

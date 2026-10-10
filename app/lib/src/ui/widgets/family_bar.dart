@@ -152,7 +152,7 @@ class FamilyBar extends StatelessWidget {
               ),
               SizedBox(height: 4),
               SizedBox(
-                width: 64,
+                width: 76,
                 child: Text(label, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, height: 1.3, color: LT.ink2)),
               ),
             ]),

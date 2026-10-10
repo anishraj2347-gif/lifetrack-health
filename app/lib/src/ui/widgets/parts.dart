@@ -76,7 +76,24 @@ class SlabButton extends StatelessWidget {
       opacity: enabled ? 1 : 0.65, // disabled stays readable (contrast_test)
       child: Pressable(
         enabled: enabled,
-        child: Material(
+        child: DecoratedBox(
+          decoration: ShapeDecoration(
+            shape: StadiumBorder(),
+            shadows: v == ButtonVariant.ghost
+                ? null
+                : [BoxShadow(color: Colors.black.withValues(alpha: v == ButtonVariant.outline ? (LT.dark ? 0.25 : 0.06) : (LT.dark ? 0.35 : 0.22)), blurRadius: 16, offset: Offset(0, 6))],
+          ),
+          position: DecorationPosition.background,
+          child: DecoratedBox(
+          // Gloss: light catching the top half of the pill.
+          position: DecorationPosition.foreground,
+          decoration: v == ButtonVariant.ghost
+              ? BoxDecoration()
+              : ShapeDecoration(
+                  shape: StadiumBorder(side: BorderSide(color: Colors.white.withValues(alpha: v == ButtonVariant.outline ? (LT.dark ? 0.08 : 0.8) : 0.14))),
+                  gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.center, colors: [Colors.white.withValues(alpha: v == ButtonVariant.outline ? 0.25 : 0.16), Colors.white.withValues(alpha: 0)]),
+                ),
+          child: Material(
           color: bg,
           shape: StadiumBorder(side: border == null ? BorderSide.none : BorderSide(color: border)),
           child: InkWell(
@@ -100,6 +117,8 @@ class SlabButton extends StatelessWidget {
             ),
           ),
         ),
+        ),
+        ),
       ),
     );
   }
@@ -117,7 +136,9 @@ class Chip2 extends StatelessWidget {
     final text = label.isEmpty ? label : label[0].toUpperCase() + label.substring(1);
     return Material(
       color: selected ? LT.button : LT.raised,
-      shape: StadiumBorder(),
+      shape: StadiumBorder(side: BorderSide(color: selected ? Colors.white.withValues(alpha: 0.14) : Colors.white.withValues(alpha: LT.dark ? 0.08 : 0.9))),
+      elevation: selected ? 3 : 0,
+      shadowColor: Colors.black.withValues(alpha: 0.3),
       child: InkWell(
         onTap: onTap == null
             ? null
@@ -185,7 +206,59 @@ class ShadCard extends StatelessWidget {
         ),
       );
 
-  Widget _card() => Material(
+  Widget _card() => _color == null ? _glassCard() : _solidCard();
+
+  /// The everyday card: frosted, see-through to the colour wash, bright rim,
+  /// a sheen across the top and a soft shadow.
+  Widget _glassCard() {
+    final tone = Color.alphaBlend(LT.surface.withValues(alpha: 0.64), LT.washExtreme);
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(LT.radiusLg),
+      side: BorderSide(color: borderColor ?? Colors.white.withValues(alpha: LT.dark ? 0.09 : 0.75), width: borderColor == null ? 1 : 1.5),
+    );
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        shape: shape,
+        shadows: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.30 : 0.07), blurRadius: 24, offset: Offset(0, 10))],
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [
+          Color.alphaBlend(Colors.white.withValues(alpha: LT.dark ? 0.05 : 0.35), LT.surface.withValues(alpha: 0.64)),
+          LT.surface.withValues(alpha: 0.64),
+          LT.surface.withValues(alpha: 0.72),
+        ], stops: const [0, 0.5, 1]),
+      ),
+      child: GlassTone(
+        tone: tone,
+        child: Material(
+          type: MaterialType.transparency,
+          shape: shape,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: padding,
+              child: LT.surface.computeLuminance() < 0.2
+                  ? OnDark(child: DefaultTextStyle.merge(style: TextStyle(color: LT.onDark), child: IconTheme.merge(data: IconThemeData(color: LT.onDarkMuted), child: child)))
+                  : child,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _solidCard() => DecoratedBox(
+        // Black hero cards get a glossy sheen; pale tinted cards stay flat.
+        position: DecorationPosition.foreground,
+        decoration: color.computeLuminance() < 0.2
+            ? ShapeDecoration(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(LT.radiusLg), side: BorderSide(color: Colors.white.withValues(alpha: 0.10))),
+                gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.center, colors: [Colors.white.withValues(alpha: 0.10), Colors.white.withValues(alpha: 0)]),
+              )
+            : BoxDecoration(),
+        child: _solidMaterial(),
+      );
+
+  Widget _solidMaterial() => Material(
           color: color,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(LT.radiusLg), side: borderColor == null ? BorderSide.none : BorderSide(color: borderColor!)),
           clipBehavior: Clip.antiAlias,
@@ -274,12 +347,19 @@ class Note extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         margin: margin,
         padding: EdgeInsets.all(14),
-        decoration: BoxDecoration(color: LT.raised, borderRadius: BorderRadius.circular(LT.radius)),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        decoration: BoxDecoration(
+          color: LT.raised.withValues(alpha: 0.62),
+          borderRadius: BorderRadius.circular(LT.radius),
+          border: Border.all(color: Colors.white.withValues(alpha: LT.dark ? 0.07 : 0.7)),
+        ),
+        child: GlassTone(
+          tone: Color.alphaBlend(LT.raised.withValues(alpha: 0.62), LT.washExtreme),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(icon, size: 16, color: LT.ink2),
           SizedBox(width: 10),
           Expanded(child: Text(text, style: LT.small.copyWith(color: LT.ink2))),
         ]),
+        ),
       );
 }
 
@@ -371,7 +451,14 @@ class IconTile extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         width: 42,
         height: 42,
-        decoration: BoxDecoration(color: background ?? LT.raised, shape: BoxShape.circle),
+        decoration: background != null && background != LT.raised
+            ? BoxDecoration(color: background, shape: BoxShape.circle)
+            : BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [LT.raised, Color.alphaBlend(LT.ink.withValues(alpha: 0.06), LT.raised)]),
+                border: Border.all(color: Colors.white.withValues(alpha: LT.dark ? 0.08 : 0.9)),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.25 : 0.06), blurRadius: 8, offset: Offset(0, 3))],
+              ),
         child: Icon(icon, size: 19, color: color ?? (background == LT.accent ? LT.onAccent : LT.ink)),
       );
 }
