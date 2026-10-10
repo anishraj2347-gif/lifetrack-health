@@ -119,7 +119,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
         SizedBox(height: 18),
-        SlabButton('Get started', icon: LucideIcons.arrowRight, onPressed: () => setState(() => _welcome = false)),
+        SlabButton('Get started', icon: LucideIcons.arrowRight, iconAfter: true, onPressed: () => setState(() => _welcome = false)),
         if (AppScope.of(context).backupEnabled) ...[SizedBox(height: 10), _restoreButton()],
         SizedBox(height: 6),
         _sampleButton(),

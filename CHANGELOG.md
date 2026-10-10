@@ -6,6 +6,14 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.36.0 (10 Oct 2026)
+- **Sample page to scan** (demonstration builds only): "Try it with a sample page" on the
+  scan screen adds a printed-looking lab page stamped SAMPLE, so reading and checking a report can
+  be shown without paper or a camera.
+- **Add a record, dark mode**: "Photograph it" is now a near-white card, like the main button, so
+  it stands apart from "Type it in" (before, both were dark).
+- **Welcome**: the arrow on "Get started" follows the words instead of leading them.
+
 ### 1.35.0 (10 Oct 2026)
 - **Touch effect**: buttons, cards, chips, the round buttons, the person pill and the tab bar now
   answer a finger at once — they sink slightly and a soft light blooms where you touch, like a

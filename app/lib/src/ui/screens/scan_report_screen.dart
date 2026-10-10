@@ -9,6 +9,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../ai/plane_a/reference_ranges.dart' show analyteNames;
 import '../../ai/plane_b/capture.dart';
+import '../../app/app_services.dart' show AppServices;
+import '../../app/demo_report_images.dart';
 import '../../capture/incoming_files.dart';
 import '../../model/health_record.dart';
 import '../../security/plain_leftovers.dart';
@@ -169,6 +171,22 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
       }
     }
     if (mounted) setState(() {});
+  }
+
+  void _samplePage() {
+    final s = AppScope.of(context);
+    setState(() => _pages.add(DemoReportImages.render(
+          lab: 'Sample Diagnostics',
+          title: 'Lipid panel',
+          patient: s.currentPatient?.name ?? 'Sample patient',
+          date: AppServices.fullDateOf(s.clock()),
+          rows: const [
+            ('TOTAL CHOLESTEROL', '186', 'mg/dL', '< 200'),
+            ('LDL CHOLESTEROL', '112', 'mg/dL', '< 100'),
+            ('HDL CHOLESTEROL', '52', 'mg/dL', '> 40'),
+            ('TRIGLYCERIDES', '121', 'mg/dL', '< 150'),
+          ],
+        )));
   }
 
   /// A PDF the lab sent: each page becomes an image, then goes through the
@@ -426,6 +444,14 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
                   ]),
               ],
             ),
+          ),
+        // Demonstration builds: a printed-looking sample page (stamped
+        // SAMPLE), so the whole read-and-check path can be shown without a
+        // paper report or a camera.
+        if (_pages.isEmpty && AppScope.of(context).demoTools)
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: SlabButton('Try it with a sample page', icon: LucideIcons.fileText, variant: ButtonVariant.ghost, onPressed: _samplePage),
           ),
         Padding(
           padding: EdgeInsets.fromLTRB(16, 20, 16, 28),

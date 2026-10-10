@@ -148,7 +148,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
           padding: EdgeInsets.fromLTRB(16, 0, 16, 0),
           child: IntrinsicHeight(
             child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Expanded(child: _option(LucideIcons.camera, 'Photograph it', 'LifeTrack reads the page on this phone; you check it', _photograph, dark: true)),
+              Expanded(child: _option(LucideIcons.camera, 'Photograph it', 'LifeTrack reads the page on this phone; you check it', _photograph, primary: true)),
               SizedBox(width: 10),
               Expanded(child: _option(LucideIcons.keyboard, 'Type it in', 'Fill in the details yourself', () => setState(() => _typing = true))),
             ]),
@@ -157,19 +157,25 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
         Note('Paper reports: lay the page flat in good light. A PDF from the lab can be added from your files.', icon: LucideIcons.lightbulb, margin: EdgeInsets.fromLTRB(16, 14, 16, 28)),
       ]);
 
-  Widget _option(IconData icon, String title, String body, VoidCallback onTap, {bool dark = false}) => ShadCard(
-        margin: EdgeInsets.zero,
-        color: dark ? LT.primary : null,
-        padding: EdgeInsets.fromLTRB(16, 18, 16, 18),
-        onTap: onTap,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          dark ? IconTile(icon, color: LT.onDark, background: LT.onDarkChip) : IconTile(icon),
-          SizedBox(height: 18),
-          Text(title, style: TextStyle(fontFamily: LT.display, fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.2, color: dark ? LT.onDark : LT.ink)),
-          SizedBox(height: 4),
-          Text(body, style: TextStyle(fontSize: 13, height: 1.4, color: dark ? LT.onDarkMuted : LT.ink2)),
-        ]),
-      );
+  /// [primary]: the suggested way, drawn like the primary button — black
+  /// in light mode, near-white in dark mode, so it stands out in both.
+  Widget _option(IconData icon, String title, String body, VoidCallback onTap, {bool primary = false}) {
+    final fg = !primary ? LT.ink : LT.dark ? LT.onButton : LT.onDark;
+    final muted = !primary ? LT.ink2 : LT.dark ? Color(0xFF4A4A45) : LT.onDarkMuted;
+    return ShadCard(
+      margin: EdgeInsets.zero,
+      color: primary ? (LT.dark ? LT.button : LT.primary) : null,
+      padding: EdgeInsets.fromLTRB(16, 18, 16, 18),
+      onTap: onTap,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        primary ? IconTile(icon, color: fg, background: LT.dark ? Colors.black.withValues(alpha: 0.08) : LT.onDarkChip) : IconTile(icon),
+        SizedBox(height: 18),
+        Text(title, style: TextStyle(fontFamily: LT.display, fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.2, color: fg)),
+        SizedBox(height: 4),
+        Text(body, style: TextStyle(fontSize: 13, height: 1.4, color: muted)),
+      ]),
+    );
+  }
 
   Widget _form() => ListView(key: ValueKey('form'), children: [
           Masthead(eyebrow: widget.editing == null ? 'Add a record' : 'Edit record', title: widget.editing == null ? 'Type it in' : 'Correct it'),

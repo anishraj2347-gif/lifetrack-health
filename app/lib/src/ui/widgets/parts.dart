@@ -58,13 +58,16 @@ enum ButtonVariant { primary, outline, destructive, ghost }
 /// shadcn Button. `outline: true` and `color` are kept for call sites that
 /// predate [variant].
 class SlabButton extends StatelessWidget {
-  const SlabButton(this.label, {super.key, required this.onPressed, this.outline = false, this.color, this.icon, this.variant});
+  const SlabButton(this.label, {super.key, required this.onPressed, this.outline = false, this.color, this.icon, this.variant, this.iconAfter = false});
   final String label;
   final VoidCallback? onPressed;
   final bool outline;
   final Color? color;
   final IconData? icon;
   final ButtonVariant? variant;
+
+  /// The icon follows the label — for a forward arrow ("Get started →").
+  final bool iconAfter;
 
   @override
   Widget build(BuildContext context) {
@@ -119,10 +122,11 @@ class SlabButton extends StatelessWidget {
               constraints: BoxConstraints(minHeight: 52),
               padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                if (icon != null) ...[Icon(icon, size: 18, color: fg), SizedBox(width: 8)],
+                if (icon != null && !iconAfter) ...[Icon(icon, size: 18, color: fg), SizedBox(width: 8)],
                 Flexible(
                   child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.body, fontSize: 15, fontWeight: FontWeight.w600, color: fg)),
                 ),
+                if (icon != null && iconAfter) ...[SizedBox(width: 8), Icon(icon, size: 18, color: fg)],
               ]),
             ),
           ),
