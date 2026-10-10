@@ -92,6 +92,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   /// Real builds: the profile comes from DigiLocker (Aadhaar), not a form.
   Widget _verifiedStart() => ListView(
         children: [
+          PhotoBanner(Photos.family, height: 200),
           _intro('Verify who you are', 'Your profile is made from DigiLocker with your Aadhaar: your name, date of birth and gender, exactly as confirmed. LifeTrack keeps no Aadhaar number.'),
           DigiLockerStep(purpose: 'self', buttonLabel: 'Verify with DigiLocker (Aadhaar)', onVerified: (v) => setState(() => _verified = v)),
           if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 10, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
@@ -120,6 +121,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final ready = _name.text.trim().isNotEmpty && _dob != null;
     return ListView(
       children: [
+        PhotoBanner(Photos.family, height: 200),
         _intro('Who are these records for?', 'This profile lives on this phone. Other family members create their own.'),
         LabeledField(
           label: 'Full name',

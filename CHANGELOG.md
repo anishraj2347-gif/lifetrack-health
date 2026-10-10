@@ -6,6 +6,15 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.22.0 (10 Oct 2026)
+- **Photos**: six warm, natural photos, bundled in the app (about 800 KB, no internet): a family
+  on the first screen, a report on the table when Records is empty, a doctor looking at a
+  patient's phone on Share (until someone has access), a pill organiser when there is nothing
+  to take today, a couple reading a report on Insights before it is turned on, and a father
+  with his daughter on Add family. They drift in gently, are skipped by screen readers, dim
+  slightly in dark mode, and never have text laid over them. The photos are AI-generated (Canva);
+  they are not real patients.
+
 ### 1.21.0 (10 Oct 2026)
 - **Swipe to tick**: on Reminders, swipe a medicine or reminder sideways to mark it taken (swipe
   again to undo). Ticked items fade and are struck through. The checkbox still works.

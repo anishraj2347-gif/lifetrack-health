@@ -64,6 +64,7 @@ class ShareScreen extends StatelessWidget {
         trailing: Badge2(grants.isEmpty ? 'No access' : '${grants.length} active', tone: grants.isEmpty ? BadgeTone.outline : BadgeTone.trace),
       ),
       ViewingPill(),
+      if (grants.isEmpty) PhotoBanner(Photos.doctor, height: 150),
       SizedBox(height: 12),
       ShadCard(
         color: LT.primary,

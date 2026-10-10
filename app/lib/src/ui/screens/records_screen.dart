@@ -100,11 +100,11 @@ class _RecordsScreenState extends State<RecordsScreen> {
         child: shown.isEmpty
             ? ListView(children: [
                 if (all.isEmpty) VitalsCard(),
+                if (all.isEmpty) PhotoBanner(Photos.report, height: 170),
                 Padding(
-                  padding: EdgeInsets.all(32),
+                  padding: EdgeInsets.fromLTRB(32, all.isEmpty ? 18 : 32, 32, 32),
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    IconTile(LucideIcons.fileText, color: LT.ink3),
-                    SizedBox(height: 14),
+                    if (all.isNotEmpty) ...[IconTile(LucideIcons.fileText, color: LT.ink3), SizedBox(height: 14)],
                     Text(all.isEmpty ? 'No records yet' : 'Nothing matches', style: LT.label),
                     SizedBox(height: 4),
                     Text(all.isEmpty ? 'Add your first prescription or report.' : 'Try another search or filter.', style: LT.small, textAlign: TextAlign.center),

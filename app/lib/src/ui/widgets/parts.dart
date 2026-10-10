@@ -450,3 +450,60 @@ class SwipeToggle extends StatelessWidget {
     );
   }
 }
+
+/// The photos bundled with the app (assets/photos). Shipped inside the APK,
+/// never fetched: the release build has no INTERNET permission.
+abstract final class Photos {
+  static const family = 'assets/photos/family.jpg';
+  static const report = 'assets/photos/report.jpg';
+  static const doctor = 'assets/photos/doctor.jpg';
+  static const pills = 'assets/photos/pills.jpg';
+  static const reading = 'assets/photos/reading.jpg';
+  static const parent = 'assets/photos/parent.jpg';
+}
+
+/// A rounded photo that drifts in slowly as it appears. Decorative: screen
+/// readers skip it, and no text is ever laid over it (contrast_test reads
+/// text against solid colour only). A little dimmer in dark mode.
+class PhotoBanner extends StatelessWidget {
+  const PhotoBanner(this.asset, {super.key, this.height = 180, this.margin = const EdgeInsets.fromLTRB(16, 12, 16, 4)});
+  final String asset;
+  final double height;
+  final EdgeInsets margin;
+
+  @override
+  Widget build(BuildContext context) {
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2;
+    final width = MediaQuery.sizeOf(context).width;
+    final image = Image.asset(
+      asset,
+      fit: BoxFit.cover,
+      excludeFromSemantics: true,
+      cacheWidth: (width * dpr).round().clamp(320, 1080),
+      color: LT.dark ? Colors.black.withValues(alpha: 0.18) : null,
+      colorBlendMode: LT.dark ? BlendMode.darken : null,
+    );
+    return Padding(
+      padding: margin,
+      child: Appear(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(LT.radiusLg),
+          child: SizedBox(
+            height: height,
+            width: double.infinity,
+            child: still
+                ? image
+                : TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 1.08, end: 1),
+                    duration: Duration(milliseconds: 1400),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, s, child) => Transform.scale(scale: s, child: child),
+                    child: image,
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}

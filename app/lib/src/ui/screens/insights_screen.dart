@@ -108,6 +108,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
   Widget _off(BuildContext context) => ListView(children: [
         Masthead(eyebrow: 'Insights', title: 'Compare with published ranges'),
         ViewingPill(),
+        PhotoBanner(Photos.reading, height: 170),
         SizedBox(height: 8),
         for (final (icon, title, body) in const [
           (LucideIcons.chartColumn, 'Out-of-range values', 'Each report value compared with a published reference range for your age and sex.'),

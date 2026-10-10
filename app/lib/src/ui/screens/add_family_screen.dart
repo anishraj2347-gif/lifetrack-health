@@ -111,6 +111,7 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
 
   Widget _choose() => ListView(children: [
         Masthead(eyebrow: 'Family', title: 'Who are you adding?', description: 'Their records will be kept on this phone, encrypted like yours.'),
+        PhotoBanner(Photos.parent, height: 170),
         SizedBox(height: 12),
         _option(LucideIcons.baby, 'A child under 18', 'You are their parent. You add their records and can show them to a doctor.', () => setState(() => _who = _Who.child)),
         _option(LucideIcons.handHeart, 'An adult who wants me to manage', 'For example a parent without a smartphone. They agree in person, and can stop it at any time.',

@@ -284,6 +284,7 @@ class RemindersTab extends StatelessWidget {
               ]),
             ),
           if (child) VaccinationsCard(),
+          if (doses.isEmpty && today.isEmpty && !child) PhotoBanner(Photos.pills, height: 160),
           if (doses.isEmpty && today.isEmpty && !child)
             Note(
               'Nothing for today. Medicines with a dose in Records show here, and so do reminders you make below.',
