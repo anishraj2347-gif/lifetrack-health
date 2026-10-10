@@ -65,61 +65,30 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
       body: c == null
           ? Center(child: CircularProgressIndicator())
           : ListView(children: [
-              Masthead(eyebrow: 'Emergency ID', title: (widget.fromLockScreen ? s.selfPatient : s.currentPatient)?.name ?? '', trailing: Icon(LucideIcons.ambulance, color: LT.ink)),
+              Masthead(eyebrow: 'Emergency ID', title: who?.name ?? '', description: c.isEmpty ? null : 'For whoever treats you. Tap the card for its QR code.'),
               SizedBox(height: 14),
-              if (c.isEmpty) Note('This card is empty. Anyone treating you would see nothing here.', margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
-              if (c.allergies.isNotEmpty && c.allergies != noKnownAllergies)
-                ShadCard(
-                  color: LT.signalFill,
-                  borderColor: LT.signalFill,
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Icon(LucideIcons.triangleAlert, color: Colors.white, size: 20),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Allergies', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xE6FFFFFF))),
-                        SizedBox(height: 4),
-                        Text(c.allergies, style: TextStyle(fontFamily: LT.body, fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
-                      ]),
-                    ),
-                  ]),
-                ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 14),
+                child: _IdCard(name: who?.name ?? '', card: c, lifeTrackId: ltId, abhaMasked: abha?.masked, qrText: qrText),
+              ),
+              if (c.isEmpty) ...[
+                Note('This card is empty. Anyone treating you would see nothing here.', margin: EdgeInsets.fromLTRB(16, 0, 16, 12)),
+                if (!widget.fromLockScreen)
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(16, 4, 16, 14),
+                    child: SlabButton('Fill in your Emergency ID', icon: LucideIcons.pencil, onPressed: () => _edit(c)),
+                  ),
+              ],
               ShadCard(
                 padding: EdgeInsets.zero,
                 child: Column(children: [
-                  if (c.allergies == noKnownAllergies) _field(LucideIcons.shieldCheck, 'Allergies', noKnownAllergies),
-                  _field(LucideIcons.droplet, 'Blood type', c.bloodType),
+                  // Blood type, allergies and ABHA are on the card above.
                   _field(LucideIcons.activity, 'Ongoing conditions', c.conditions),
                   _field(LucideIcons.pill, 'Current medicines', c.medications),
-                  _field(LucideIcons.phone, 'Emergency contact', [c.contactName, c.contactRelation, c.contactPhone].where((x) => x.isNotEmpty).join(' · '), last: abha == null && c.contactPhone.isEmpty),
-                  if (c.contactPhone.isNotEmpty) _callButton(c, last: abha == null),
-                  if (abha != null) _field(LucideIcons.idCard, 'ABHA (last four digits)', abha.masked, last: true),
+                  _field(LucideIcons.phone, 'Emergency contact', [c.contactName, c.contactRelation, c.contactPhone].where((x) => x.isNotEmpty).join(' · '), last: c.contactPhone.isEmpty),
+                  if (c.contactPhone.isNotEmpty) _callButton(c, last: true),
                 ]),
               ),
-              if (ltId != null)
-                ShadCard(
-                  child: Row(children: [
-                    Icon(LucideIcons.fingerprint, size: 17, color: LT.ink3),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('LifeTrack ID', style: LT.small),
-                        SizedBox(height: 2),
-                        Text(LifeTrackId.display(ltId), style: LT.label.copyWith(fontSize: 18, letterSpacing: 1)),
-                      ]),
-                    ),
-                  ]),
-                ),
-              if (!c.isEmpty)
-                ShadCard(
-                  child: Column(children: [
-                    Text('Scan for these details', style: LT.label),
-                    SizedBox(height: 10),
-                    QrImageView(data: qrText, size: 220, backgroundColor: Colors.white),
-                    SizedBox(height: 8),
-                    Text('Any phone camera can read it — no app or internet needed.', textAlign: TextAlign.center, style: LT.small),
-                  ]),
-                ),
               if (!widget.fromLockScreen && !c.isEmpty)
                 Note(
                   'A locked phone hides this card, because LifeTrack only opens once the phone is unlocked. '
@@ -133,25 +102,29 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                   padding: EdgeInsets.fromLTRB(16, 6, 16, 0),
                   child: SlabButton('Save wallet card', icon: LucideIcons.wallet, variant: ButtonVariant.outline, onPressed: () => _saveWalletCard(qrText, who!.name)),
                 ),
-              if (!widget.fromLockScreen)
-              Padding(
-                padding: EdgeInsets.fromLTRB(16, 12, 16, 28),
-                child: SlabButton('Edit card', icon: LucideIcons.pencil, variant: ButtonVariant.outline, onPressed: () async {
-                  await Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => Scaffold(
-                      appBar: GlassAppBar(),
-                      body: EmergencyEditor(
-                        patientId: s.currentPatientId!,
-                        initial: c,
-                        onSaved: () => Navigator.of(context).pop(),
-                      ),
-                    ),
-                  ));
-                  _load();
-                }),
-              ),
+              if (!widget.fromLockScreen && !c.isEmpty)
+                Padding(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, 28),
+                  child: SlabButton('Edit card', icon: LucideIcons.pencil, variant: ButtonVariant.outline, onPressed: () => _edit(c)),
+                ),
+              if (widget.fromLockScreen || c.isEmpty) SizedBox(height: 28),
             ]),
     );
+  }
+
+  Future<void> _edit(EmergencyCard c) async {
+    final s = AppScope.of(context);
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => Scaffold(
+        appBar: GlassAppBar(),
+        body: EmergencyEditor(
+          patientId: s.currentPatientId!,
+          initial: c,
+          onSaved: () => Navigator.of(context).pop(),
+        ),
+      ),
+    ));
+    _load();
   }
 
   /// The QR as an image to print and keep in a wallet. It carries the card
@@ -205,6 +178,157 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                   ? Text('Not filled in', style: LT.label.copyWith(fontSize: 16, fontStyle: FontStyle.italic, color: LT.ink3))
                   : Text(value, style: LT.label.copyWith(fontSize: 16)),
             ]),
+          ),
+        ]),
+      );
+}
+
+/// The Emergency ID as a card in the hand: black, credit-card shaped, the
+/// few things a stranger needs at a glance. Tap and it turns over (450 ms)
+/// to a white side with the QR code — plain text any phone camera reads.
+/// Grows taller rather than clipping when the phone's text is large.
+class _IdCard extends StatefulWidget {
+  const _IdCard({required this.name, required this.card, required this.lifeTrackId, required this.abhaMasked, required this.qrText});
+  final String name;
+  final EmergencyCard card;
+  final String? lifeTrackId;
+  final String? abhaMasked;
+  final String qrText;
+  @override
+  State<_IdCard> createState() => _IdCardState();
+}
+
+class _IdCardState extends State<_IdCard> {
+  bool _back = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final canFlip = !widget.card.isEmpty;
+    return Semantics(
+      button: canFlip,
+      label: canFlip ? (_back ? 'Emergency QR code. Tap to show the card.' : 'Tap to show the QR code') : null,
+      child: GestureDetector(
+        onTap: canFlip ? () => setState(() => _back = !_back) : null,
+        child: LayoutBuilder(builder: (context, box) {
+          final minH = box.maxWidth / 1.586;
+          return TweenAnimationBuilder<double>(
+            tween: Tween(end: _back ? 1 : 0),
+            duration: Duration(milliseconds: still ? 0 : 450),
+            curve: Curves.easeInOutCubic,
+            builder: (context, t, _) {
+              final showBack = t >= 0.5;
+              final angle = t * 3.14159265;
+              return Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.0012)
+                  ..rotateY(showBack ? angle - 3.14159265 : angle),
+                child: Stack(children: [
+                  Visibility(visible: !showBack, maintainSize: true, maintainAnimation: true, maintainState: true, child: _front(minH)),
+                  if (showBack) Positioned.fill(child: _backFace()),
+                ]),
+              );
+            },
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _front(double minH) {
+    final c = widget.card;
+    String orDash(String v) => v.trim().isEmpty ? 'Not filled in' : v;
+    final muted = TextStyle(fontSize: 12, color: LT.onDarkMuted, letterSpacing: 0.2);
+    return Container(
+      constraints: BoxConstraints(minHeight: minH),
+      decoration: ShapeDecoration(
+        color: LT.primary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(LT.radiusLg), side: BorderSide(color: Colors.white.withValues(alpha: 0.10))),
+        shadows: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.45 : 0.25), blurRadius: 28, offset: Offset(0, 12))],
+      ),
+      foregroundDecoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(LT.radiusLg)),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.center, colors: [Colors.white.withValues(alpha: 0.12), Colors.white.withValues(alpha: 0)]),
+      ),
+      padding: EdgeInsets.fromLTRB(20, 18, 20, 18),
+      child: OnDark(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Row(children: [
+            Icon(LucideIcons.ambulance, size: 18, color: LT.onDark),
+            SizedBox(width: 8),
+            Expanded(child: Text('EMERGENCY ID', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.6, color: LT.onDark))),
+            if (!c.isEmpty) Icon(LucideIcons.qrCode, size: 18, color: LT.onDarkMuted),
+          ]),
+          SizedBox(height: 18),
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Name', style: muted),
+                Text(widget.name, style: TextStyle(fontFamily: LT.display, fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: -0.3, color: LT.onDark)),
+              ]),
+            ),
+            SizedBox(width: 12),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text('Blood type', style: muted),
+              Text(c.bloodType.isEmpty ? '—' : c.bloodType, style: TextStyle(fontFamily: LT.display, fontSize: 34, fontWeight: FontWeight.w700, height: 1.1, letterSpacing: -0.5, color: LT.onDark)),
+            ]),
+          ]),
+          SizedBox(height: 12),
+          Text('Allergies', style: muted),
+          SizedBox(height: 2),
+          // Real allergies stand out in the signal colour (its one other
+          // meaning in the app); blank is "not filled in", never "none".
+          if (c.allergies.isNotEmpty && c.allergies != noKnownAllergies)
+            Container(
+              padding: EdgeInsets.fromLTRB(10, 6, 12, 6),
+              decoration: BoxDecoration(color: LT.signalFill, borderRadius: BorderRadius.circular(10)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(LucideIcons.triangleAlert, size: 16, color: Colors.white),
+                SizedBox(width: 8),
+                Flexible(child: Text(c.allergies, maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white))),
+              ]),
+            )
+          else
+            Text(orDash(c.allergies), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: c.allergies.isEmpty ? FontWeight.w400 : FontWeight.w600, fontStyle: c.allergies.isEmpty ? FontStyle.italic : null, color: LT.onDark)),
+          SizedBox(height: 14),
+          Wrap(spacing: 18, runSpacing: 6, children: [
+            if (widget.lifeTrackId case final id?)
+              Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                Text('LifeTrack ID', style: muted),
+                Text(LifeTrackId.display(id), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 1.2, color: LT.onDark, fontFeatures: [FontFeature.tabularFigures()])),
+              ]),
+            if (widget.abhaMasked case final a?)
+              Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                Text('ABHA', style: muted),
+                Text(a, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 1.2, color: LT.onDark)),
+              ]),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  /// QR codes are always black on white.
+  Widget _backFace() => Container(
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(LT.radiusLg)),
+          shadows: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.45 : 0.20), blurRadius: 28, offset: Offset(0, 12))],
+        ),
+        padding: EdgeInsets.all(14),
+        child: Row(children: [
+          AspectRatio(aspectRatio: 1, child: QrImageView(data: widget.qrText, padding: EdgeInsets.zero, backgroundColor: Colors.white)),
+          SizedBox(width: 14),
+          Expanded(
+            child: Container(
+              color: Colors.white,
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Scan for these details', style: TextStyle(fontFamily: LT.body, fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF0E0E0E))),
+                SizedBox(height: 6),
+                Flexible(child: Text('Any phone camera — no app or internet needed. Tap to turn back.', overflow: TextOverflow.fade, style: TextStyle(fontFamily: LT.body, fontSize: 13, height: 1.4, color: Color(0xFF45443F)))),
+              ]),
+            ),
           ),
         ]),
       );

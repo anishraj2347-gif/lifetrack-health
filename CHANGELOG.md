@@ -6,6 +6,25 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.34.0 (10 Oct 2026)
+- **Welcome screen**: a new first screen before any form — the LifeTrack mark, the name, one line
+  ("Your family's health records, on your phone"), three glass cards saying what it does, then
+  Get started, restore, or look around with sample records.
+- **Setup steps**: the progress bar is at the very top, above the photo; done steps are black and
+  the step you are on is lime. A greyed-out Continue now says why ("Enter a name and date of
+  birth to continue").
+- **Add a record**: opens on a choice — "Photograph it" (black) or "Type it in" (glass), side by
+  side under a photo. The form appears only after "Type it in".
+- **Emergency ID**: now a black card shaped like a bank card — name, big blood type, allergies in
+  an orange alert, LifeTrack ID and masked ABHA. Tap it and it turns over to a white side with
+  the QR code. An empty card shows a big "Fill in your Emergency ID" button. Blood type, allergies
+  and ABHA are no longer repeated in the list below.
+- **Doctor's code scanner**: a proper viewfinder — the picture dimmed around a square window,
+  white corner brackets, a light line sweeping down, and "Point at the code on the doctor's
+  screen".
+- **Reading a report**: instead of a spinner, the page itself with a light sweeping down it and
+  "Reading page 1 of 2 on this phone".
+
 ### 1.33.0 (10 Oct 2026)
 - **Me**: a title like the other tabs ("Profile and settings"), then your own black card — lime
   avatar, name, verified or not, and your LifeTrack ID on a chip you tap to copy.

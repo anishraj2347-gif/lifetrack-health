@@ -115,16 +115,21 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
             margin: EdgeInsets.fromLTRB(16, 16, 16, 0),
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(LT.radiusLg), color: LT.primary),
-            child: ReaderWidget(
-              onScan: (code) {
-                final t = code.text;
-                if (t != null && t.isNotEmpty) _verify(t);
-              },
-              showGallery: false,
-              showToggleCamera: false,
-              tryHarder: true,
+            child: Viewfinder(
+              caption: "Point at the code on the doctor's screen",
+              child: ReaderWidget(
+                onScan: (code) {
+                  final t = code.text;
+                  if (t != null && t.isNotEmpty) _verify(t);
+                },
+                showGallery: false,
+                showToggleCamera: false,
+                showScannerOverlay: false,
+                tryHarder: true,
+              ),
             ),
           ),
+        SizedBox(height: 12),
         if (_error != null)
           Padding(padding: EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
         LabeledField(

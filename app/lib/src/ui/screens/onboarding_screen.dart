@@ -22,6 +22,8 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
+  /// The first thing anyone sees: what LifeTrack is, before any form.
+  bool _welcome = true;
   int _step = 0;
   final _name = TextEditingController();
   DateTime? _dob;
@@ -66,6 +68,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) => Scaffold(
         body: SafeArea(
           child: switch (_step) {
+            0 when _welcome => _welcomeStep(),
             0 => _profile(),
             1 => _custody(),
             _ => EmergencyEditor(
@@ -78,11 +81,56 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
       );
 
+  Widget _restoreButton() => SlabButton('I\'ve used LifeTrack before — restore', variant: ButtonVariant.outline, icon: LucideIcons.cloudDownload, onPressed: _busy
+      ? null
+      : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RestoreScreen(onRestored: widget.onDone))));
+
+  Widget _sampleButton() => SlabButton('Look around with sample records', variant: ButtonVariant.ghost, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true));
+
+  /// Mark, name, one line, three things it does, then the way in.
+  Widget _welcomeStep() => ListView(padding: EdgeInsets.fromLTRB(20, 36, 20, 28), children: [
+        Center(child: Appear(child: BrandMark(size: 120))),
+        SizedBox(height: 20),
+        Text('LifeTrack', textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.display, fontSize: 34, fontWeight: FontWeight.w600, letterSpacing: -1, color: LT.ink)),
+        SizedBox(height: 6),
+        Text('Your family\'s health records, on your phone.', textAlign: TextAlign.center, style: LT.lede),
+        SizedBox(height: 28),
+        for (final (i, (icon, title, body)) in const [
+          (LucideIcons.fileText, 'Every report in one place', 'Photograph a paper report; LifeTrack reads it on this phone.'),
+          (LucideIcons.bellRing, 'Never miss a dose', 'Reminders for each medicine, for you and your family.'),
+          (LucideIcons.qrCode, 'Show a doctor in seconds', 'Share what you choose, for as long as you choose.'),
+        ].indexed)
+          Stagger(
+            index: i + 1,
+            child: ShadCard(
+              margin: EdgeInsets.only(bottom: 10),
+              padding: EdgeInsets.fromLTRB(14, 14, 16, 14),
+              child: Row(children: [
+                IconTile(icon),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(title, style: LT.label.copyWith(fontWeight: FontWeight.w600)),
+                    SizedBox(height: 2),
+                    Text(body, style: LT.small),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
+        SizedBox(height: 18),
+        SlabButton('Get started', icon: LucideIcons.arrowRight, onPressed: () => setState(() => _welcome = false)),
+        if (AppScope.of(context).backupEnabled) ...[SizedBox(height: 10), _restoreButton()],
+        SizedBox(height: 6),
+        _sampleButton(),
+      ]);
+
+  /// Progress first, above the picture, so where you are is the first thing read.
+  Widget _progress() => Padding(padding: EdgeInsets.fromLTRB(20, 16, 20, 0), child: StepIndicator(step: _step));
+
   Widget _intro(String title, String body) => Padding(
         padding: EdgeInsets.fromLTRB(20, 20, 20, 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          StepIndicator(step: _step),
-          SizedBox(height: 24),
           Text(title, style: LT.hero),
           SizedBox(height: 8),
           Text(body, style: LT.lede),
@@ -92,6 +140,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   /// Real builds: the profile comes from DigiLocker (Aadhaar), not a form.
   Widget _verifiedStart() => ListView(
         children: [
+          _progress(),
           PhotoBanner(Photos.family, height: 200),
           _intro('Verify who you are', 'Your profile is made from DigiLocker with your Aadhaar: your name, date of birth and gender, exactly as confirmed. LifeTrack keeps no Aadhaar number.'),
           DigiLockerStep(purpose: 'self', buttonLabel: 'Verify with DigiLocker (Aadhaar)', onVerified: (v) => setState(() => _verified = v)),
@@ -102,17 +151,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: SlabButton('Continue', onPressed: _busy ? null : () => _createProfile(demo: false)),
             ),
           Note('Everyone needs Aadhaar to create a profile. A newborn without Aadhaar is added later by a verified parent, from the parent\'s DigiLocker birth certificate.', icon: LucideIcons.info),
-          if (AppScope.of(context).backupEnabled)
-            Padding(
-              padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: SlabButton('I\'ve used LifeTrack before — restore', variant: ButtonVariant.outline, icon: LucideIcons.cloudDownload, onPressed: _busy
-                  ? null
-                  : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RestoreScreen(onRestored: widget.onDone)))),
-            ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(20, 10, 20, 28),
-            child: SlabButton('Look around with sample records', variant: ButtonVariant.ghost, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true)),
-          ),
+          SizedBox(height: 28),
         ],
       );
 
@@ -121,6 +160,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final ready = _name.text.trim().isNotEmpty && _dob != null;
     return ListView(
       children: [
+        _progress(),
         PhotoBanner(Photos.family, height: 200),
         _intro('Who are these records for?', 'This profile lives on this phone. Other family members create their own.'),
         LabeledField(
@@ -161,26 +201,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
         Note('We ask for as little as we can. Nothing here is shared with a doctor until you grant access.', icon: LucideIcons.shieldCheck),
         Padding(
-          padding: EdgeInsets.fromLTRB(20, 24, 20, 10),
+          padding: EdgeInsets.fromLTRB(20, 24, 20, 0),
           child: SlabButton('Continue', onPressed: ready && !_busy ? () => _createProfile(demo: false) : null),
         ),
-        if (AppScope.of(context).backupEnabled)
+        // A grey button alone does not say why; this does.
+        if (!ready)
           Padding(
-            padding: EdgeInsets.fromLTRB(20, 6, 20, 0),
-            child: SlabButton('I\'ve used LifeTrack before — restore', variant: ButtonVariant.outline, icon: LucideIcons.cloudDownload, onPressed: _busy
-                ? null
-                : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RestoreScreen(onRestored: widget.onDone)))),
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 0),
+            child: Text(
+              _name.text.trim().isEmpty && _dob == null ? 'Enter a name and date of birth to continue' : _dob == null ? 'Pick a date of birth to continue' : 'Enter a name to continue',
+              textAlign: TextAlign.center,
+              style: LT.small,
+            ),
           ),
-        Padding(
-          padding: EdgeInsets.fromLTRB(20, 10, 20, 28),
-          child: SlabButton('Look around with sample records', variant: ButtonVariant.ghost, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true)),
-        ),
+        SizedBox(height: 28),
       ],
     );
   }
 
   Widget _custody() => ListView(
         children: [
+          _progress(),
           _intro('Where your records live', 'On this phone, encrypted with a key held in the phone\'s secure hardware.'),
           const _Row(
             icon: LucideIcons.smartphone,
@@ -222,7 +263,8 @@ class StepIndicator extends StatelessWidget {
             Expanded(
               child: Container(
                 height: 4,
-                decoration: BoxDecoration(color: i <= step ? LT.primary : LT.rule, borderRadius: BorderRadius.circular(2)),
+                // Done: black; the step you are on: lime ("now"); ahead: a rule.
+                decoration: BoxDecoration(color: i < step ? LT.button : i == step ? LT.accent : LT.rule, borderRadius: BorderRadius.circular(3), border: i == step ? Border.all(color: LT.ink.withValues(alpha: 0.35), width: 0.8) : null),
               ),
             ),
             if (i < 2) const SizedBox(width: 6),

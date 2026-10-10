@@ -98,6 +98,7 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
   bool _fromPdf = false;
   bool _converting = false;
   String _progress = '';
+  int _readingPage = 0;
 
   CaptureDraft _draft = CaptureDraft.empty;
   bool _readFailed = false;
@@ -202,14 +203,20 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
     final scanner = s.scanner;
     setState(() {
       _step = _Step.reading;
-      _progress = 'Reading page 1 of ${_pages.length}…';
+      _readingPage = 0;
+      _progress = 'Reading page 1 of ${_pages.length} on this phone';
     });
     var draft = CaptureDraft.empty;
     _readFailed = false;
     if (scanner != null) {
       try {
         draft = await scanner.extract(_pages, today: s.clock(), progress: (done, total) {
-          if (mounted && done < total) setState(() => _progress = 'Reading page ${done + 1} of $total…');
+          if (mounted && done < total) {
+            setState(() {
+              _readingPage = done.clamp(0, _pages.length - 1);
+              _progress = 'Reading page ${done + 1} of $total on this phone';
+            });
+          }
         });
       } on Object {
         _readFailed = true;
@@ -430,15 +437,36 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
         ),
       ]);
 
+  /// The page being read, with a line sweeping down it.
   Widget _reading() => Center(
         child: Padding(
           padding: EdgeInsets.all(32),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 20),
-            Text(_progress, style: LT.label),
+            if (_pages.isNotEmpty)
+              Container(
+                width: 180,
+                height: 240,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(LT.radius),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.45 : 0.18), blurRadius: 28, offset: Offset(0, 12))],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Stack(fit: StackFit.expand, children: [
+                  AnimatedSwitcher(
+                    duration: Duration(milliseconds: 300),
+                    child: Image.memory(_pages[_readingPage.clamp(0, _pages.length - 1)], key: ValueKey(_readingPage), fit: BoxFit.cover, cacheWidth: 400, excludeFromSemantics: true),
+                  ),
+                  ColoredBox(color: Colors.black.withValues(alpha: 0.12)),
+                  ScanSweep(),
+                ]),
+              )
+            else
+              CircularProgressIndicator(),
+            SizedBox(height: 24),
+            Text(_progress, style: LT.label, textAlign: TextAlign.center),
             SizedBox(height: 8),
-            Text('Read on this phone. The pages are not sent anywhere to be read.', textAlign: TextAlign.center, style: LT.small),
+            Text('The pages are not sent anywhere to be read.', textAlign: TextAlign.center, style: LT.small),
           ]),
         ),
       );

@@ -120,33 +120,60 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     Navigator.of(context).pop();
   }
 
+  /// A new record starts with the choice; the form opens on "Type it in".
+  late bool _typing = widget.editing != null;
+
+  Future<void> _photograph() async {
+    final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => ScanReportScreen()));
+    if (saved == true && mounted) Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: GlassAppBar(),
         extendBodyBehindAppBar: true,
-        body: ListView(children: [
-          Masthead(eyebrow: widget.editing == null ? 'Add record' : 'Edit record', title: widget.editing == null ? 'Type it in' : 'Correct it'),
-          if (widget.editing == null) ShadCard(
-            margin: EdgeInsets.fromLTRB(16, 16, 16, 4),
-            color: LT.primary,
-            onTap: () async {
-              final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => ScanReportScreen()));
-              if (saved == true && context.mounted) Navigator.of(context).pop();
-            },
-            child: Row(children: [
-              IconTile(LucideIcons.camera, color: LT.onDark, background: LT.onDarkChip),
-              SizedBox(width: 14),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Photograph a paper report', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
-                  SizedBox(height: 4),
-                  Text('Best for lab reports and prescriptions on paper', style: TextStyle(fontSize: 14, color: LT.onDarkMuted)),
-                ]),
-              ),
-              Icon(LucideIcons.chevronRight, color: LT.onDarkMuted),
+        body: AnimatedSwitcher(
+          duration: Duration(milliseconds: 240),
+          switchInCurve: Curves.easeOutCubic,
+          child: _typing ? _form() : _choice(),
+        ),
+      );
+
+  /// Two equal ways in: the camera (black, the one most people want) and
+  /// typing (glass).
+  Widget _choice() => ListView(key: ValueKey('choice'), children: [
+        Masthead(eyebrow: 'Records', title: 'Add a record', description: 'A prescription, a lab report, a scan or a note of your own.'),
+        PhotoBanner(Photos.report, height: 150, margin: EdgeInsets.fromLTRB(16, 16, 16, 12)),
+        Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 0),
+          child: IntrinsicHeight(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Expanded(child: _option(LucideIcons.camera, 'Photograph it', 'LifeTrack reads the page on this phone; you check it', _photograph, dark: true)),
+              SizedBox(width: 10),
+              Expanded(child: _option(LucideIcons.keyboard, 'Type it in', 'Fill in the details yourself', () => setState(() => _typing = true))),
             ]),
           ),
-          if (widget.editing == null) Eyebrow('Or type it in'),
+        ),
+        Note('Paper reports: lay the page flat in good light. A PDF from the lab can be added from your files.', icon: LucideIcons.lightbulb, margin: EdgeInsets.fromLTRB(16, 14, 16, 28)),
+      ]);
+
+  Widget _option(IconData icon, String title, String body, VoidCallback onTap, {bool dark = false}) => ShadCard(
+        margin: EdgeInsets.zero,
+        color: dark ? LT.primary : null,
+        padding: EdgeInsets.fromLTRB(16, 18, 16, 18),
+        onTap: onTap,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          dark ? IconTile(icon, color: LT.onDark, background: LT.onDarkChip) : IconTile(icon),
+          SizedBox(height: 18),
+          Text(title, style: TextStyle(fontFamily: LT.display, fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.2, color: dark ? LT.onDark : LT.ink)),
+          SizedBox(height: 4),
+          Text(body, style: TextStyle(fontSize: 13, height: 1.4, color: dark ? LT.onDarkMuted : LT.ink2)),
+        ]),
+      );
+
+  Widget _form() => ListView(key: ValueKey('form'), children: [
+          Masthead(eyebrow: widget.editing == null ? 'Add a record' : 'Edit record', title: widget.editing == null ? 'Type it in' : 'Correct it'),
+          SizedBox(height: 4),
           Note('Copy values exactly as printed, including the unit. LifeTrack compares only what matches its ranges; anything else is shown as not checked.', icon: LucideIcons.info),
           Padding(
             padding: EdgeInsets.fromLTRB(20, 18, 20, 18),
@@ -227,8 +254,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
           if (_kind == RecordKind.note) Note('Personal notes stay on this phone. They are never included in a backup unless you turn that on.', icon: LucideIcons.smartphone),
           if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 8, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
           Padding(padding: EdgeInsets.fromLTRB(16, 20, 16, 28), child: SlabButton('Save record', icon: LucideIcons.check, onPressed: _save)),
-        ]),
-      );
+        ]);
 }
 
 /// One time of day: its name, then − count +. Big targets, read out as

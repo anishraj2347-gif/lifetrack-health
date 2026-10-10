@@ -25,7 +25,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(LifeTrackApp(boot: boot));
     await tester.pumpAndSettle();
-    expect(find.text('Who are these records for?'), findsOneWidget);
+    expect(find.text('Get started'), findsOneWidget, reason: 'a welcome before any form');
     await tester.scrollUntilVisible(find.text('Look around with sample records'), 200, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Look around with sample records'));

@@ -1106,3 +1106,124 @@ class GlassCheck extends StatelessWidget {
         ),
       );
 }
+
+/// A light line that sweeps down a frame while something is being read —
+/// a camera looking for a code, a page being read. It runs a dozen sweeps
+/// (about 20 s) and then rests, so it never keeps the phone busy forever;
+/// off when the phone asks for less motion.
+class ScanSweep extends StatefulWidget {
+  const ScanSweep({super.key, this.color = Colors.white, this.sweeps = 12});
+  final Color color;
+  final int sweeps;
+  @override
+  State<ScanSweep> createState() => _ScanSweepState();
+}
+
+class _ScanSweepState extends State<ScanSweep> with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(vsync: this, duration: Duration(milliseconds: 1600));
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_started && !(MediaQuery.maybeDisableAnimationsOf(context) ?? false)) {
+      _started = true;
+      _c.repeat(count: widget.sweeps);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (context, _) {
+            if (!_c.isAnimating) return SizedBox.shrink();
+            final t = Curves.easeInOut.transform(_c.value);
+            return Align(
+              alignment: Alignment(0, -1 + 2 * t),
+              child: Container(
+                height: 3,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [widget.color.withValues(alpha: 0), widget.color, widget.color.withValues(alpha: 0)]),
+                  boxShadow: [BoxShadow(color: widget.color.withValues(alpha: 0.6), blurRadius: 12)],
+                ),
+              ),
+            );
+          },
+        ),
+      );
+}
+
+/// A camera viewfinder: the picture dimmed outside a rounded square
+/// window, white corner brackets, a sweeping line and a caption.
+class Viewfinder extends StatelessWidget {
+  const Viewfinder({super.key, required this.child, required this.caption});
+  final Widget child;
+  final String caption;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        final side = (box.maxHeight * 0.6).clamp(120.0, box.maxWidth - 64);
+        final window = Rect.fromCenter(center: Offset(box.maxWidth / 2, box.maxHeight / 2 + 14), width: side, height: side);
+        return Stack(fit: StackFit.expand, children: [
+          child,
+          IgnorePointer(child: CustomPaint(painter: _FinderPainter(window))),
+          Positioned.fromRect(rect: window.deflate(10), child: ClipRect(child: ScanSweep())),
+          Positioned(
+            left: 16,
+            right: 16,
+            top: 12,
+            child: Center(
+              child: GlassTone(
+                // Worst case: a white page fills the camera behind the pill.
+                tone: Color.alphaBlend(Colors.black.withValues(alpha: 0.65), Colors.white),
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  decoration: ShapeDecoration(shape: StadiumBorder(), color: Colors.black.withValues(alpha: 0.65)),
+                  child: Text(caption, textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.body, fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white)),
+                ),
+              ),
+            ),
+          ),
+        ]);
+      });
+}
+
+class _FinderPainter extends CustomPainter {
+  _FinderPainter(this.window);
+  final Rect window;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final hole = RRect.fromRectAndRadius(window, Radius.circular(18));
+    canvas.drawPath(
+      Path.combine(PathOperation.difference, Path()..addRect(Offset.zero & size), Path()..addRRect(hole)),
+      Paint()..color = Colors.black.withValues(alpha: 0.45),
+    );
+    final p = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    const len = 26.0, r = 18.0;
+    final w = window;
+    for (final (corner, dx, dy) in [(w.topLeft, 1.0, 1.0), (w.topRight, -1.0, 1.0), (w.bottomLeft, 1.0, -1.0), (w.bottomRight, -1.0, -1.0)]) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(corner.dx, corner.dy + dy * (r + len))
+          ..lineTo(corner.dx, corner.dy + dy * r)
+          ..arcToPoint(Offset(corner.dx + dx * r, corner.dy), radius: Radius.circular(r), clockwise: dx * dy > 0)
+          ..lineTo(corner.dx + dx * (r + len), corner.dy),
+        p,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_FinderPainter old) => old.window != window;
+}
