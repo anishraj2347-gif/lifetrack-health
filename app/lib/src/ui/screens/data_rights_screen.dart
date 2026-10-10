@@ -154,18 +154,13 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
     final s = AppScope.of(context);
     final p = s.currentPatient!;
     final self = p.id == s.selfPatientId;
-    final sure = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: Text(self ? 'Erase your profile?' : "Erase ${p.name}'s profile?"),
-        content: Text('${self ? 'Your' : "${p.name}'s"} records, notes, permissions and Emergency ID are deleted from this phone${self ? ', and your backup too' : ''}. This cannot be undone.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text('Keep')),
-          TextButton(onPressed: () => Navigator.pop(c, true), child: Text('Erase', style: TextStyle(color: LT.signal))),
-        ],
-      ),
+    final sure = await confirmAction(
+      context,
+      title: self ? 'Erase your profile?' : "Erase ${p.name}'s profile?",
+      body: '${self ? 'Your' : "${p.name}'s"} records, notes, permissions and Emergency ID are deleted from this phone${self ? ', and your backup too' : ''}. This cannot be undone.',
+      confirm: 'Erase',
     );
-    if (sure != true || !mounted) return;
+    if (!sure || !mounted) return;
     final lock = AppLockGate.of(context);
     if (lock != null && !await lock.confirm(self ? 'Confirm it is you to erase your profile' : "Confirm it is you to erase ${p.name}'s profile")) return;
     if (!mounted) return;

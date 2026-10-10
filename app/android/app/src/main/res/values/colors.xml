@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#1A1A18</color>
+    <!-- LT.ground: the page colour, so launch blends into the first frame. -->
+    <color name="splash_background">#E3E3DC</color>
 </resources>

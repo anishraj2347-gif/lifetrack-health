@@ -174,7 +174,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(SlabButton, 'Delete'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(TextButton, 'Delete'));
+    await tester.tap(find.widgetWithText(SlabButton, 'Delete').last);
     await tester.pumpAndSettle();
     expect(s.customRemindersOf(s.selfPatientId!), isEmpty);
     expect(find.text('Create a reminder'), findsOneWidget);

@@ -104,7 +104,7 @@ class MeScreen extends StatelessWidget {
       ShadCard(
         padding: EdgeInsets.zero,
         child: Column(children: [
-          _link(context, LucideIcons.heartPulse, 'Emergency ID', 'For whoever treats you · keep a copy outside the phone too', EmergencyScreen()),
+          _link(context, LucideIcons.ambulance, 'Emergency ID', 'For whoever treats you · keep a copy outside the phone too', EmergencyScreen()),
           _link(context, LucideIcons.idCard, 'ABHA health ID', p.abha == null ? 'Optional · not added' : '${p.abha!.display} · not verified', AbhaScreen()),
           _link(context, LucideIcons.bell, 'Reminders', s.reminderSettings.on ? 'On · ${s.reminderPlan().length} in the next 2 weeks' : 'Off', RemindersScreen()),
           _link(context, LucideIcons.cloudUpload, 'Backup', s.backupAccount == null ? 'Off · records are only on this phone' : s.lastBackupError != null ? 'On · last attempt failed' : 'On · ${s.lastBackupAt == null ? 'not yet run' : 'last ${dateTime(s.lastBackupAt!)}'}', BackupScreen()),
@@ -165,11 +165,11 @@ class MeScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final (v, label) in const [('system', 'Follow phone'), ('light', 'Light'), ('dark', 'Dark')])
-                  Chip2(label, selected: s.themeChoice == v, onTap: () async {
+                  Chip2(label, selected: s.themeChoice == v, onTap: () => crossfadeTheme(context, () async {
                     await s.setThemeChoice(v);
                     appearance.value = themeModeOf(v);
                     if (context.mounted) AppScope.changed(context);
-                  }),
+                  })),
               ]),
             ]),
           ),

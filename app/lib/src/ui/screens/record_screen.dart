@@ -60,20 +60,15 @@ class _RecordScreenState extends State<RecordScreen> {
               await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AddRecordScreen(editing: r)));
               if (context.mounted) AppScope.changed(context);
             } else if (v == 'delete') {
-              final yes = await showDialog<bool>(
-                context: context,
-                builder: (c) => AlertDialog(
-                  title: Text('Delete "${r.title}"?'),
-                  content: Text(r.attachmentId == null
-                      ? 'It is removed from this phone and, at the next backup, from your backup. Anything already shared with a doctor is not recalled by this.'
-                      : 'It and its original pages are removed from this phone and, at the next backup, from your backup. Anything already shared with a doctor is not recalled by this.'),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.of(c).pop(false), child: Text('Keep')),
-                    TextButton(onPressed: () => Navigator.of(c).pop(true), child: Text('Delete')),
-                  ],
-                ),
+              final yes = await confirmAction(
+                context,
+                title: 'Delete "${r.title}"?',
+                body: r.attachmentId == null
+                    ? 'It is removed from this phone and, at the next backup, from your backup. Anything already shared with a doctor is not recalled by this.'
+                    : 'It and its original pages are removed from this phone and, at the next backup, from your backup. Anything already shared with a doctor is not recalled by this.',
+                confirm: 'Delete',
               );
-              if (yes != true || !context.mounted) return;
+              if (!yes || !context.mounted) return;
               await s.deleteRecord(r);
               if (!context.mounted) return;
               AppScope.changed(context);

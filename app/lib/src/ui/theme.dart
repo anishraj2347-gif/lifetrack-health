@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Warm-grey clinical dashboard: black pills, large soft cards, one lime
 /// accent. Poppins throughout, bundled.
@@ -138,6 +139,30 @@ abstract final class LT {
       }),
       colorScheme: scheme,
       dividerColor: rule,
+      // Lucide everywhere: the back arrow too.
+      actionIconTheme: ActionIconThemeData(backButtonIconBuilder: (_) => Icon(LucideIcons.arrowLeft, size: 22)),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: surface.withValues(alpha: 0.96),
+        showDragHandle: true,
+        dragHandleColor: rule,
+        dragHandleSize: Size(36, 4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(radiusLg))),
+        surfaceTintColor: Colors.transparent,
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: surface,
+        elevation: 8,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+        textStyle: TextStyle(fontFamily: body, fontSize: 15, color: ink),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusLg)),
+        titleTextStyle: TextStyle(fontFamily: display, fontSize: 20, fontWeight: FontWeight.w600, color: ink),
+        contentTextStyle: TextStyle(fontFamily: body, fontSize: 14.5, height: 1.5, color: ink2),
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: ground,
         foregroundColor: ink,
@@ -146,13 +171,17 @@ abstract final class LT {
         surfaceTintColor: Colors.transparent,
         systemOverlayStyle: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       ),
+      // Glass fields: see-through fill with a bright rim, ink when focused.
       inputDecorationTheme: InputDecorationTheme(
         isDense: true,
         filled: true,
-        fillColor: raised,
+        fillColor: raised.withValues(alpha: 0.78),
         hintStyle: TextStyle(color: ink3),
         border: none,
-        enabledBorder: none,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(radius)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: dark ? 0.08 : 0.85)),
+        ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(radius)),
           borderSide: BorderSide(color: ink, width: 1.5),
@@ -172,10 +201,14 @@ abstract final class LT {
       ),
       textTheme: ThemeData(brightness: dark ? Brightness.dark : Brightness.light).textTheme.apply(fontFamily: body, bodyColor: ink, displayColor: ink),
       iconTheme: IconThemeData(color: ink),
-      dialogTheme: DialogThemeData(backgroundColor: surface, surfaceTintColor: Colors.transparent),
-      bottomSheetTheme: BottomSheetThemeData(backgroundColor: surface, surfaceTintColor: Colors.transparent),
-      popupMenuTheme: PopupMenuThemeData(color: raised, surfaceTintColor: Colors.transparent, textStyle: TextStyle(fontFamily: body, color: ink)),
-      datePickerTheme: DatePickerThemeData(backgroundColor: surface, surfaceTintColor: Colors.transparent),
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusLg)),
+        headerHeadlineStyle: TextStyle(fontFamily: display, fontSize: 26, fontWeight: FontWeight.w600, color: ink),
+        todayBorder: BorderSide(color: ink),
+        dayShape: WidgetStatePropertyAll(CircleBorder()),
+      ),
       timePickerTheme: TimePickerThemeData(backgroundColor: surface),
       progressIndicatorTheme: ProgressIndicatorThemeData(color: ink),
       textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: ink)),

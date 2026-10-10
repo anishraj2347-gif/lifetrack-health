@@ -1,6 +1,8 @@
+import 'dart:ui' as ui show Image;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -823,5 +825,133 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
         automaticallyImplyLeading: automaticallyImplyLeading,
         backgroundColor: Colors.transparent,
         flexibleSpace: Glass(tint: LT.ground, opacity: 0.72, radius: BorderRadius.zero, child: SizedBox.expand()),
+      );
+}
+
+/// The LifeTrack mark: the launcher icon's card deck, bundled. Branding, not
+/// status — the colours inside it carry no meaning in the app.
+class BrandMark extends StatelessWidget {
+  const BrandMark({super.key, this.size = 28});
+  final double size;
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+        borderRadius: BorderRadius.circular(size * 0.26),
+        child: Image.asset('assets/brand/logo.png', width: size, height: size, excludeFromSemantics: true, filterQuality: FilterQuality.medium),
+      );
+}
+
+/// What shows while the records open: the mark and the name on the page
+/// wash, in the same place as the launch screen, so start-up is one smooth
+/// moment rather than a white flash and a spinner.
+class BootSplash extends StatelessWidget {
+  const BootSplash({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        body: Center(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Appear(child: BrandMark(size: 112)),
+            SizedBox(height: 18),
+            Text('LifeTrack', style: TextStyle(fontFamily: LT.display, fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: -0.4, color: LT.ink)),
+            SizedBox(height: 4),
+            Text('Your family\'s health records, on your phone', style: LT.small),
+          ]),
+        ),
+      );
+}
+
+/// "Are you sure?" as a glass sheet from the bottom: the question, what will
+/// happen, then a big confirm button above "Keep". Destructive actions are
+/// orange (signal), like the rest of the app. True only on confirm.
+Future<bool> confirmAction(BuildContext context, {required String title, required String body, required String confirm, String keep = 'Keep', bool destructive = true}) async {
+  final yes = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    builder: (c) => SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: LT.title.copyWith(fontSize: 20)),
+          SizedBox(height: 8),
+          Text(body, style: LT.small),
+          SizedBox(height: 20),
+          SlabButton(confirm, variant: destructive ? ButtonVariant.destructive : ButtonVariant.primary, onPressed: () => Navigator.of(c).pop(true)),
+          SizedBox(height: 8),
+          SlabButton(keep, variant: ButtonVariant.ghost, onPressed: () => Navigator.of(c).pop(false)),
+        ]),
+      ),
+    ),
+  );
+  return yes == true;
+}
+
+/// A floating glossy pill button (icon + word), the app's one style of
+/// floating action. Shrinks away while [hidden] (e.g. scrolling down).
+class GlassFab extends StatelessWidget {
+  const GlassFab({super.key, required this.label, required this.icon, required this.onPressed, this.hidden = false});
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool hidden;
+  @override
+  Widget build(BuildContext context) => AnimatedScale(
+        scale: hidden ? 0.85 : 1,
+        duration: Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        child: AnimatedOpacity(
+          opacity: hidden ? 0 : 1,
+          duration: Duration(milliseconds: 200),
+          child: IgnorePointer(
+            ignoring: hidden,
+            child: IntrinsicWidth(child: SlabButton(label, icon: icon, onPressed: onPressed)),
+          ),
+        ),
+      );
+}
+
+/// Wraps the whole app so a light/dark switch can cross-fade: the old look
+/// is captured and faded out over the new one (300 ms).
+final themeSnapshotKey = GlobalKey();
+
+Future<void> crossfadeTheme(BuildContext context, Future<void> Function() change) async {
+  final boundary = themeSnapshotKey.currentContext?.findRenderObject();
+  final overlay = Overlay.maybeOf(context, rootOverlay: true);
+  if (boundary is! RenderRepaintBoundary || overlay == null || (MediaQuery.maybeDisableAnimationsOf(context) ?? false)) {
+    await change();
+    return;
+  }
+  final ratio = MediaQuery.devicePixelRatioOf(context);
+  final image = await boundary.toImage(pixelRatio: ratio);
+  late OverlayEntry entry;
+  entry = OverlayEntry(builder: (_) => _FadeOut(image: image, ratio: ratio, onDone: () {
+        entry.remove();
+        image.dispose();
+      }));
+  overlay.insert(entry);
+  await change();
+}
+
+class _FadeOut extends StatefulWidget {
+  const _FadeOut({required this.image, required this.ratio, required this.onDone});
+  final ui.Image image;
+  final double ratio;
+  final VoidCallback onDone;
+  @override
+  State<_FadeOut> createState() => _FadeOutState();
+}
+
+class _FadeOutState extends State<_FadeOut> with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(vsync: this, duration: Duration(milliseconds: 300))..forward().whenComplete(widget.onDone);
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: FadeTransition(
+          opacity: ReverseAnimation(CurvedAnimation(parent: _c, curve: Curves.easeOut)),
+          child: RawImage(image: widget.image, scale: widget.ratio, fit: BoxFit.fill, width: double.infinity, height: double.infinity),
+        ),
       );
 }

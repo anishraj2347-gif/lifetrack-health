@@ -85,11 +85,18 @@ class _LifeTrackAppState extends State<LifeTrackApp> with WidgetsBindingObserver
         return AppScope(services: snap.data!, child: _app(_Root(unlocker: widget.unlocker)));
       }
       if (snap.hasError) return _app(_BootError(error: snap.error!));
-      return _app(Scaffold(body: Center(child: CircularProgressIndicator())));
+      return _app(BootSplash());
     },
   );
 
-  Widget _app(Widget home) => MaterialApp(title: 'LifeTrack', debugShowCheckedModeBanner: false, theme: LT.theme(), home: home);
+  Widget _app(Widget home) => MaterialApp(
+        title: 'LifeTrack',
+        debugShowCheckedModeBanner: false,
+        theme: LT.theme(),
+        home: home,
+        // Captured by crossfadeTheme when light/dark changes.
+        builder: (context, child) => RepaintBoundary(key: themeSnapshotKey, child: child),
+      );
 }
 
 class _Root extends StatelessWidget {
@@ -234,57 +241,84 @@ class _HomeShellState extends State<HomeShell> {
   Widget _tabBar() => DecoratedBox(
         decoration: ShapeDecoration(shape: StadiumBorder(), shadows: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 24, offset: Offset(0, 8))]),
         child: Glass(
-        tint: LT.primary,
-        opacity: 0.80,
-        lightText: true,
-        padding: EdgeInsets.all(5),
-        child: Row(
-          children: [
-            for (var i = 0; i < _tabs.length; i++)
-              Expanded(
-                child: Semantics(
-                  label: _tabs[i].$1,
-                  button: true,
-                  selected: i == _tab,
-                  excludeSemantics: true,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      if (i != _tab) HapticFeedback.selectionClick();
-                      setState(() => _tab = i);
-                    },
-                    child: AnimatedContainer(
-                      duration: Duration(milliseconds: 200),
-                      curve: Curves.easeOutCubic,
-                      constraints: BoxConstraints(minHeight: 56),
-                      padding: EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-                      decoration: ShapeDecoration(color: i == _tab ? LT.accent : Colors.transparent, shape: StadiumBorder()),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          AnimatedScale(
-                            scale: i == _tab ? 1.12 : 1,
-                            duration: Duration(milliseconds: 200),
-                            child: Icon(_tabs[i].$2, size: 20, color: i == _tab ? LT.onAccent : LT.onDarkMuted),
-                          ),
-                          SizedBox(height: 3),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              _tabs[i].$1,
-                              maxLines: 1,
-                              style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: i == _tab ? FontWeight.w600 : FontWeight.w500, color: i == _tab ? LT.onAccent : LT.onDark),
-                            ),
-                          ),
-                        ],
-                      ),
+          tint: LT.primary,
+          opacity: 0.80,
+          lightText: true,
+          padding: EdgeInsets.all(5),
+          child: Stack(children: [
+            // One lime pill that slides to the tab you pick, with a little
+            // overshoot — instead of one blinking out and another in.
+            Positioned.fill(
+              child: AnimatedAlign(
+                alignment: Alignment(-1 + 2 * _tab / (_tabs.length - 1), 0),
+                duration: Duration(milliseconds: 320),
+                curve: Curves.easeOutBack,
+                child: FractionallySizedBox(
+                  widthFactor: 1 / _tabs.length,
+                  heightFactor: 1,
+                  child: DecoratedBox(
+                    decoration: ShapeDecoration(
+                      shape: StadiumBorder(),
+                      gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color.alphaBlend(Colors.white.withValues(alpha: 0.25), LT.accent), LT.accent]),
+                      shadows: [BoxShadow(color: LT.accent.withValues(alpha: 0.35), blurRadius: 12)],
                     ),
                   ),
                 ),
               ),
-          ],
-        ),
+            ),
+            Row(children: [
+              for (var i = 0; i < _tabs.length; i++)
+                Expanded(
+                  child: Semantics(
+                    label: _tabs[i].$1,
+                    button: true,
+                    selected: i == _tab,
+                    excludeSemantics: true,
+                    child: Tooltip(
+                      message: _tabs[i].$1,
+                      textStyle: TextStyle(fontFamily: LT.body, fontSize: 18, color: LT.onDark),
+                      triggerMode: TooltipTriggerMode.longPress,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          if (i != _tab) HapticFeedback.selectionClick();
+                          setState(() => _tab = i);
+                        },
+                        // The selected label sits on the lime pill.
+                        child: GlassTone(
+                          tone: i == _tab ? LT.accent : Color.alphaBlend(LT.primary.withValues(alpha: 0.80), Colors.white),
+                          child: Container(
+                            constraints: BoxConstraints(minHeight: 56),
+                            padding: EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                AnimatedScale(
+                                  scale: i == _tab ? 1.12 : 1,
+                                  duration: Duration(milliseconds: 220),
+                                  curve: Curves.easeOutBack,
+                                  child: Icon(_tabs[i].$2, size: 20, color: i == _tab ? LT.onAccent : LT.onDarkMuted),
+                                ),
+                                SizedBox(height: 3),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: AnimatedDefaultTextStyle(
+                                    duration: Duration(milliseconds: 200),
+                                    style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: i == _tab ? FontWeight.w600 : FontWeight.w500, color: i == _tab ? LT.onAccent : LT.onDark),
+                                    child: Text(_tabs[i].$1, maxLines: 1),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ]),
+          ]),
         ),
       );
 }
@@ -297,13 +331,7 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: EdgeInsets.fromLTRB(20, 0, 20, 0),
         child: Row(children: [
-          Container(
-            width: 26,
-            height: 26,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: LT.primary, borderRadius: BorderRadius.circular(8)),
-            child: Icon(LucideIcons.heartPulse, size: 15, color: LT.onDark),
-          ),
+          BrandMark(size: 28),
           SizedBox(width: 8),
           Text('LifeTrack', style: TextStyle(fontFamily: LT.display, fontSize: 16, fontWeight: FontWeight.w600, color: LT.ink, letterSpacing: -0.2)),
         ]),

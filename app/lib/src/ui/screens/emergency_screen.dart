@@ -65,7 +65,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
       body: c == null
           ? Center(child: CircularProgressIndicator())
           : ListView(children: [
-              Masthead(eyebrow: 'Emergency ID', title: (widget.fromLockScreen ? s.selfPatient : s.currentPatient)?.name ?? '', trailing: Icon(LucideIcons.heartPulse, color: LT.signal)),
+              Masthead(eyebrow: 'Emergency ID', title: (widget.fromLockScreen ? s.selfPatient : s.currentPatient)?.name ?? '', trailing: Icon(LucideIcons.ambulance, color: LT.ink)),
               SizedBox(height: 14),
               if (c.isEmpty) Note('This card is empty. Anyone treating you would see nothing here.', margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
               if (c.allergies.isNotEmpty && c.allergies != noKnownAllergies)

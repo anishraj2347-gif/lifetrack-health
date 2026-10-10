@@ -30,13 +30,7 @@ class _VitalsScreenState extends State<VitalsScreen> {
     final recent = [for (final v in all) if (!v.at.isBefore(since)) v].reversed.toList();
     return Scaffold(
       appBar: GlassAppBar(),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: LT.primary,
-        foregroundColor: LT.onDark,
-        onPressed: () => _add(context),
-        icon: Icon(LucideIcons.plus),
-        label: Text('Add a reading'),
-      ),
+      floatingActionButton: GlassFab(label: 'Add a reading', icon: LucideIcons.plus, onPressed: () => _add(context)),
       body: ListView(children: [
         Masthead(eyebrow: 'Home readings', title: p.name, description: 'Blood pressure and sugar you measure at home'),
         Padding(

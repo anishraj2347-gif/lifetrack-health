@@ -91,18 +91,8 @@ class _CustomReminderScreenState extends State<CustomReminderScreen> {
 
   Future<void> _delete() async {
     final r = widget.existing!;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: Text('Delete this reminder?'),
-        content: Text('"${r.title}" will stop reminding you.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text('Keep')),
-          TextButton(onPressed: () => Navigator.pop(c, true), child: Text('Delete')),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) return;
+    final ok = await confirmAction(context, title: 'Delete this reminder?', body: '"${r.title}" will stop reminding you.', confirm: 'Delete');
+    if (!ok || !mounted) return;
     await AppScope.of(context).deleteCustomReminder(r);
     if (!mounted) return;
     AppScope.changed(context);

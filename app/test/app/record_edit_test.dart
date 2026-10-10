@@ -10,6 +10,7 @@ import 'package:lifetrack/src/model/health_record.dart';
 import 'package:lifetrack/src/model/patient.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
 import 'package:lifetrack/src/ui/lifetrack_app.dart';
+import 'package:lifetrack/src/ui/widgets/parts.dart';
 import 'package:lifetrack/src/vault/backup_vault.dart';
 
 void main() {
@@ -103,7 +104,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(TextButton, 'Delete'));
+    await tester.tap(find.widgetWithText(SlabButton, 'Delete').last);
     await tester.pumpAndSettle();
     expect(s.records(), isEmpty);
     expect(find.text('No records yet'), findsOneWidget);

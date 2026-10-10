@@ -143,18 +143,8 @@ class ShareScreen extends StatelessWidget {
               Expanded(
                 child: SlabButton('End access', variant: ButtonVariant.outline, icon: LucideIcons.circleX, onPressed: () async {
                   final who = describeActor(g.grantedToActorId, s.doctorNames());
-                  final sure = await showDialog<bool>(
-                    context: context,
-                    builder: (c) => AlertDialog(
-                      title: Text('End access now?'),
-                      content: Text('$who will need a new share to see these records again.'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(c, false), child: Text('Keep')),
-                        TextButton(onPressed: () => Navigator.pop(c, true), child: Text('End access')),
-                      ],
-                    ),
-                  );
-                  if (sure != true) return;
+                  final sure = await confirmAction(context, title: 'End access now?', body: '$who will need a new share to see these records again.', confirm: 'End access');
+                  if (!sure) return;
                   if (isClinicalShare(g) && sharing != null) {
                     await sharing.endAccess(g, s.clock());
                   } else {

@@ -6,6 +6,20 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.28.0 (10 Oct 2026)
+- **Branded start**: the launch screen is the page colour with the LifeTrack card-deck mark (light
+  and dark, Android 12+ system splash too), then the same mark and name while records open — no
+  white flash, no bare spinner. The card-deck mark replaces the heart icon in the top bar.
+- **Sliding tab highlight**: one lime pill glides to the tab you pick, with a little overshoot.
+  Long-press a tab to see its name large.
+- **No stock Material left in the common paths**: Lucide back arrow and menu icon; "Are you sure?"
+  is a glass sheet with a big confirm button (orange when it deletes) above "Keep"; sheets have a
+  drag handle and 22 px corners; menus, dialogs and the date picker match the cards; text fields
+  are glass with a bright rim.
+- **Light/dark cross-fades** (300 ms) when changed in Me → Appearance.
+- Vitals' "Add a reading" is a glossy floating pill. Emergency ID has its own ambulance icon in
+  ink, so the heart is only the logo.
+
 ### 1.27.1 (10 Oct 2026)
 - **Choice chips fit their label again** (since 1.20.0 they stretched to the full row, so
   "Female / Male / Prefer not to say" looked like three big buttons). Selected chips are glossy

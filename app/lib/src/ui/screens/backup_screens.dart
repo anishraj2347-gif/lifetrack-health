@@ -157,19 +157,15 @@ class _BackupScreenState extends State<BackupScreen> {
           child: SlabButton('Turn off and delete the backup', variant: ButtonVariant.ghost, icon: LucideIcons.trash2, onPressed: _busy
               ? null
               : () async {
-                  final yes = await showDialog<bool>(
-                    context: context,
-                    builder: (c) => AlertDialog(
-                      title: Text('Delete the backup?'),
-                      content: Text('The encrypted copy is deleted from the LifeTrack server. Records on this phone are not touched. '
-                          'If this phone is lost after this, the records cannot be brought back.'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.of(c).pop(false), child: Text('Keep backup')),
-                        TextButton(onPressed: () => Navigator.of(c).pop(true), child: Text('Delete')),
-                      ],
-                    ),
+                  final yes = await confirmAction(
+                    context,
+                    title: 'Delete the backup?',
+                    body: 'The encrypted copy is deleted from the LifeTrack server. Records on this phone are not touched. '
+                        'If this phone is lost after this, the records cannot be brought back.',
+                    confirm: 'Delete backup',
+                    keep: 'Keep backup',
                   );
-                  if (yes == true) await _run(s.turnOffBackup);
+                  if (yes) await _run(s.turnOffBackup);
                 }),
         ),
       ];
