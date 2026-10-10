@@ -252,10 +252,7 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
   }
 
   Widget _done(ShareReceipt r) => ListView(children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
-          child: IconTile(LucideIcons.circleCheck, color: LT.onAccent, background: LT.accent),
-        ),
+        Padding(padding: EdgeInsets.only(top: 8), child: Center(child: DoneMark(size: 110))),
         Masthead(eyebrow: 'Shared', title: 'Sent to ${r.doctor.name}', description: 'Encrypted to their device. Access ends ${dateTime(r.grant.expiresAt)}.'),
         Note('If they have not opened it yet, ending access removes it. If they already have, their app is asked to close it — LifeTrack cannot take back what they have seen.', icon: LucideIcons.info),
         Padding(

@@ -6,6 +6,13 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.23.0 (10 Oct 2026)
+- **A "done" moment**: saving a record, scan, reminder, BP/sugar reading, vaccination, family
+  member, ABHA or Emergency ID, and turning on backup, shows a tick that draws itself with a word
+  ("Record saved"), then fades. "Sent to Dr …" shows the same tick, larger.
+- **No light/dark button on the main screens**: choose Follow phone, Light or Dark in
+  Me → Appearance.
+
 ### 1.22.0 (10 Oct 2026)
 - **Photos**: six warm, natural photos, bundled in the app (about 800 KB, no internet): a family
   on the first screen, a report on the table when Records is empty, a doctor looking at a

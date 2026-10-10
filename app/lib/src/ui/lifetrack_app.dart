@@ -267,13 +267,13 @@ class _HomeShellState extends State<HomeShell> {
       );
 }
 
-/// The app's name and the light/dark switch, above every main screen.
+/// The app's name above every main screen. Light/dark lives in Me → Appearance.
 class _TopBar extends StatelessWidget {
   const _TopBar();
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 6, 12, 0),
+        padding: EdgeInsets.fromLTRB(20, 10, 20, 2),
         child: Row(children: [
           Container(
             width: 26,
@@ -284,42 +284,8 @@ class _TopBar extends StatelessWidget {
           ),
           SizedBox(width: 8),
           Text('LifeTrack', style: TextStyle(fontFamily: LT.display, fontSize: 16, fontWeight: FontWeight.w600, color: LT.ink, letterSpacing: -0.2)),
-          Spacer(),
-          _ThemeToggle(),
         ]),
       );
-}
-
-/// One tap between light and dark, in the top bar of every main screen.
-/// Saved like the choice on Me → Appearance, which keeps "Follow phone".
-class _ThemeToggle extends StatelessWidget {
-  const _ThemeToggle();
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = LT.dark;
-    return Semantics(
-      button: true,
-      label: dark ? 'Switch to light mode' : 'Switch to dark mode',
-      excludeSemantics: true,
-      child: Material(
-        color: LT.raised,
-        shape: CircleBorder(),
-        child: InkWell(
-          customBorder: CircleBorder(),
-          onTap: () async {
-            HapticFeedback.lightImpact();
-            final s = AppScope.of(context);
-            final next = dark ? 'light' : 'dark';
-            await s.setThemeChoice(next);
-            appearance.value = themeModeOf(next);
-            if (context.mounted) AppScope.changed(context);
-          },
-          child: SizedBox(width: 48, height: 48, child: Icon(dark ? LucideIcons.sun : LucideIcons.moon, size: 20, color: LT.ink)),
-        ),
-      ),
-    );
-  }
 }
 
 class _BootError extends StatelessWidget {

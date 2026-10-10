@@ -49,6 +49,7 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
       await s.switchTo(p.id);
       if (!mounted) return;
       AppScope.changed(context);
+      celebrate(context, '${p.name.split(' ').first} added');
       Navigator.of(context).pop();
     } on CustodyRefused catch (e) {
       setState(() => _error = e.message);

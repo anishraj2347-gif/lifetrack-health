@@ -333,7 +333,9 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
     setState(() => _saving = true);
     try {
       await s.addScannedAll(drafts: drafts, rawPages: _pages, checked: _how());
-      if (mounted) Navigator.of(context).pop(true);
+      if (!mounted) return;
+      celebrate(context, drafts.length == 1 ? 'Saved to Records' : '${drafts.length} records saved');
+      Navigator.of(context).pop(true);
     } on FormatException catch (e) {
       setState(() => _error = e.message);
     } finally {

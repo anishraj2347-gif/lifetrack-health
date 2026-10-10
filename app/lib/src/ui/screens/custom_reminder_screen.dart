@@ -83,6 +83,8 @@ class _CustomReminderScreenState extends State<CustomReminderScreen> {
     AppScope.changed(context);
     if (!allowed) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Saved. Notifications are not allowed for LifeTrack — allow them in the phone\'s settings to be reminded.')));
+    } else {
+      celebrate(context, 'Reminder saved');
     }
     Navigator.of(context).pop();
   }

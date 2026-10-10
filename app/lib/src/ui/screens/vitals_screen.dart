@@ -156,7 +156,9 @@ class _VitalsScreenState extends State<VitalsScreen> {
                 glucose: glu,
                 context: bp ? null : ctx,
               ));
-              if (sheet.mounted) Navigator.of(sheet).pop();
+              if (!sheet.mounted) return;
+              celebrate(sheet, 'Reading saved');
+              Navigator.of(sheet).pop();
             }),
           ]),
         ),

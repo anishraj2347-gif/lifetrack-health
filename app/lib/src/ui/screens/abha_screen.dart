@@ -34,6 +34,7 @@ class _AbhaScreenState extends State<AbhaScreen> {
         _editing = false;
         _error = null;
       });
+      celebrate(context, 'ABHA saved');
     } on FormatException catch (e) {
       setState(() => _error = e.message);
     } on CustodyRefused catch (e) {

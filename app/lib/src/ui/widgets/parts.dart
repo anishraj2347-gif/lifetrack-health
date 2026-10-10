@@ -507,3 +507,124 @@ class PhotoBanner extends StatelessWidget {
     );
   }
 }
+
+/// The "done" picture: a black disc that pops in, a ring that ripples out,
+/// and a tick that draws itself. Black and white, never lime — "done" is not
+/// a selection, and never a health status.
+class DoneMark extends StatelessWidget {
+  const DoneMark({super.key, this.size = 96});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    return Semantics(
+      label: 'Done',
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: still ? 1 : 0, end: 1),
+        duration: Duration(milliseconds: 900),
+        builder: (context, t, _) => CustomPaint(size: Size.square(size * 1.5), painter: _DonePainter(t, LT.button, LT.onButton, LT.ink3)),
+      ),
+    );
+  }
+}
+
+class _DonePainter extends CustomPainter {
+  _DonePainter(this.t, this.fill, this.ink, this.ring);
+  final double t;
+  final Color fill, ink, ring;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final r = size.width / 3;
+    // 0–0.4: disc pops (with a little overshoot); 0.2–1: ring ripples out
+    // and fades; 0.4–0.85: the tick draws.
+    final pop = Curves.easeOutBack.transform((t / 0.4).clamp(0, 1));
+    final rip = Curves.easeOut.transform(((t - 0.2) / 0.8).clamp(0, 1));
+    final draw = Curves.easeInOut.transform(((t - 0.4) / 0.45).clamp(0, 1));
+    if (rip > 0 && rip < 1) {
+      canvas.drawCircle(c, r * (1 + 0.5 * rip), Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..color = ring.withValues(alpha: 0.5 * (1 - rip)));
+    }
+    canvas.drawCircle(c, r * pop, Paint()..color = fill);
+    if (draw > 0) {
+      final path = Path()
+        ..moveTo(c.dx - r * 0.42, c.dy + r * 0.02)
+        ..lineTo(c.dx - r * 0.12, c.dy + r * 0.32)
+        ..lineTo(c.dx + r * 0.45, c.dy - r * 0.30);
+      final m = path.computeMetrics().first;
+      canvas.drawPath(m.extractPath(0, m.length * draw), Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = r * 0.16
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..color = ink);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DonePainter old) => old.t != t || old.fill != fill;
+}
+
+/// A short "done" moment over everything: the tick and a word, then it
+/// fades by itself. Safe to call just before closing a screen — it is
+/// placed on the app's root overlay.
+void celebrate(BuildContext context, String message) {
+  final overlay = Overlay.maybeOf(context, rootOverlay: true);
+  if (overlay == null) return;
+  HapticFeedback.mediumImpact();
+  late OverlayEntry entry;
+  entry = OverlayEntry(builder: (_) => _Celebration(message: message, onDone: () => entry.remove()));
+  overlay.insert(entry);
+}
+
+class _Celebration extends StatefulWidget {
+  const _Celebration({required this.message, required this.onDone});
+  final String message;
+  final VoidCallback onDone;
+  @override
+  State<_Celebration> createState() => _CelebrationState();
+}
+
+class _CelebrationState extends State<_Celebration> with SingleTickerProviderStateMixin {
+  // One controller for the whole moment (no timers): in 0–15%, hold to
+  // 80%, out by 100%.
+  late final _c = AnimationController(vsync: this, duration: Duration(milliseconds: 1500))
+    ..forward().whenComplete(widget.onDone);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (context, child) {
+            final v = _c.value;
+            final o = v < 0.15 ? v / 0.15 : v > 0.8 ? (1 - v) / 0.2 : 1.0;
+            return Opacity(opacity: o.clamp(0, 1), child: child);
+          },
+          child: Center(
+            child: Material(
+              color: LT.surface,
+              elevation: 8,
+              shadowColor: Colors.black38,
+              borderRadius: BorderRadius.circular(LT.radiusLg),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(28, 18, 28, 22),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  DoneMark(size: 72),
+                  Text(widget.message, textAlign: TextAlign.center, style: LT.label.copyWith(fontSize: 17, fontWeight: FontWeight.w600)),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      );
+}

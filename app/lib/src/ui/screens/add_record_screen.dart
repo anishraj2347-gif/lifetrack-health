@@ -105,7 +105,9 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     } else {
       await s.updateRecord(record);
     }
-    if (mounted) Navigator.of(context).pop();
+    if (!mounted) return;
+    celebrate(context, old == null ? 'Record saved' : 'Changes saved');
+    Navigator.of(context).pop();
   }
 
   @override

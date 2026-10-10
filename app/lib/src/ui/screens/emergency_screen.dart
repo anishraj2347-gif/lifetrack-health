@@ -242,6 +242,8 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
       return;
     }
     await AppScope.of(context).saveEmergencyCard(widget.patientId, card);
+    if (!mounted) return;
+    celebrate(context, 'Emergency ID saved');
     widget.onSaved();
   }
 

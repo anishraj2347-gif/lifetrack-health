@@ -243,7 +243,12 @@ class _RecoveryKitScreenState extends State<RecoveryKitScreen> {
           ),
           Padding(
             padding: EdgeInsets.fromLTRB(16, 6, 16, 28),
-            child: SlabButton('Done', icon: LucideIcons.check, onPressed: _saved ? () => Navigator.of(context).pop() : null),
+            child: SlabButton('Done', icon: LucideIcons.check, onPressed: _saved
+                ? () {
+                    celebrate(context, 'Backup is on');
+                    Navigator.of(context).pop();
+                  }
+                : null),
           ),
         ]),
       ),

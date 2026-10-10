@@ -49,18 +49,22 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('the sun/moon button in the top bar switches light and dark, and remembers', (tester) async {
+  testWidgets('light and dark are chosen in Me → Appearance; no switch on the main screens', (tester) async {
     await onboardWithSamples(tester);
-    final start = LT.dark;
-    await tester.tap(find.bySemanticsLabel(start ? 'Switch to light mode' : 'Switch to dark mode'));
+    expect(find.bySemanticsLabel('Switch to dark mode'), findsNothing);
+    expect(find.bySemanticsLabel('Switch to light mode'), findsNothing);
+    await tester.tap(find.bySemanticsLabel('Me'));
     await tester.pumpAndSettle();
-    expect(LT.dark, !start);
-    expect(find.bySemanticsLabel(start ? 'Switch to dark mode' : 'Switch to light mode'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Dark'), 300, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dark'));
+    await tester.pumpAndSettle();
+    expect(LT.dark, isTrue);
     final s = AppScope.of(tester.element(find.byType(HomeShell)));
-    expect(s.themeChoice, start ? 'light' : 'dark');
-    await tester.tap(find.bySemanticsLabel(start ? 'Switch to dark mode' : 'Switch to light mode'));
+    expect(s.themeChoice, 'dark');
+    await tester.tap(find.text('Light'));
     await tester.pumpAndSettle();
-    expect(LT.dark, start);
+    expect(LT.dark, isFalse);
     appearance.value = ThemeMode.system;
     LT.dark = false;
   });

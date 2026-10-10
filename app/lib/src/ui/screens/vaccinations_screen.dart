@@ -105,7 +105,9 @@ class VaccinationsScreen extends StatelessWidget {
             SizedBox(height: 16),
             SlabButton('Mark as given', icon: LucideIcons.check, onPressed: () async {
               await s.markVaccine(p.id, d.code, VaccineGiven(on: on, place: place.text.trim().isEmpty ? null : place.text.trim()));
-              if (c.mounted) Navigator.of(c).pop();
+              if (!c.mounted) return;
+              celebrate(c, 'Marked as given');
+              Navigator.of(c).pop();
             }),
             if (g != null) ...[
               SizedBox(height: 8),
