@@ -86,12 +86,16 @@ abstract final class LT {
   static const body = 'Poppins';
   static const mono = 'Poppins';
 
-  static TextStyle get eyebrow => TextStyle(fontFamily: body, fontSize: 12.5, fontWeight: FontWeight.w500, color: ink3);
+  static TextStyle get eyebrow => TextStyle(fontFamily: body, fontSize: 13, fontWeight: FontWeight.w500, color: ink3);
   static TextStyle get title => TextStyle(fontFamily: display, fontSize: 26, fontWeight: FontWeight.w600, height: 1.15, letterSpacing: -0.6, color: ink);
   static TextStyle get hero => TextStyle(fontFamily: display, fontSize: 30, fontWeight: FontWeight.w600, height: 1.12, letterSpacing: -0.8, color: ink);
-  static TextStyle get lede => TextStyle(fontFamily: body, fontSize: 14.5, height: 1.55, color: ink3);
+  static TextStyle get lede => TextStyle(fontFamily: body, fontSize: 15, height: 1.55, color: ink2);
   static TextStyle get label => TextStyle(fontFamily: body, fontSize: 15, fontWeight: FontWeight.w500, color: ink, letterSpacing: -0.1);
-  static TextStyle get small => TextStyle(fontFamily: body, fontSize: 12.5, height: 1.5, color: ink3);
+  /// Secondary text. 14 sp in ink2: much of the consent wording is set in
+  /// this style, and it has to be readable by older eyes (design review,
+  /// 10 Oct 2026). ink3 is kept for timestamps and hints only.
+  static TextStyle get small => TextStyle(fontFamily: body, fontSize: 14, height: 1.5, color: ink2);
+  static TextStyle get meta => TextStyle(fontFamily: body, fontSize: 12.5, height: 1.4, color: ink3);
   static TextStyle get data => TextStyle(fontFamily: mono, fontSize: 14.5, fontWeight: FontWeight.w600, color: ink, fontFeatures: [FontFeature.tabularFigures()]);
 
   static ThemeData theme() {

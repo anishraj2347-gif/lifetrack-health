@@ -589,7 +589,7 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
             Badge2(c.done ? 'Checked' : 'Check this', tone: c.done ? BadgeTone.outline : BadgeTone.caution),
             if (c.seen != null) ...[
               SizedBox(width: 8),
-              Expanded(child: Text('Read as “${c.seen}”', maxLines: 2, overflow: TextOverflow.ellipsis, style: LT.small.copyWith(fontSize: 11.5))),
+              Expanded(child: Text('Read as “${c.seen}”', maxLines: 2, overflow: TextOverflow.ellipsis, style: LT.small.copyWith(fontSize: 12))),
             ],
           ]),
         ),

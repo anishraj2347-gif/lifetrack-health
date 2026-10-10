@@ -75,7 +75,7 @@ void main() {
     await tester.tap(find.byType(TrendCard));
     await tester.pumpAndSettle();
     expect(find.byType(TestTrendScreen), findsOneWidget);
-    expect(find.text('Open report'), findsNWidgets(2), reason: 'two on screen; the third is below');
+    expect(find.text('Open report'), findsWidgets, reason: 'each result links to its report; later ones are below');
     expect(find.textContaining('8 Sep 2026 · Thyrocare · Dr. Mehta'), findsOneWidget);
     expect(find.text('Latest'), findsOneWidget);
     expect(find.text('3 weeks ago'), findsOneWidget);

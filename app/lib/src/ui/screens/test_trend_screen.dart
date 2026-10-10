@@ -141,8 +141,10 @@ class MoreTrends extends StatelessWidget {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     Icon(LucideIcons.chartLine, size: 18, color: LT.ink),
-                    Spacer(),
-                    Text('${identical(t, latest) ? 'Latest · ' : ''}${t.points.length}×', style: LT.small),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text('${identical(t, latest) ? 'Latest · ' : ''}${t.points.length}×', style: LT.meta, textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
                   ]),
                   SizedBox(height: 8),
                   Text(analyteName(t.analyte), style: LT.label, maxLines: 1, overflow: TextOverflow.ellipsis),

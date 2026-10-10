@@ -109,28 +109,39 @@ class _TrendCardState extends State<TrendCard> {
           SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Your results over time', style: TextStyle(fontSize: 11.5, color: LT.onDarkMuted)),
+              Text('Your results over time', style: TextStyle(fontSize: 12, color: LT.onDarkMuted)),
               Text(analyteName(analyte), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
             ]),
           ),
           if (onTap != null) Icon(LucideIcons.chevronRight, color: LT.onDarkMuted),
         ]),
         SizedBox(height: 16),
-        Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
-          // The number rolls to the value under the finger.
-          TweenAnimationBuilder<double>(
-            tween: Tween(end: shown.$2),
-            duration: Duration(milliseconds: 260),
-            curve: Curves.easeOutCubic,
-            builder: (context, v, _) => Text(
-              fmt(shown.$2 == shown.$2.roundToDouble() ? v.roundToDouble() : double.parse(v.toStringAsFixed(1))),
-              style: TextStyle(fontSize: 38, fontWeight: FontWeight.w600, color: LT.onDark, letterSpacing: -1.2, height: 1),
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          // The number and unit shrink rather than overflow at large text.
+          Flexible(
+            flex: 3,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.bottomLeft,
+              child: Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+                // The number rolls to the value under the finger.
+                TweenAnimationBuilder<double>(
+                tween: Tween(end: shown.$2),
+                duration: Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                builder: (context, v, _) => Text(
+                  fmt(shown.$2 == shown.$2.roundToDouble() ? v.roundToDouble() : double.parse(v.toStringAsFixed(1))),
+                  style: TextStyle(fontSize: 38, fontWeight: FontWeight.w600, color: LT.onDark, letterSpacing: -1.2, height: 1),
+                ),
+              ),
+                SizedBox(width: 6),
+                Text(shown.$3, style: TextStyle(fontSize: 14, color: LT.onDarkMuted)),
+              ]),
             ),
           ),
-          SizedBox(width: 6),
-          Text(shown.$3, style: TextStyle(fontSize: 14, color: LT.onDarkMuted)),
           SizedBox(width: 12),
           Expanded(
+            flex: 2,
             child: AnimatedSwitcher(
               duration: Duration(milliseconds: 180),
               layoutBuilder: (current, previous) => Stack(alignment: Alignment.centerRight, children: [...previous, ?current]),
@@ -156,8 +167,8 @@ class _TrendCardState extends State<TrendCard> {
               onTapDown: (d) => _pick(d.localPosition.dx, box.maxWidth, points.length),
               onHorizontalDragStart: (d) => _pick(d.localPosition.dx, box.maxWidth, points.length),
               onHorizontalDragUpdate: (d) => _pick(d.localPosition.dx, box.maxWidth, points.length),
+              // No fixed height: the month labels grow with the phone's text size.
               child: SizedBox(
-                height: _rows * 14.0 + 24,
                 child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
                   for (final (i, p) in points.indexed)
                     Expanded(
@@ -168,7 +179,7 @@ class _TrendCardState extends State<TrendCard> {
                           color: i == sel ? LT.onDarkChip.withValues(alpha: 0.35) : Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+                        child: Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.end, children: [
                           for (var r = _rows - 1; r >= 0; r--)
                             Padding(
                               padding: EdgeInsets.only(top: 4),
@@ -179,7 +190,7 @@ class _TrendCardState extends State<TrendCard> {
                               ),
                             ),
                           SizedBox(height: 6),
-                          Text(shortMonth(p.$1), style: TextStyle(fontSize: 11, fontWeight: i == sel ? FontWeight.w600 : FontWeight.w400, color: i == sel ? LT.onDark : LT.onDarkMuted)),
+                          Text(shortMonth(p.$1), style: TextStyle(fontSize: 12, fontWeight: i == sel ? FontWeight.w600 : FontWeight.w400, color: i == sel ? LT.onDark : LT.onDarkMuted)),
                         ]),
                       ),
                     ),

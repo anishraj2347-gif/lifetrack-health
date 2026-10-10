@@ -206,7 +206,7 @@ class _Chart extends CustomPainter {
     for (final v in [lo + 5, (lo + hi) / 2, hi - 5]) {
       canvas.drawLine(Offset(left, y(v)), Offset(size.width, y(v)), grid);
       label
-        ..text = TextSpan(text: v.round().toString(), style: TextStyle(fontFamily: LT.body, fontSize: 10, color: LT.ink3))
+        ..text = TextSpan(text: v.round().toString(), style: TextStyle(fontFamily: LT.body, fontSize: 12, color: LT.ink3))
         ..layout();
       label.paint(canvas, Offset(0, y(v) - 6));
     }
@@ -224,11 +224,11 @@ class _Chart extends CustomPainter {
       canvas.drawPath(path, line);
     }
     label
-      ..text = TextSpan(text: '${points.first.at.day}/${points.first.at.month}', style: TextStyle(fontFamily: LT.body, fontSize: 10, color: LT.ink3))
+      ..text = TextSpan(text: '${points.first.at.day}/${points.first.at.month}', style: TextStyle(fontFamily: LT.body, fontSize: 12, color: LT.ink3))
       ..layout();
     label.paint(canvas, Offset(left, h + 4));
     label
-      ..text = TextSpan(text: '${points.last.at.day}/${points.last.at.month}', style: TextStyle(fontFamily: LT.body, fontSize: 10, color: LT.ink3))
+      ..text = TextSpan(text: '${points.last.at.day}/${points.last.at.month}', style: TextStyle(fontFamily: LT.body, fontSize: 12, color: LT.ink3))
       ..layout();
     label.paint(canvas, Offset(size.width - label.width, h + 4));
   }

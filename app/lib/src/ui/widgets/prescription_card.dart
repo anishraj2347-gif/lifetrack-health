@@ -144,7 +144,7 @@ class PrescriptionCard extends StatelessWidget {
             Icon(icon, size: 18, color: count > 0 ? LT.accent : LT.inactive),
             SizedBox(height: 6),
             Text('$count', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: count > 0 ? LT.onDark : LT.ink3)),
-            Text(label, style: TextStyle(fontSize: 11.5, color: count > 0 ? LT.onDarkMuted : LT.ink3)),
+            Text(label, style: TextStyle(fontSize: 12, color: count > 0 ? LT.onDarkMuted : LT.ink3)),
           ]),
         ),
       );

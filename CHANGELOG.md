@@ -6,6 +6,16 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.24.0 (10 Oct 2026)
+- **Easier to read**: secondary text is 14 sp and darker (it carries most of the consent wording);
+  nothing in the app is smaller than 12 sp. The main tabs and nine inner screens are tested at
+  twice the phone's text size with nothing cut off.
+- **Family bar**: the two round buttons now say "Family" and "Add person"; "Add person" is
+  outlined so it is not mistaken for "Add record".
+- **Dose**: starts at 0-0-0 and must be set before saving, so no reminders for a dose you never
+  chose. Morning / Afternoon / Night each have − and + buttons and are read out by screen readers.
+  "Only when needed" saves the medicine with no reminders.
+
 ### 1.23.0 (10 Oct 2026)
 - **A "done" moment**: saving a record, scan, reminder, BP/sugar reading, vaccination, family
   member, ABHA or Emergency ID, and turning on backup, shows a tick that draws itself with a word

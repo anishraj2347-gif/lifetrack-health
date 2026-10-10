@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../ai/plane_a/reference_ranges.dart' show analyteNames;
@@ -33,7 +34,11 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   final _facility = TextEditingController();
   final _ingredient = TextEditingController();
   DateTime _date = DateTime.now();
-  final _dose = [1, 0, 1];
+  /// Starts at 0-0-0 so nobody gets reminders for a dose they never chose.
+  final _dose = [0, 0, 0];
+
+  /// "Only when needed" (SOS): saved with no dose, so no reminders.
+  bool _asNeeded = false;
   final _results = <_ResultRow>[];
   String? _error;
 
@@ -48,6 +53,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     _facility.text = r.facility ?? '';
     _ingredient.text = r.ingredient ?? '';
     _date = r.date;
+    if (r.kind == RecordKind.prescription && r.dose == null) _asNeeded = true;
     if (r.dose case final d?) {
       _dose
         ..[0] = d.morning
@@ -66,6 +72,10 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     final s = AppScope.of(context);
     if (_title.text.trim().isEmpty) {
       setState(() => _error = 'Say what the document is.');
+      return;
+    }
+    if (_kind == RecordKind.prescription && !_asNeeded && _dose.every((n) => n == 0)) {
+      setState(() => _error = 'Set how many to take in the morning, afternoon or night — or choose "Only when needed".');
       return;
     }
     final results = <LabResult>[];
@@ -96,7 +106,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
       prescriberRegistration: old?.prescriberRegistration,
       doctor: _doctor.text.trim().isEmpty ? null : _doctor.text.trim(),
       facility: _facility.text.trim().isEmpty ? null : _facility.text.trim(),
-      dose: _kind == RecordKind.prescription ? Dose(morning: _dose[0], afternoon: _dose[1], night: _dose[2]) : null,
+      dose: _kind == RecordKind.prescription && !_asNeeded ? Dose(morning: _dose[0], afternoon: _dose[1], night: _dose[2]) : null,
       ingredient: _kind == RecordKind.prescription && _ingredient.text.trim().isNotEmpty ? _ingredient.text.trim().toLowerCase() : null,
       results: _kind == RecordKind.report ? results : [],
     );
@@ -167,23 +177,22 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
             ),
             LabeledField(
               label: 'Dose',
-              hint: 'Morning · afternoon · night. Tap a box to change it.',
-              child: Row(children: [
-                for (var i = 0; i < 3; i++) ...[
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => setState(() => _dose[i] = (_dose[i] + 1) % 4),
-                      borderRadius: BorderRadius.circular(LT.radius),
-                      child: Container(
-                        height: 48,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(border: Border.all(color: LT.rule), borderRadius: BorderRadius.circular(LT.radius)),
-                        child: Text('${_dose[i]}', style: LT.data.copyWith(fontSize: 18)),
-                      ),
-                    ),
+              hint: 'How many to take at each time of day.',
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Opacity(
+                  opacity: _asNeeded ? 0.45 : 1,
+                  child: IgnorePointer(
+                    ignoring: _asNeeded,
+                    child: Row(children: [
+                      for (final (i, name, icon) in [(0, 'Morning', LucideIcons.sunrise), (1, 'Afternoon', LucideIcons.sun), (2, 'Night', LucideIcons.moon)]) ...[
+                        Expanded(child: _DoseStepper(name: name, icon: icon, value: _dose[i], onChanged: (v) => setState(() => _dose[i] = v))),
+                        if (i < 2) const SizedBox(width: 8),
+                      ],
+                    ]),
                   ),
-                  if (i < 2) const SizedBox(width: 8),
-                ],
+                ),
+                SizedBox(height: 10),
+                Chip2('Only when needed · no reminders', selected: _asNeeded, onTap: () => setState(() => _asNeeded = !_asNeeded)),
               ]),
             ),
           ],
@@ -218,5 +227,59 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
           if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 8, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
           Padding(padding: EdgeInsets.fromLTRB(16, 20, 16, 28), child: SlabButton('Save record', icon: LucideIcons.check, onPressed: _save)),
         ]),
+      );
+}
+
+/// One time of day: its name, then − count +. Big targets, read out as
+/// "Morning dose, 1 tablet".
+class _DoseStepper extends StatelessWidget {
+  const _DoseStepper({required this.name, required this.icon, required this.value, required this.onChanged});
+  final String name;
+  final IconData icon;
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: EdgeInsets.fromLTRB(4, 8, 4, 6),
+        decoration: BoxDecoration(border: Border.all(color: value > 0 ? LT.ink : LT.rule, width: value > 0 ? 1.5 : 1), borderRadius: BorderRadius.circular(LT.radius)),
+        child: Column(children: [
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, size: 15, color: LT.ink2),
+            SizedBox(width: 4),
+            Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: LT.meta.copyWith(color: LT.ink2))),
+          ]),
+          Semantics(
+            label: '$name dose',
+            value: '$value tablet${value == 1 ? '' : 's'}',
+            increasedValue: '${value + 1}',
+            decreasedValue: '${value > 0 ? value - 1 : 0}',
+            onIncrease: value < 9 ? () => onChanged(value + 1) : null,
+            onDecrease: value > 0 ? () => onChanged(value - 1) : null,
+            excludeSemantics: true,
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              _btn(LucideIcons.minus, value > 0 ? () => onChanged(value - 1) : null),
+              Text('$value', style: LT.data.copyWith(fontSize: 20)),
+              _btn(LucideIcons.plus, value < 9 ? () => onChanged(value + 1) : null),
+            ]),
+          ),
+        ]),
+      );
+
+  Widget _btn(IconData i, VoidCallback? onTap) => SizedBox(
+        width: 40,
+        height: 44,
+        child: IconButton(
+          padding: EdgeInsets.zero,
+          onPressed: onTap == null
+              ? null
+              : () {
+                  HapticFeedback.selectionClick();
+                  onTap();
+                },
+          icon: Icon(i, size: 18),
+          color: LT.ink,
+          disabledColor: LT.inactive,
+        ),
       );
 }

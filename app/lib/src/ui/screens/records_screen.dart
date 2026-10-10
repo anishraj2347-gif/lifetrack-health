@@ -162,7 +162,7 @@ class _RecordCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = record;
     final meta = switch (r.kind) {
-      RecordKind.prescription => r.dose == null ? null : 'Dose ${r.dose!.display}',
+      RecordKind.prescription => r.dose != null ? 'Dose ${r.dose!.display}' : r.source == RecordSource.typedByPatient ? 'Only when needed' : null,
       RecordKind.report => r.results.isEmpty ? null : '${r.results.length} value${r.results.length == 1 ? '' : 's'}',
       RecordKind.note => 'This phone only',
       RecordKind.scan => null,
@@ -175,7 +175,7 @@ class _RecordCard extends StatelessWidget {
         SizedBox(width: 14),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text([kindLabel(r.kind), ?r.doctor].join(' · '), style: LT.small.copyWith(fontSize: 11.5), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text([kindLabel(r.kind), ?r.doctor].join(' · '), style: LT.small.copyWith(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
             SizedBox(height: 2),
             Text(r.title, style: LT.label.copyWith(fontSize: 15.5, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
             if (meta != null || r.facility != null) ...[
@@ -187,7 +187,7 @@ class _RecordCard extends StatelessWidget {
         SizedBox(width: 10),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Text(r.date.day.toString().padLeft(2, '0'), style: LT.data.copyWith(fontSize: 17)),
-          Text(shortMonth(r.date), style: LT.small.copyWith(fontSize: 11)),
+          Text(shortMonth(r.date), style: LT.small.copyWith(fontSize: 12)),
         ]),
       ]),
     );

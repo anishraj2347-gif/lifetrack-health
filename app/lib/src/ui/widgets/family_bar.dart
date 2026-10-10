@@ -7,7 +7,6 @@ import '../app_scope.dart';
 import '../screens/add_family_screen.dart';
 import '../screens/family_overview_screen.dart';
 import '../theme.dart';
-import 'parts.dart';
 
 /// Everyone whose records are on this phone, as avatars. Tap to switch; the
 /// one you are viewing is lime. When it is not you, a banner says whose
@@ -23,11 +22,13 @@ class FamilyBar extends StatelessWidget {
     final family = s.familyOnPhone();
     final current = s.currentPatientId;
     final c = current == null ? null : s.custodyOf(current);
+    // Tall enough for the circle and one line of name at the phone's text size.
+    final barHeight = 14 + 48 + 4 + MediaQuery.textScalerOf(context).scale(12) * 1.5 + 6;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(
-          height: 84,
+          height: barHeight,
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.fromLTRB(20, 14, 20, 0),
@@ -49,8 +50,8 @@ class FamilyBar extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            width: 44,
-                            height: 44,
+                            width: 48,
+                            height: 48,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: p.id == current ? LT.accent : LT.raised,
@@ -72,7 +73,7 @@ class FamilyBar extends StatelessWidget {
                               textAlign: TextAlign.center,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 11, fontWeight: p.id == current ? FontWeight.w600 : FontWeight.w400, color: LT.ink2),
+                              style: TextStyle(fontSize: 12, height: 1.3, fontWeight: p.id == current ? FontWeight.w600 : FontWeight.w400, color: LT.ink2),
                             ),
                           ),
                         ],
@@ -80,39 +81,30 @@ class FamilyBar extends StatelessWidget {
                     ),
                   ),
                 ),
-              Semantics(
-                label: 'Family overview',
-                button: true,
-                excludeSemantics: true,
-                child: Padding(
-                  padding: EdgeInsets.only(right: 8),
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: RoundButton(
-                      LucideIcons.users,
-                      dark: false,
-                      onTap: () async {
-                        await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => FamilyOverviewScreen()));
-                        if (context.mounted) AppScope.changed(context);
-                      },
-                    ),
-                  ),
-                ),
+              _action(
+                context,
+                label: 'Family',
+                semantics: 'Family overview',
+                icon: LucideIcons.users,
+                filled: false,
+                onTap: () async {
+                  await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => FamilyOverviewScreen()));
+                  if (context.mounted) AppScope.changed(context);
+                },
               ),
-              Semantics(
-                label: 'Add a family member',
-                button: true,
-                excludeSemantics: true,
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: RoundButton(
-                    LucideIcons.plus,
-                    onTap: () async {
-                      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AddFamilyScreen()));
-                      if (context.mounted) AppScope.changed(context);
-                    },
-                  ),
-                ),
+              // Outlined, not black: the black button on this screen is
+              // "Add record", and the two must not be confused.
+              _action(
+                context,
+                label: 'Add person',
+                semantics: 'Add a family member',
+                icon: LucideIcons.userPlus,
+                filled: false,
+                outlined: true,
+                onTap: () async {
+                  await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AddFamilyScreen()));
+                  if (context.mounted) AppScope.changed(context);
+                },
               ),
             ],
           ),
@@ -135,6 +127,38 @@ class FamilyBar extends StatelessWidget {
       ],
     );
   }
+
+  static Widget _action(BuildContext context,
+          {required String label, required String semantics, required IconData icon, required VoidCallback onTap, bool filled = true, bool outlined = false}) =>
+      Padding(
+        padding: EdgeInsets.only(right: 8),
+        child: Semantics(
+          label: semantics,
+          button: true,
+          excludeSemantics: true,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: outlined ? Colors.transparent : LT.raised,
+                  shape: BoxShape.circle,
+                  border: outlined ? Border.all(color: LT.ink3, width: 1.5) : null,
+                ),
+                child: Icon(icon, size: 19, color: LT.ink),
+              ),
+              SizedBox(height: 4),
+              SizedBox(
+                width: 64,
+                child: Text(label, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, height: 1.3, color: LT.ink2)),
+              ),
+            ]),
+          ),
+        ),
+      );
 
   static String authorityLine(Custody c) => switch (c.kind) {
     CustodyKind.childOfParent => c.isVerified

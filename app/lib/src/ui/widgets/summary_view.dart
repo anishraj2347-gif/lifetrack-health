@@ -104,7 +104,8 @@ class SummaryView extends StatelessWidget {
                       ),
                   ]),
                 ),
-                Badge2(label, tone: tone),
+                SizedBox(width: 8),
+                Flexible(flex: 0, child: ConstrainedBox(constraints: BoxConstraints(maxWidth: 130), child: Badge2(label, tone: tone))),
               ]),
             );
           }(),

@@ -195,6 +195,6 @@ class _Pill extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: ShapeDecoration(color: lime ? LT.accent : dark ? LT.onDarkChip : LT.raised, shape: StadiumBorder()),
-        child: Text(text, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: lime ? LT.onAccent : dark ? LT.onDark : LT.ink2)),
+        child: Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: lime ? LT.onAccent : dark ? LT.onDark : LT.ink2)),
       );
 }
