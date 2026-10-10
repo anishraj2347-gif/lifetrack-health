@@ -6,6 +6,9 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.25.1 (10 Oct 2026)
+- Test fix only: the app-lock test scrolls to the switch, which moved under "This phone" on Me.
+
 ### 1.25.0 (10 Oct 2026)
 - **Show on my phone is locked to the summary**: back, and "Give back", ask for your fingerprint,
   face or PIN first, so the doctor cannot wander into the rest of the app.

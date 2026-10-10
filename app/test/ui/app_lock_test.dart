@@ -142,6 +142,8 @@ void main() {
     await start(tester, u);
     await tester.tap(find.bySemanticsLabel('Me'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byType(Switch).first);
+    await tester.pumpAndSettle();
     u.answer = false;
     await tester.tap(find.byType(Switch).first);
     await tester.pumpAndSettle();
