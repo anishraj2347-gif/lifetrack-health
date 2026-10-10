@@ -129,7 +129,7 @@ class AppServices {
       }
       rethrow;
     } on Object {
-      // Offline: registered on the next start or "Check for updates".
+      // Offline: registered on the next start or "Check for prescriptions and updates".
     }
   }
 
@@ -970,7 +970,7 @@ class AppServices {
   }
 
   /// Best effort: a save never fails because the relay is unreachable. The
-  /// next change, or "Check for updates", tries again.
+  /// next change, or "Check for prescriptions and updates", tries again.
   Future<void> _tellLinkedFamily(String patientId) async {
     if (patientId != selfPatientId) return;
     try {

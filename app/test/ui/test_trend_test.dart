@@ -58,7 +58,7 @@ void main() {
 
     expect(find.byType(TrendCard), findsOneWidget);
     expect(find.byType(MoreTrends), findsOneWidget);
-    expect(find.textContaining('tap for every result'), findsOneWidget);
+    expect(find.textContaining('tap the card for all'), findsOneWidget);
 
     TrendCard big() => tester.widget<TrendCard>(find.byType(TrendCard));
     expect(big().analyte, 'ldl', reason: 'the most recently measured test');

@@ -13,7 +13,7 @@ import 'package:lifetrack/src/ui/lifetrack_app.dart';
 import 'package:lifetrack/src/vault/backup_vault.dart';
 
 void main() {
-  testWidgets('switch back to You survives Share → Check for updates → Me', (tester) async {
+  testWidgets('switch back to You survives Share → Check for prescriptions and updates → Me', (tester) async {
     late AppServices s;
     await tester.runAsync(() async {
       final registry = await Ed25519().newKeyPair();
@@ -39,7 +39,7 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Share'));
     await tester.pumpAndSettle();
     await tester.runAsync(() async {
-      await tester.tap(find.text('Check for updates'));
+      await tester.tap(find.text('Check for prescriptions and updates'));
       await Future<void>.delayed(const Duration(milliseconds: 300));
     });
     await tester.pumpAndSettle();

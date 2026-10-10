@@ -117,7 +117,7 @@ class LifeTrackIds {
       try {
         await ensure(p);
       } on Object {
-        // Retried on the next start or "Check for updates".
+        // Retried on the next start or "Check for prescriptions and updates".
       }
     }
   }

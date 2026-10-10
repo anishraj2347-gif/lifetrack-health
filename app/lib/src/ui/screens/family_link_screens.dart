@@ -65,7 +65,7 @@ class _FamilyInviteScreenState extends State<FamilyInviteScreen> {
               ),
               Note(
                 'Linking never gives you their records. They choose whether to share their Emergency ID or current medicines with you, and can stop at any time. '
-                'When they have joined, tap "Check for updates" on the Share tab.',
+                'When they have joined, pull down on the Share tab, or tap "Check for prescriptions and updates".',
                 icon: LucideIcons.shieldCheck,
                 margin: EdgeInsets.fromLTRB(16, 16, 16, 28),
               ),

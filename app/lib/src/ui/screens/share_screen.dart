@@ -57,7 +57,7 @@ class ShareScreen extends StatelessWidget {
     final s = AppScope.of(context);
     final grants = s.activeGrants();
     final sharing = s.sharing;
-    return ListView(children: [
+    final list = ListView(physics: AlwaysScrollableScrollPhysics(), children: [
       Masthead(
         eyebrow: 'Share',
         title: 'Show a doctor your records',
@@ -102,24 +102,7 @@ class ShareScreen extends StatelessWidget {
         ),
         Padding(
           padding: EdgeInsets.fromLTRB(16, 6, 16, 6),
-          child: SlabButton('Check for updates', variant: ButtonVariant.outline, icon: LucideIcons.inbox, onPressed: () async {
-            final msg = ScaffoldMessenger.of(context);
-            try {
-              final (added, family, refused) = await s.checkInbox();
-              msg.showSnackBar(SnackBar(
-                content: Text(added == 0 && family == 0 && refused == 0
-                    ? 'Nothing new.'
-                    : [
-                        if (added > 0) '$added prescription${added == 1 ? '' : 's'} added',
-                        if (family > 0) '$family family update${family == 1 ? '' : 's'}',
-                        if (refused > 0) '$refused refused — see your access log',
-                      ].join(', ')),
-              ));
-              if (context.mounted) AppScope.changed(context);
-            } on Object catch (e) {
-              msg.showSnackBar(SnackBar(content: Text('Could not check. ${plainError(e)}')));
-            }
-          }),
+          child: SlabButton('Check for prescriptions and updates', variant: ButtonVariant.outline, icon: LucideIcons.inbox, onPressed: () => _check(context)),
         ),
       ] else
         Note('Sharing with a doctor\'s device is not set up in this build. "Show on my phone" works without it.', icon: LucideIcons.cloudOff),
@@ -170,6 +153,34 @@ class ShareScreen extends StatelessWidget {
         ),
       SizedBox(height: 28),
     ]);
+    if (sharing == null) return list;
+    // Pull down to collect prescriptions and family updates.
+    return RefreshIndicator(
+      color: LT.ink,
+      backgroundColor: LT.surface,
+      onRefresh: () => _check(context),
+      child: list,
+    );
+  }
+
+  static Future<void> _check(BuildContext context) async {
+    final s = AppScope.of(context);
+    final msg = ScaffoldMessenger.of(context);
+    try {
+      final (added, family, refused) = await s.checkInbox();
+      msg.showSnackBar(SnackBar(
+        content: Text(added == 0 && family == 0 && refused == 0
+            ? 'Nothing new.'
+            : [
+                if (added > 0) '$added prescription${added == 1 ? '' : 's'} added — see Records',
+                if (family > 0) '$family family update${family == 1 ? '' : 's'}',
+                if (refused > 0) '$refused refused — see your access log',
+              ].join(', ')),
+      ));
+      if (context.mounted) AppScope.changed(context);
+    } on Object catch (e) {
+      msg.showSnackBar(SnackBar(content: Text('Could not check. ${plainError(e)}')));
+    }
   }
 
   /// Longer or shorter, from now: the doctor's copy is replaced with one that

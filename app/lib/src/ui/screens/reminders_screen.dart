@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../reminders/reminder_plan.dart';
@@ -150,12 +151,19 @@ class TodaysMedicines extends StatelessWidget {
             SizedBox(height: 8),
             Text('${slot.label} · ${hm(st.times[slot]!)}', style: LT.small.copyWith(fontWeight: FontWeight.w600)),
             for (final (_, r, n) in list)
-              CheckboxListTile(
+              SwipeToggle(
+                key: ValueKey('dose-${slot.name}-${r.id}'),
+                done: s.takenToday(slot, r.id),
+                onToggle: (v) async {
+                  await s.markTaken(slot, r.id, v);
+                  if (context.mounted) AppScope.changed(context);
+                },
+                child: CheckboxListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.leading,
                 value: s.takenToday(slot, r.id),
-                title: Text('${r.title}${n > 1 ? ' ×$n' : ''}', style: LT.label),
+                title: _Struck('${r.title}${n > 1 ? ' ×$n' : ''}', done: s.takenToday(slot, r.id)),
                 secondary: IconButton(
                   tooltip: 'Edit ${r.title}',
                   icon: Icon(LucideIcons.pencil, size: 17, color: LT.ink3),
@@ -165,11 +173,18 @@ class TodaysMedicines extends StatelessWidget {
                   },
                 ),
                 onChanged: (v) async {
+                  HapticFeedback.lightImpact();
                   await s.markTaken(slot, r.id, v ?? false);
                   if (context.mounted) AppScope.changed(context);
                 },
               ),
+              ),
           ],
+        if (doses.length > 1)
+          Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Text('Tip: swipe a medicine sideways to tick it.', style: LT.small),
+          ),
       ]),
     );
   }
@@ -244,17 +259,27 @@ class RemindersTab extends StatelessWidget {
                 Text("Today's reminders", style: LT.label),
                 SizedBox(height: 4),
                 for (final (h, m, c) in today)
-                  CheckboxListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    value: s.customDoneToday(c, h, m),
-                    title: Text(c.title, style: LT.label),
-                    subtitle: Text([hm((h, m)), ?c.note].join(' · '), style: LT.small),
-                    onChanged: (v) async {
-                      await s.markCustomDone(c, h, m, v ?? false);
+                  SwipeToggle(
+                    key: ValueKey('custom-${c.id}-$h-$m'),
+                    done: s.customDoneToday(c, h, m),
+                    doneLabel: 'Done',
+                    onToggle: (v) async {
+                      await s.markCustomDone(c, h, m, v);
                       if (context.mounted) AppScope.changed(context);
                     },
+                    child: CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: s.customDoneToday(c, h, m),
+                      title: _Struck(c.title, done: s.customDoneToday(c, h, m)),
+                      subtitle: Text([hm((h, m)), ?c.note].join(' · '), style: LT.small),
+                      onChanged: (v) async {
+                        HapticFeedback.lightImpact();
+                        await s.markCustomDone(c, h, m, v ?? false);
+                        if (context.mounted) AppScope.changed(context);
+                      },
+                    ),
                   ),
               ]),
             ),
@@ -307,4 +332,21 @@ class RemindersTab extends StatelessWidget {
       ),
     ]);
   }
+}
+
+/// A to-do title that fades and is struck through once ticked.
+class _Struck extends StatelessWidget {
+  const _Struck(this.text, {required this.done});
+  final String text;
+  final bool done;
+  @override
+  Widget build(BuildContext context) => AnimatedDefaultTextStyle(
+        duration: Duration(milliseconds: 200),
+        style: LT.label.copyWith(
+          color: done ? LT.ink3 : LT.ink,
+          decoration: done ? TextDecoration.lineThrough : TextDecoration.none,
+          decorationColor: LT.ink3,
+        ),
+        child: Text(text),
+      );
 }

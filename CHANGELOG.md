@@ -6,6 +6,16 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.21.0 (10 Oct 2026)
+- **Swipe to tick**: on Reminders, swipe a medicine or reminder sideways to mark it taken (swipe
+  again to undo). Ticked items fade and are struck through. The checkbox still works.
+- **Pull down on Share** to collect prescriptions and family updates; the button is now called
+  "Check for prescriptions and updates".
+- **Touchable trend chart**: touch or drag along the dots to read each result and its date; the
+  number rolls to the value under your finger. Dots light up column by column. The scale starts
+  at 80% of your lowest result, so a small change no longer looks like a big drop. Screen readers
+  hear every value and date.
+
 ### 1.20.0 (10 Oct 2026)
 - **Every tab is labelled**: the bottom bar shows each icon with its name; the selected one sits
   on the lime pill. The light/dark button moved to a new top bar beside the LifeTrack name.

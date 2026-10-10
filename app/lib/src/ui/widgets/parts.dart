@@ -413,3 +413,40 @@ String plainError(Object e) {
   if (e is StateError) return e.message;
   return 'Something went wrong. Please try again.';
 }
+
+/// Swipe a row sideways to tick it done (or undo it); the row springs back
+/// and the tick changes. The checkbox inside still works for anyone who
+/// does not swipe.
+class SwipeToggle extends StatelessWidget {
+  const SwipeToggle({required super.key, required this.done, required this.onToggle, required this.child, this.doneLabel = 'Taken'});
+  final bool done;
+  final Future<void> Function(bool) onToggle;
+  final Widget child;
+  final String doneLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget side(Alignment a) => Container(
+          alignment: a,
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(color: done ? LT.raised : LT.primary, borderRadius: BorderRadius.circular(LT.radius)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(done ? LucideIcons.undo2 : LucideIcons.check, size: 18, color: done ? LT.ink : LT.onDark),
+            SizedBox(width: 8),
+            Text(done ? 'Not yet' : doneLabel, style: TextStyle(fontFamily: LT.body, fontSize: 14, fontWeight: FontWeight.w600, color: done ? LT.ink : LT.onDark)),
+          ]),
+        );
+    return Dismissible(
+      key: key!,
+      dismissThresholds: const {DismissDirection.startToEnd: 0.3, DismissDirection.endToStart: 0.3},
+      background: side(Alignment.centerLeft),
+      secondaryBackground: side(Alignment.centerRight),
+      confirmDismiss: (_) async {
+        HapticFeedback.mediumImpact();
+        await onToggle(!done);
+        return false;
+      },
+      child: child,
+    );
+  }
+}
