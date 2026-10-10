@@ -109,6 +109,15 @@ abstract final class LT {
   /// darkest wash in light mode (dark text), the lightest in dark mode.
   static Color get washExtreme => _p(0xFFC8D7E8, 0xFF324458);
 
+  /// A soft tint per record type, from the same family as the page wash.
+  /// It only tells types apart — never a health status (no red, no green).
+  static Color kindTint(int kind) => switch (kind) {
+        0 => _p(0xFFDDCDEF, 0xFF3A2E4A), // prescription: lilac
+        1 => _p(0xFFC9DCF0, 0xFF233848), // report: sky
+        2 => _p(0xFFF4D9C2, 0xFF46331F), // scan: peach
+        _ => _p(0xFFE9E2CF, 0xFF3A362A), // note: sand
+      };
+
   static ThemeData theme() {
     final none = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(radius)), borderSide: BorderSide(color: raised));
     final scheme = (dark ? ColorScheme.dark() : ColorScheme.light()).copyWith(

@@ -178,13 +178,10 @@ class _TrendCardState extends State<TrendCard> {
                 child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
                   for (final (i, p) in points.indexed)
                     Expanded(
-                      child: AnimatedContainer(
-                        duration: Duration(milliseconds: 180),
-                        padding: EdgeInsets.only(bottom: 6),
-                        decoration: BoxDecoration(
-                          color: i == sel ? LT.onDarkChip.withValues(alpha: 0.45) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      // No box behind the chosen column: its dots turn lime and its
+                      // month sits in a lime pill — that is the highlight.
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: 2),
                         child: Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.end, children: [
                           SizedBox(height: 6),
                           for (var r = _rows - 1; r >= 0; r--)
@@ -202,8 +199,18 @@ class _TrendCardState extends State<TrendCard> {
                                   ),
                               ]),
                             ),
-                          SizedBox(height: 8),
-                          Text(years ? "${shortMonth(p.$1)} '${(p.$1.year % 100).toString().padLeft(2, '0')}" : shortMonth(p.$1), style: TextStyle(fontSize: 12, fontWeight: i == sel ? FontWeight.w600 : FontWeight.w400, color: i == sel ? LT.onDark : LT.onDarkMuted)),
+                          SizedBox(height: 10),
+                          AnimatedContainer(
+                            duration: Duration(milliseconds: 200),
+                            curve: Curves.easeOut,
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(color: i == sel ? LT.accent : Colors.transparent, borderRadius: BorderRadius.circular(99)),
+                            child: Text(
+                              years ? "${shortMonth(p.$1)} '${(p.$1.year % 100).toString().padLeft(2, '0')}" : shortMonth(p.$1),
+                              maxLines: 1,
+                              style: TextStyle(fontSize: 12, fontWeight: i == sel ? FontWeight.w700 : FontWeight.w500, color: i == sel ? LT.onAccent : LT.onDarkMuted),
+                            ),
+                          ),
                         ]),
                       ),
                     ),

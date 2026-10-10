@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../ai/plane_a/reference_ranges.dart' show analyteName;
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -63,7 +64,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
       final m = monthYear(r.date);
       if (m != month) {
         month = m;
-        children.add(Eyebrow(m, padding: EdgeInsets.fromLTRB(20, 18, 20, 10)));
+        children.add(_MonthHeader(m, shown.where((x) => monthYear(x.date) == m).length));
       }
       children.add(_RecordCard(record: r));
     }
@@ -214,35 +215,177 @@ class _RecordCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = record;
-    final meta = switch (r.kind) {
-      RecordKind.prescription => r.dose != null ? 'Dose ${r.dose!.display}' : r.source == RecordSource.typedByPatient ? 'Only when needed' : null,
-      RecordKind.report => r.results.isEmpty ? null : '${r.results.length} value${r.results.length == 1 ? '' : 's'}',
-      RecordKind.note => 'This phone only',
-      RecordKind.scan => null,
-    };
-    return ShadCard(
-      padding: EdgeInsets.fromLTRB(14, 14, 16, 14),
-      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RecordScreen(recordId: r.id))),
-      child: Row(children: [
-        IconTile(iconForKind(r.kind)),
-        SizedBox(width: 14),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text([kindLabel(r.kind), ?r.doctor].join(' · '), style: LT.small.copyWith(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-            SizedBox(height: 2),
-            Text(r.title, style: LT.label.copyWith(fontSize: 16, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-            if (meta != null || r.facility != null) ...[
-              SizedBox(height: 2),
-              Text([?meta, ?r.facility].join(' · '), style: LT.small, maxLines: 1, overflow: TextOverflow.ellipsis),
-            ],
-          ]),
-        ),
-        SizedBox(width: 10),
-        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text(r.date.day.toString().padLeft(2, '0'), style: LT.data.copyWith(fontSize: 17)),
-          Text(shortMonth(r.date), style: LT.small.copyWith(fontSize: 12)),
+    final chips = <Widget>[
+      if (r.kind == RecordKind.prescription && r.dose != null) _DosePills(r.dose!),
+      if (r.kind == RecordKind.prescription && r.dose == null && r.source == RecordSource.typedByPatient) _MiniChip('Only when needed', icon: LucideIcons.clock),
+      if (r.kind == RecordKind.report && r.results.isNotEmpty)
+        _MiniChip('${analyteName(r.results.first.analyte)} ${TestTrendScreen.fmt(r.results.first.value)} ${r.results.first.unit}${r.results.length > 1 ? '  +${r.results.length - 1}' : ''}'),
+      if (r.kind == RecordKind.note) _MiniChip('This phone only', icon: LucideIcons.lock),
+    ];
+    // Where it came from, as small icons on the doctor line (read out by
+    // screen readers) rather than more chips.
+    final marks = <(IconData, String)>[
+      if (r.source == RecordSource.doctorIssued || r.source == RecordSource.labSigned) (LucideIcons.badgeCheck, 'Signed'),
+      if (r.source == RecordSource.smartCapture) (LucideIcons.scanText, 'Scanned'),
+      if (r.attachmentId != null) (LucideIcons.paperclip, 'Original attached'),
+    ];
+    return MergeSemantics(
+      child: ShadCard(
+        padding: EdgeInsets.fromLTRB(12, 12, 12, 12),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RecordScreen(recordId: r.id))),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _KindTile(r.kind),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(r.title, style: LT.label.copyWith(fontSize: 16, fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
+              SizedBox(height: 3),
+              Row(children: [
+                Icon(r.doctor != null ? LucideIcons.stethoscope : LucideIcons.tag, size: 13, color: LT.ink3),
+                SizedBox(width: 5),
+                Expanded(
+                  child: Text([r.doctor ?? kindLabel(r.kind), ?r.facility].join(' · '), style: LT.meta.copyWith(color: LT.ink2), maxLines: 1, overflow: TextOverflow.ellipsis),
+                ),
+                for (final (icon, label) in marks)
+                  Padding(padding: EdgeInsets.only(left: 6), child: Semantics(label: label, child: Icon(icon, size: 14, color: LT.ink2))),
+              ]),
+              if (chips.isNotEmpty) ...[
+                SizedBox(height: 8),
+                Wrap(spacing: 6, runSpacing: 6, children: chips),
+              ],
+            ]),
+          ),
+          SizedBox(width: 10),
+          _DateBlock(r.date),
         ]),
+      ),
+    );
+  }
+}
+
+/// The record type as a soft tinted square with its icon.
+class _KindTile extends StatelessWidget {
+  const _KindTile(this.kind);
+  final RecordKind kind;
+  @override
+  Widget build(BuildContext context) {
+    final tint = LT.kindTint(kind.index);
+    return Container(
+      width: 46,
+      height: 46,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.alphaBlend(Colors.white.withValues(alpha: LT.dark ? 0.06 : 0.35), tint), tint]),
+        border: Border.all(color: Colors.white.withValues(alpha: LT.dark ? 0.08 : 0.8)),
+        boxShadow: [BoxShadow(color: tint.withValues(alpha: LT.dark ? 0.0 : 0.6), blurRadius: 10, offset: Offset(0, 4))],
+      ),
+      child: Icon(iconForKind(kind), size: 21, color: LT.ink),
+    );
+  }
+}
+
+/// "SEP / 22" like a calendar leaf; the year only when it is not this year.
+class _DateBlock extends StatelessWidget {
+  const _DateBlock(this.d);
+  final DateTime d;
+  @override
+  Widget build(BuildContext context) {
+    final thisYear = AppScope.of(context).clock().year == d.year;
+    return Container(
+      width: 48,
+      padding: EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: LT.raised,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: LT.dark ? 0.06 : 0.9)),
+      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text(shortMonth(d).toUpperCase(), style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.6, color: LT.ink2)),
+        Text('${d.day}', style: LT.data.copyWith(fontSize: 18, height: 1.15)),
+        if (!thisYear) Text('${d.year}', style: LT.meta),
       ]),
     );
   }
+}
+
+/// A small neutral pill: a value, a source, a fact about the record.
+class _MiniChip extends StatelessWidget {
+  const _MiniChip(this.text, {this.icon});
+  final String text;
+  final IconData? icon;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(color: LT.raised, borderRadius: BorderRadius.circular(99), border: Border.all(color: LT.rule.withValues(alpha: 0.6))),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (icon != null) ...[Icon(icon, size: 12, color: LT.ink2), SizedBox(width: 4)],
+          Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: FontWeight.w500, color: LT.ink2))),
+        ]),
+      );
+}
+
+/// Morning · afternoon · night as three small pills; a time with no dose is
+/// faint, so the pattern (1-0-1) reads at a glance.
+class _DosePills extends StatelessWidget {
+  const _DosePills(this.dose);
+  final Dose dose;
+  @override
+  Widget build(BuildContext context) => Semantics(
+        label: 'Dose: ${dose.morning} morning, ${dose.afternoon} afternoon, ${dose.night} night',
+        excludeSemantics: true,
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          for (final (n, icon) in [(dose.morning, LucideIcons.sunrise), (dose.afternoon, LucideIcons.sun), (dose.night, LucideIcons.moon)]) ...[
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              margin: EdgeInsets.only(right: 4),
+              decoration: BoxDecoration(
+                color: n > 0 ? LT.button : LT.raised,
+                borderRadius: BorderRadius.circular(99),
+                border: n > 0 ? null : Border.all(color: LT.rule.withValues(alpha: 0.6)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(icon, size: 12, color: n > 0 ? LT.onButton : LT.ink3),
+                SizedBox(width: 4),
+                Text('$n', style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: FontWeight.w700, color: n > 0 ? LT.onButton : LT.ink3)),
+              ]),
+            ),
+          ],
+        ]),
+      );
+}
+
+/// The month a group of records falls in, as a small glass pill with how
+/// many records it holds — a clear break in a long list.
+class _MonthHeader extends StatelessWidget {
+  const _MonthHeader(this.month, this.count);
+  final String month;
+  final int count;
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: EdgeInsets.fromLTRB(16, 18, 16, 10),
+        child: Row(children: [
+          Container(
+            padding: EdgeInsets.fromLTRB(10, 6, 12, 6),
+            decoration: BoxDecoration(
+              color: LT.raised,
+              borderRadius: BorderRadius.circular(99),
+              border: Border.all(color: Colors.white.withValues(alpha: LT.dark ? 0.07 : 0.9)),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.25 : 0.05), blurRadius: 8, offset: Offset(0, 3))],
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(LucideIcons.calendarDays, size: 14, color: LT.ink2),
+              SizedBox(width: 6),
+              Text(month, style: TextStyle(fontFamily: LT.body, fontSize: 14, fontWeight: FontWeight.w600, color: LT.ink)),
+              SizedBox(width: 8),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                decoration: BoxDecoration(color: LT.button, borderRadius: BorderRadius.circular(99)),
+                child: Text('$count', style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: FontWeight.w700, color: LT.onButton)),
+              ),
+            ]),
+          ),
+          SizedBox(width: 10),
+          Expanded(child: Container(height: 1, color: LT.rule.withValues(alpha: 0.7))),
+        ]),
+      );
 }

@@ -6,6 +6,16 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.37.0 (11 Oct 2026)
+- **Records cards are richer**: each record has a soft tinted tile for its type (prescription
+  lilac, report sky, scan peach, note sand — never a health colour), the doctor and clinic with a
+  small icon, a calendar-style date, and one detail chip: the dose as morning / afternoon / night
+  pills, or the first value of a report ("+3" for the rest). Small icons show "signed",
+  "scanned" and "original attached".
+- **Month headings** in the list are pills with how many records that month holds.
+- **Trend chart highlight**: no grey box behind the chosen column any more — its dots turn lime and
+  its month sits in a lime pill. The small trend tiles have a tiny line of their results.
+
 ### 1.36.0 (10 Oct 2026)
 - **Sample page to scan** (demonstration builds only): "Try it with a sample page" on the
   scan screen adds a printed-looking lab page stamped SAMPLE, so reading and checking a report can

@@ -146,7 +146,9 @@ class MoreTrends extends StatelessWidget {
                   Row(children: [
                     Expanded(child: Text(analyteName(t.analyte), style: LT.label.copyWith(fontSize: 14, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     SizedBox(width: 6),
-                    Icon(LucideIcons.chartLine, size: 16, color: LT.ink3),
+                    // A tiny line of this test's own results; the newest point is
+                    // lime ("now"). Neutral ink — no range, no colour by value.
+                    SizedBox(width: 44, height: 20, child: CustomPaint(painter: _Spark([for (final p in t.points) p.$2.value], LT.ink2, LT.accent, LT.ink))),
                   ]),
                   SizedBox(height: 6),
                   Text.rich(
@@ -169,4 +171,38 @@ class MoreTrends extends StatelessWidget {
 
   /// "22 Sep" in the year of the newest result, "22 Sep 2025" before it.
   static String _short(DateTime d, int year) => '${d.day} ${shortMonth(d)}${d.year == year ? '' : ' ${d.year}'}';
+}
+
+class _Spark extends CustomPainter {
+  _Spark(this.values, this.ink, this.now, this.rim);
+  final List<double> values;
+  final Color ink, now, rim;
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.length < 2) return;
+    final lo = values.reduce((a, b) => a < b ? a : b);
+    final hi = values.reduce((a, b) => a > b ? a : b);
+    final base = lo > 0 ? lo * 0.8 : lo; // same scale rule as the trend card
+    double y(double v) => hi == base ? size.height / 2 : size.height - 3 - (v - base) / (hi - base) * (size.height - 6);
+    final dx = (size.width - 6) / (values.length - 1);
+    final path = Path()..moveTo(3, y(values.first));
+    for (var i = 1; i < values.length; i++) {
+      path.lineTo(3 + dx * i, y(values[i]));
+    }
+    canvas.drawPath(path, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = ink);
+    final last = Offset(3 + dx * (values.length - 1), y(values.last));
+    canvas.drawCircle(last, 3.5, Paint()..color = now);
+    canvas.drawCircle(last, 3.5, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = rim);
+  }
+
+  @override
+  bool shouldRepaint(_Spark old) => old.values != values || old.ink != ink;
 }
