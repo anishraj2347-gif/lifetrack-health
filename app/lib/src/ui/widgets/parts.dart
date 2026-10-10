@@ -426,18 +426,22 @@ class _PressableState extends State<Pressable> {
   Widget build(BuildContext context) {
     final shape = widget.shape;
     Widget child = widget.child;
-    if (shape != null && _at != null) {
-      child = Stack(children: [
+    if (shape != null) {
+      // Always the same tree, glow or not, so the first tap restructures
+      // nothing; passthrough + centre so the layer never changes the child's
+      // size or position (a plain Stack shrank it to the top-left, and a
+      // tab's label jumped left after its first tap).
+      child = Stack(fit: StackFit.passthrough, alignment: Alignment.center, children: [
         child,
         Positioned.fill(
           child: IgnorePointer(
             child: ClipPath(
               clipper: ShapeBorderClipper(shape: shape),
               child: AnimatedOpacity(
-                opacity: _down ? 1 : 0,
+                opacity: _down && _at != null ? 1 : 0,
                 duration: Duration(milliseconds: _down ? 90 : 260),
                 curve: Curves.easeOut,
-                child: CustomPaint(painter: _TouchGlow(_at!, widget.glow ?? Colors.white)),
+                child: _at == null ? SizedBox.shrink() : CustomPaint(painter: _TouchGlow(_at!, widget.glow ?? Colors.white)),
               ),
             ),
           ),

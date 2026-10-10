@@ -6,6 +6,13 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.37.3 (11 Oct 2026)
+- **Fixed the bottom bar for real**: after a tab had been tapped once, its icon and name shifted to
+  the left, so the lime pill looked off-centre from the second switch on. The cause was the touch
+  glow added in 1.35.0, which squeezed whatever it wrapped (tabs, and cards and buttons too) to
+  the top-left after the first tap. Found by recording the phone's screen; a new test checks that
+  each tab stays centred under the pill after many switches.
+
 ### 1.37.2 (11 Oct 2026)
 - **Bottom bar**: the lime pill now sits inside the bar with a dark rim all round, instead of
   filling the slot edge to edge and spilling over the bar's rounded ends on Reminders and Me.
