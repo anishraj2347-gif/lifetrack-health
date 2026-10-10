@@ -63,7 +63,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     return Scaffold(
       appBar: GlassAppBar(),
       body: c == null
-          ? Center(child: CircularProgressIndicator())
+          ? Skeleton(cards: 2)
           : ListView(children: [
               Masthead(eyebrow: 'Emergency ID', title: who?.name ?? '', description: c.isEmpty ? null : 'For whoever treats you. Tap the card for its QR code.'),
               SizedBox(height: 14),

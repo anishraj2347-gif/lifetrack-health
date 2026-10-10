@@ -322,7 +322,10 @@ class PersonButton extends StatelessWidget {
       button: true,
       label: self ? 'Viewing your own records. Switch person or add family.' : "Viewing ${p.name}'s records. Switch person.",
       excludeSemantics: true,
-      child: Material(
+      child: Pressable(
+        shape: StadiumBorder(),
+        glow: LT.dark ? null : LT.ink.withValues(alpha: 0.45),
+        child: Material(
         color: flat ? Colors.transparent : LT.raised.withValues(alpha: 0.7),
         shape: flat ? StadiumBorder() : StadiumBorder(side: BorderSide(color: Colors.white.withValues(alpha: LT.dark ? 0.08 : 0.9))),
         child: InkWell(
@@ -349,6 +352,7 @@ class PersonButton extends StatelessWidget {
             ]),
           ),
         ),
+      ),
       ),
     );
   }

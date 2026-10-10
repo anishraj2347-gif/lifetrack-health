@@ -34,7 +34,7 @@ class _FamilyInviteScreenState extends State<FamilyInviteScreen> {
           builder: (context, snap) {
             if (snap.hasError) return ListView(children: [Note('Could not make an invite: ${snap.error}', icon: LucideIcons.triangleAlert)]);
             final invite = snap.data;
-            if (invite == null) return Center(child: CircularProgressIndicator());
+            if (invite == null) return Skeleton(cards: 2);
             final code = invite.encode();
             return ListView(children: [
               Masthead(

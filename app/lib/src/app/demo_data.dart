@@ -72,6 +72,19 @@ abstract final class DemoData {
         dose: const Dose(morning: 1, afternoon: 0, night: 1),
         ingredient: 'metformin',
       ),
+      // An afternoon dose, so a demonstration at any hour has a dose due now.
+      HealthRecord(
+        id: 'demo-rx-vitd-2026-09',
+        patientId: patientId,
+        kind: RecordKind.prescription,
+        title: 'Vitamin D3 1000 IU',
+        date: DateTime(2026, 9, 22),
+        source: RecordSource.typedByPatient,
+        doctor: 'Dr. R. Mehta',
+        facility: 'Apollo',
+        dose: const Dose(morning: 0, afternoon: 1, night: 0),
+        ingredient: 'cholecalciferol',
+      ),
       HealthRecord(
         id: 'demo-rx-glycomet-2026-02',
         patientId: patientId,

@@ -289,6 +289,8 @@ class _HomeShellState extends State<HomeShell> {
                         // The selected label sits on the lime pill.
                         child: GlassTone(
                           tone: i == _tab ? LT.accent : Color.alphaBlend(LT.primary.withValues(alpha: 0.80), Colors.white),
+                          child: Pressable(
+                          shape: StadiumBorder(),
                           child: Container(
                             constraints: BoxConstraints(minHeight: 56),
                             padding: EdgeInsets.symmetric(horizontal: 2, vertical: 6),
@@ -313,6 +315,7 @@ class _HomeShellState extends State<HomeShell> {
                                 ),
                               ],
                             ),
+                          ),
                           ),
                         ),
                       ),

@@ -132,8 +132,9 @@ abstract final class LT {
       fontFamily: body,
       // A soft material ripple under the finger.
       splashFactory: InkRipple.splashFactory,
-      splashColor: (dark ? Colors.white : Colors.black).withValues(alpha: 0.06),
-      highlightColor: Colors.transparent,
+      splashColor: (dark ? Colors.white : Colors.black).withValues(alpha: dark ? 0.10 : 0.08),
+      // A faint tint while a finger rests on a row, so the touch is seen at once.
+      highlightColor: (dark ? Colors.white : Colors.black).withValues(alpha: dark ? 0.05 : 0.035),
       pageTransitionsTheme: PageTransitionsTheme(builders: {
         for (final p in TargetPlatform.values) p: const BackdropTransitions(),
       }),

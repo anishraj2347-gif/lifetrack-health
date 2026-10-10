@@ -148,7 +148,7 @@ void main() {
       final b = await pickUpAndOpen(d);
       expect((b['allergies']! as List).single, containsPair('substance', 'Penicillin'));
       final meds = b['medicines']! as Map;
-      expect([for (final m in meds['active']! as List) (m as Map)['title']], ['Metformin 500 mg']);
+      expect([for (final m in meds['active']! as List) (m as Map)['title']], ['Vitamin D3 1000 IU', 'Metformin 500 mg'], reason: 'newest first');
       expect([for (final m in meds['endedRecently']! as List) (m as Map)['title']], ['Glycomet 500 SR']);
       final tests = b['latestTests']! as List;
       final hba1c = tests.firstWhere((t) => (t as Map)['analyte'] == 'hba1c') as Map;

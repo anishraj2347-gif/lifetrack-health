@@ -31,7 +31,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     return FutureBuilder<InsightRun?>(
       future: _run,
       builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) return Center(child: CircularProgressIndicator());
+        if (snap.connectionState != ConnectionState.done) return Skeleton(cards: 4);
         final run = snap.data;
         if (snap.hasError || run == null) return _failed(context);
         final flagged = run.insights.where((i) => i.severity != Severity.note).length;
@@ -105,30 +105,38 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
   Widget _off(BuildContext context) => ListView(children: [
         Masthead(eyebrow: 'Insights', title: 'Check ${whoseRecords(context) == 'your' ? 'my' : whoseRecords(context)} reports'),
-          PhotoBanner(Photos.reading, height: 170),
-        SizedBox(height: 8),
-        for (final (icon, title, body) in const [
-          (LucideIcons.chartColumn, 'Out-of-range values', 'Each report value compared with a published reference range for your age and sex.'),
-          (LucideIcons.trendingUp, 'Changes between reports', 'Notices when a value moves meaningfully from one report to the next.'),
-          (LucideIcons.pill, 'Duplicate medicines', 'Spots two prescriptions for the same ingredient under different brand names.'),
-        ])
-          ShadCard(
-            margin: EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              IconTile(icon),
-              SizedBox(width: 14),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(title, style: LT.label),
-                  SizedBox(height: 4),
-                  Text(body, style: LT.small),
+          PhotoBanner(Photos.reading, height: 112),
+        SizedBox(height: 12),
+        // One grouped card, so the three checks read as one list and the
+        // button sits near the first screen rather than under the tab bar.
+        ShadCard(
+          padding: EdgeInsets.zero,
+          child: Column(children: [
+            for (final (i, (icon, title, body)) in const [
+              (LucideIcons.chartColumn, 'Out-of-range values', 'Each report value compared with a published reference range for your age and sex.'),
+              (LucideIcons.trendingUp, 'Changes between reports', 'Notices when a value moves meaningfully from one report to the next.'),
+              (LucideIcons.pill, 'Duplicate medicines', 'Spots two prescriptions for the same ingredient under different brand names.'),
+            ].indexed)
+              Container(
+                padding: EdgeInsets.fromLTRB(16, 14, 16, 14),
+                decoration: BoxDecoration(border: i == 2 ? null : Border(bottom: BorderSide(color: LT.rule))),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  IconTile(icon),
+                  SizedBox(width: 14),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(title, style: LT.label),
+                      SizedBox(height: 2),
+                      Text(body, style: LT.small),
+                    ]),
+                  ),
                 ]),
               ),
-            ]),
-          ),
-        Note('For the next 24 hours, LifeTrack will look at ${whoseRecords(context)} reports and prescriptions — on this phone only — to find these. Each look is listed in the access log. Stop any time from Share › Who has access now.', icon: LucideIcons.shieldCheck, margin: EdgeInsets.fromLTRB(16, 16, 16, 0)),
+          ]),
+        ),
+        Note('For the next 24 hours, LifeTrack will look at ${whoseRecords(context)} reports and prescriptions — on this phone only — to find these. Each look is listed in the access log. Stop any time from Share › Who has access now.', icon: LucideIcons.shieldCheck, margin: EdgeInsets.fromLTRB(16, 4, 16, 0)),
         Padding(
-          padding: EdgeInsets.fromLTRB(16, 20, 16, 28),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 28),
           child: SlabButton('Turn on for 24 hours', icon: LucideIcons.activity, onPressed: () async {
             await AppScope.of(context).enableInsights();
             if (!context.mounted) return;

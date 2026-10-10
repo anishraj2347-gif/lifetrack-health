@@ -82,6 +82,8 @@ class SlabButton extends StatelessWidget {
       opacity: 1, // disabled is drawn grey instead (readable, and plainly not the action)
       child: Pressable(
         enabled: enabled,
+        shape: StadiumBorder(),
+        glow: v == ButtonVariant.outline || v == ButtonVariant.ghost ? (LT.dark ? Colors.white : LT.ink.withValues(alpha: 0.5)) : null,
         child: DecoratedBox(
           decoration: ShapeDecoration(
             shape: StadiumBorder(),
@@ -110,6 +112,8 @@ class SlabButton extends StatelessWidget {
                     onPressed!();
                   },
             customBorder: StadiumBorder(),
+            splashColor: inkOn(bg).splash,
+            highlightColor: inkOn(bg).highlight,
             // Grows for large system text instead of cutting the label off.
             child: Container(
               constraints: BoxConstraints(minHeight: 52),
@@ -152,7 +156,11 @@ class Chip2 extends StatelessWidget {
       button: true,
       selected: selected,
       inMutuallyExclusiveGroup: exclusive,
-      child: DecoratedBox(
+      child: Pressable(
+        enabled: onTap != null,
+        shape: StadiumBorder(),
+        glow: selected || LT.dark ? null : LT.ink.withValues(alpha: 0.45),
+        child: DecoratedBox(
         // Selected: part of the glossy black button family — soft drop
         // shadow below, light catching the top half.
         decoration: ShapeDecoration(shape: StadiumBorder(), shadows: selected ? [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 10, offset: Offset(0, 4))] : null),
@@ -172,6 +180,8 @@ class Chip2 extends StatelessWidget {
                       onTap!();
                     },
               customBorder: StadiumBorder(),
+              splashColor: inkOn(selected ? LT.button : LT.raised).splash,
+              highlightColor: inkOn(selected ? LT.button : LT.raised).highlight,
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: dense ? 40 : 48),
                 child: Padding(
@@ -183,6 +193,7 @@ class Chip2 extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -304,6 +315,8 @@ class ShadCard extends StatelessWidget {
         child: Appear(
           child: Pressable(
             enabled: onTap != null,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(LT.radiusLg)),
+            glow: _color == null && !LT.dark ? LT.ink.withValues(alpha: 0.45) : null,
             child: _card(),
           ),
         ),
@@ -337,6 +350,8 @@ class ShadCard extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
+            splashColor: inkOn(LT.surface).splash,
+            highlightColor: inkOn(LT.surface).highlight,
             child: Padding(
               padding: padding,
               child: LT.surface.computeLuminance() < 0.2
@@ -367,6 +382,8 @@ class ShadCard extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
+            splashColor: inkOn(color).splash,
+            highlightColor: inkOn(color).highlight,
             child: Padding(
               padding: padding,
               // On a black card, anything that does not set its own colour is
@@ -380,32 +397,92 @@ class ShadCard extends StatelessWidget {
 }
 
 /// Sinks a little under the finger, so a tap is felt before anything opens.
+/// Given the [shape] it is drawn in, a soft light also blooms where the
+/// finger lands, like a fingertip on glass, and fades when it lifts.
 class Pressable extends StatefulWidget {
-  const Pressable({super.key, required this.child, this.enabled = true});
+  const Pressable({super.key, required this.child, this.enabled = true, this.shape, this.glow});
   final Widget child;
   final bool enabled;
+  final ShapeBorder? shape;
+
+  /// The light's colour; white unless the surface is pale (then a grey).
+  final Color? glow;
   @override
   State<Pressable> createState() => _PressableState();
 }
 
 class _PressableState extends State<Pressable> {
   bool _down = false;
+  Offset? _at;
   void _set(bool v) {
     if (widget.enabled && _down != v) setState(() => _down = v);
   }
 
   @override
-  Widget build(BuildContext context) => Listener(
-        onPointerDown: (_) => _set(true),
-        onPointerUp: (_) => _set(false),
-        onPointerCancel: (_) => _set(false),
-        child: AnimatedScale(
-          scale: _down ? 0.97 : 1,
-          duration: Duration(milliseconds: _down ? 90 : 160),
-          curve: Curves.easeOut,
-          child: widget.child,
+  Widget build(BuildContext context) {
+    final shape = widget.shape;
+    Widget child = widget.child;
+    if (shape != null && _at != null) {
+      child = Stack(children: [
+        child,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: ClipPath(
+              clipper: ShapeBorderClipper(shape: shape),
+              child: AnimatedOpacity(
+                opacity: _down ? 1 : 0,
+                duration: Duration(milliseconds: _down ? 90 : 260),
+                curve: Curves.easeOut,
+                child: CustomPaint(painter: _TouchGlow(_at!, widget.glow ?? Colors.white)),
+              ),
+            ),
+          ),
         ),
-      );
+      ]);
+    }
+    return Listener(
+      onPointerDown: (e) {
+        if (widget.enabled) _at = e.localPosition;
+        _set(true);
+      },
+      onPointerUp: (_) => _set(false),
+      onPointerCancel: (_) => _set(false),
+      child: AnimatedScale(
+        scale: _down ? 0.97 : 1,
+        duration: Duration(milliseconds: _down ? 90 : 160),
+        curve: Curves.easeOut,
+        child: child,
+      ),
+    );
+  }
+}
+
+class _TouchGlow extends CustomPainter {
+  _TouchGlow(this.at, this.color);
+  final Offset at;
+  final Color color;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = size.longestSide * 0.75;
+    canvas.drawCircle(
+      at,
+      r,
+      Paint()
+        ..shader = RadialGradient(colors: [color.withValues(alpha: color.a * 0.32), color.withValues(alpha: color.a * 0.10), color.withValues(alpha: 0)], stops: const [0, 0.35, 1])
+            .createShader(Rect.fromCircle(center: at, radius: r)),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_TouchGlow old) => old.at != at || old.color != color;
+}
+
+/// Ink for a surface: a ripple and a held-down tint that show on it — white
+/// on black buttons and hero cards, a faint grey on pale glass.
+({Color splash, Color highlight}) inkOn(Color surface) {
+  final dark = surface.a > 0.5 && surface.computeLuminance() < 0.2;
+  final ink = dark ? Colors.white : Colors.black;
+  return (splash: ink.withValues(alpha: dark ? 0.14 : 0.08), highlight: ink.withValues(alpha: dark ? 0.08 : 0.04));
 }
 
 /// Fades and rises into place the first time it is built. Off when the
@@ -442,6 +519,50 @@ class Stagger extends StatelessWidget {
   final Widget child;
   @override
   Widget build(BuildContext context) => Appear(delay: Duration(milliseconds: 30 * (index < 6 ? index : 6)), child: _Staggered(child: child));
+}
+
+/// The shape of a page while it loads: a title and a few cards drawn as
+/// soft grey bars, rising in like the real page will. Still, not pulsing,
+/// so it costs nothing while waiting and never holds up a test.
+class Skeleton extends StatelessWidget {
+  const Skeleton({super.key, this.cards = 3, this.title = true});
+  final int cards;
+  final bool title;
+
+  Widget _bar(double width, double height) => Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(color: LT.ink.withValues(alpha: LT.dark ? 0.10 : 0.07), borderRadius: BorderRadius.circular(height / 2)),
+      );
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        label: 'Loading',
+        child: ListView(physics: NeverScrollableScrollPhysics(), children: [
+          if (title)
+            Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 18),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_bar(90, 10), SizedBox(height: 12), _bar(220, 22)]),
+            ),
+          for (var i = 0; i < cards; i++)
+            Stagger(
+              index: i,
+              child: ShadCard(
+                child: Row(children: [
+                  Container(width: 40, height: 40, decoration: BoxDecoration(color: LT.ink.withValues(alpha: LT.dark ? 0.10 : 0.07), shape: BoxShape.circle)),
+                  SizedBox(width: 14),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      FractionallySizedBox(widthFactor: 0.55, child: _bar(double.infinity, 12)),
+                      SizedBox(height: 10),
+                      FractionallySizedBox(widthFactor: i.isEven ? 0.9 : 0.75, child: _bar(double.infinity, 9)),
+                    ]),
+                  ),
+                ]),
+              ),
+            ),
+        ]),
+      );
 }
 
 class _Staggered extends InheritedWidget {
@@ -592,13 +713,19 @@ class RoundButton extends StatelessWidget {
   final bool dark;
   final double size;
   @override
-  Widget build(BuildContext context) => Material(
-        color: dark ? LT.button : LT.raised,
+  Widget build(BuildContext context) => Pressable(
         shape: CircleBorder(),
-        child: InkWell(
-          onTap: onTap,
-          customBorder: CircleBorder(),
-          child: SizedBox(width: size, height: size, child: Icon(icon, size: 19, color: dark ? LT.onButton : LT.ink)),
+        glow: dark || LT.dark ? null : LT.ink.withValues(alpha: 0.45),
+        child: Material(
+          color: dark ? LT.button : LT.raised,
+          shape: CircleBorder(),
+          child: InkWell(
+            onTap: onTap,
+            customBorder: CircleBorder(),
+            splashColor: inkOn(dark ? LT.button : LT.raised).splash,
+            highlightColor: inkOn(dark ? LT.button : LT.raised).highlight,
+            child: SizedBox(width: size, height: size, child: Icon(icon, size: 19, color: dark ? LT.onButton : LT.ink)),
+          ),
         ),
       );
 }

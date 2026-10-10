@@ -6,6 +6,18 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.35.0 (10 Oct 2026)
+- **Touch effect**: buttons, cards, chips, the round buttons, the person pill and the tab bar now
+  answer a finger at once — they sink slightly and a soft light blooms where you touch, like a
+  fingertip on glass, fading as you lift. The ripple and the held-down tint are a little stronger,
+  white on black buttons and cards so they show there too.
+- **Loading**: Insights, the Emergency ID and the family invite show the outline of the page
+  (grey bars on glass cards) while they load, instead of a spinning circle.
+- **Insights (off)**: the three checks are one card with dividers and the photo is shorter, so
+  "Turn on for 24 hours" is on the first screen.
+- **Sample records**: add Vitamin D3 with an afternoon dose, so a demonstration at any hour has
+  a dose marked "Now".
+
 ### 1.34.1 (10 Oct 2026)
 - **Reminders**: with no reminders of your own yet, a small card says what they are for ("A
   check-up, a refill, a home reading") with the Create button inside it, instead of a lone button.
