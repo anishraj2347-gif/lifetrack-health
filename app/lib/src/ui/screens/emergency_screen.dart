@@ -5,6 +5,7 @@ import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../emergency/emergency_card.dart';
@@ -85,7 +86,8 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                   _field(LucideIcons.droplet, 'Blood type', c.bloodType),
                   _field(LucideIcons.activity, 'Ongoing conditions', c.conditions),
                   _field(LucideIcons.pill, 'Current medicines', c.medications),
-                  _field(LucideIcons.phone, 'Emergency contact', [c.contactName, c.contactRelation, c.contactPhone].where((x) => x.isNotEmpty).join(' · '), last: abha == null),
+                  _field(LucideIcons.phone, 'Emergency contact', [c.contactName, c.contactRelation, c.contactPhone].where((x) => x.isNotEmpty).join(' · '), last: abha == null && c.contactPhone.isEmpty),
+                  if (c.contactPhone.isNotEmpty) _callButton(c, last: abha == null),
                   if (abha != null) _field(LucideIcons.idCard, 'ABHA (last four digits)', abha.masked, last: true),
                 ]),
               ),
@@ -112,6 +114,14 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                     SizedBox(height: 8),
                     Text('Any phone camera can read it — no app or internet needed.', textAlign: TextAlign.center, style: LT.small),
                   ]),
+                ),
+              if (!widget.fromLockScreen && !c.isEmpty)
+                Note(
+                  'A locked phone hides this card, because LifeTrack only opens once the phone is unlocked. '
+                  'So also keep it where they can find it — save the wallet card below and print it, or set it as your lock-screen wallpaper, '
+                  'and copy your allergies and contact into your phone\'s own emergency information (Settings → Safety & emergency).',
+                  icon: LucideIcons.lockKeyhole,
+                  margin: EdgeInsets.fromLTRB(16, 6, 16, 0),
                 ),
               if (!widget.fromLockScreen && !c.isEmpty)
                 Padding(
@@ -155,6 +165,25 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     }
   }
 
+  /// Opens the phone's dialer with the number filled in — the person still
+  /// presses call. No permission and no network: it is the system dialer.
+  Widget _callButton(EmergencyCard c, {required bool last}) => Container(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, 14),
+        decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: LT.rule))),
+        child: SizedBox(
+          height: 56,
+          child: SlabButton(
+            'Call ${c.contactName.isEmpty ? c.contactPhone : c.contactName.split(' ').first}${c.contactRelation.isEmpty ? '' : ' (${c.contactRelation})'}',
+            icon: LucideIcons.phoneCall,
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final ok = await launchUrl(Uri(scheme: 'tel', path: c.contactPhone.replaceAll(RegExp(r'[^0-9+]'), '')));
+              if (!ok) messenger.showSnackBar(SnackBar(content: Text('Could not open the dialer. The number is ${c.contactPhone}.')));
+            },
+          ),
+        ),
+      );
+
   Widget _field(IconData icon, String label, String value, {bool last = false}) => Container(
         padding: EdgeInsets.fromLTRB(16, 14, 16, 14),
         decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: LT.rule))),
@@ -165,7 +194,11 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(label, style: LT.small),
               SizedBox(height: 2),
-              Text(value.isEmpty ? '—' : value, style: LT.label.copyWith(fontSize: 16)),
+              // Blank is "not filled in", never "none": a paramedic must not
+              // read an empty allergy field as "no known allergies".
+              value.isEmpty
+                  ? Text('Not filled in', style: LT.label.copyWith(fontSize: 16, fontStyle: FontStyle.italic, color: LT.ink3))
+                  : Text(value, style: LT.label.copyWith(fontSize: 16)),
             ]),
           ),
         ]),
@@ -236,13 +269,18 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
           margin: EdgeInsets.fromLTRB(16, 0, 16, 18),
           padding: EdgeInsets.all(14),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(LucideIcons.eye, size: 16, color: LT.signal),
+            // The fill is light in both modes, so the inks are fixed too —
+            // theme inks turn near-white in dark mode and vanish here.
+            Icon(LucideIcons.eye, size: 16, color: LT.signalFill),
             SizedBox(width: 10),
             Expanded(
-              child: Text.rich(TextSpan(style: TextStyle(fontSize: 13, height: 1.5, color: LT.ink2), children: [
-                TextSpan(text: 'A stranger can read this. ', style: TextStyle(fontWeight: FontWeight.w600, color: LT.ink)),
+              child: Text.rich(
+                style: TextStyle(fontSize: 13.5, height: 1.5, color: LT.cautionInk),
+                TextSpan(children: [
+                TextSpan(text: 'A stranger can read this. ', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF431407))),
                 TextSpan(text: 'Put in what a paramedic needs and nothing more — no address, no ID numbers.'),
-              ])),
+              ]),
+              ),
             ),
           ]),
         ),

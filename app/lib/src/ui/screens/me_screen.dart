@@ -88,7 +88,7 @@ class MeScreen extends StatelessWidget {
       ShadCard(
         padding: EdgeInsets.zero,
         child: Column(children: [
-          _link(context, LucideIcons.heartPulse, 'Emergency ID', 'What a paramedic sees', EmergencyScreen()),
+          _link(context, LucideIcons.heartPulse, 'Emergency ID', 'For whoever treats you · keep a copy outside the phone too', EmergencyScreen()),
           _link(context, LucideIcons.idCard, 'ABHA health ID', p.abha == null ? 'Optional · not added' : '${p.abha!.display} · not verified', AbhaScreen()),
           _link(context, LucideIcons.bell, 'Reminders', s.reminderSettings.on ? 'On · ${s.reminderPlan().length} in the next 2 weeks' : 'Off', RemindersScreen()),
           _link(context, LucideIcons.cloudUpload, 'Backup', s.backupAccount == null ? 'Off · records are only on this phone' : s.lastBackupError != null ? 'On · last attempt failed' : 'On · ${s.lastBackupAt == null ? 'not yet run' : 'last ${dateTime(s.lastBackupAt!)}'}', BackupScreen()),

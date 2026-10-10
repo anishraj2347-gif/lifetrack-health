@@ -144,3 +144,109 @@ class FamilyBar extends StatelessWidget {
     CustodyKind.self => '',
   };
 }
+
+/// The name of the person whose records are open, for copy like "Share
+/// Aarav's records" — or null when only one person is on this phone, where
+/// "my" already says it.
+String? viewingName(BuildContext context) {
+  final s = AppScope.of(context);
+  if (s.familyOnPhone().length < 2) return null;
+  final p = s.currentPatient;
+  if (p == null) return null;
+  return p.id == s.selfPatientId ? 'You' : p.name;
+}
+
+/// "Aarav's" / "your": the possessive for [viewingName].
+String whoseRecords(BuildContext context) {
+  final n = viewingName(context);
+  return n == null || n == 'You' ? 'your' : "${n.split(' ').first}'s";
+}
+
+/// On tabs without the [FamilyBar]: a slim line naming whose records the
+/// screen acts on, so a caregiver who switched on Records cannot share the
+/// wrong person's records from Share. Tap to switch. Hidden when only one
+/// person is on this phone.
+class ViewingPill extends StatelessWidget {
+  const ViewingPill({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final name = viewingName(context);
+    if (name == null) return SizedBox.shrink();
+    final c = s.custodyOf(s.currentPatientId!);
+    final role = c == null || c.kind == CustodyKind.self ? null : FamilyRole.describe(c.relation);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Semantics(
+        button: true,
+        label: 'Viewing ${name == 'You' ? 'your own' : "$name's"} records. Tap to switch person.',
+        excludeSemantics: true,
+        child: Material(
+          color: LT.raised,
+          shape: StadiumBorder(),
+          child: InkWell(
+            customBorder: StadiumBorder(),
+            onTap: () => _switcher(context),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: 48),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                child: Row(children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: LT.surface, shape: BoxShape.circle),
+                    child: Text(FamilyBar.initials(s.currentPatient!.name), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: LT.ink)),
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(style: TextStyle(fontFamily: LT.body, fontSize: 14, color: LT.ink2), children: [
+                        TextSpan(text: 'Viewing '),
+                        TextSpan(text: name == 'You' ? 'your own records' : name, style: TextStyle(fontWeight: FontWeight.w600, color: LT.ink)),
+                        if (role != null) TextSpan(text: ' · $role'),
+                      ]),
+                    ),
+                  ),
+                  Text('Switch', style: TextStyle(fontFamily: LT.body, fontSize: 13.5, fontWeight: FontWeight.w600, color: LT.ink)),
+                  Icon(LucideIcons.chevronDown, size: 18, color: LT.ink),
+                  SizedBox(width: 6),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Future<void> _switcher(BuildContext context) async {
+    final s = AppScope.of(context);
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: LT.surface,
+      builder: (sheet) => SafeArea(
+        child: ListView(shrinkWrap: true, padding: EdgeInsets.symmetric(vertical: 12), children: [
+          Padding(padding: EdgeInsets.fromLTRB(20, 4, 20, 8), child: Text('Whose records?', style: LT.label.copyWith(fontWeight: FontWeight.w600))),
+          for (final p in s.familyOnPhone())
+            ListTile(
+              minTileHeight: 56,
+              leading: CircleAvatar(
+                backgroundColor: p.id == s.currentPatientId ? LT.accent : LT.raised,
+                child: Text(FamilyBar.initials(p.name), style: TextStyle(fontWeight: FontWeight.w600, color: p.id == s.currentPatientId ? LT.onAccent : LT.ink)),
+              ),
+              title: Text(p.id == s.selfPatientId ? '${p.name} (you)' : p.name, style: LT.label),
+              trailing: p.id == s.currentPatientId ? Icon(LucideIcons.check, color: LT.ink) : null,
+              selected: p.id == s.currentPatientId,
+              onTap: () => Navigator.of(sheet).pop(p.id),
+            ),
+        ]),
+      ),
+    );
+    if (picked == null || picked == s.currentPatientId) return;
+    await s.switchTo(picked);
+    if (context.mounted) AppScope.changed(context);
+  }
+}

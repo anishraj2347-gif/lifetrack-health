@@ -5,6 +5,7 @@ import '../../ai/insight.dart';
 import '../../ai/plane_a/reference_ranges.dart' show analyteName;
 import '../app_scope.dart';
 import '../theme.dart';
+import '../widgets/family_bar.dart';
 import '../widgets/insight_card.dart';
 import '../widgets/parts.dart';
 
@@ -30,11 +31,13 @@ class _InsightsScreenState extends State<InsightsScreen> {
     return FutureBuilder<InsightRun?>(
       future: _run,
       builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) return Center(child: CircularProgressIndicator());
         final run = snap.data;
-        if (run == null) return Center(child: CircularProgressIndicator());
+        if (snap.hasError || run == null) return _failed(context);
         final flagged = run.insights.where((i) => i.severity != Severity.note).length;
         return ListView(children: [
-          Masthead(eyebrow: 'Insights · runs on this phone', title: 'What your numbers show'),
+          Masthead(eyebrow: 'Insights · runs on this phone', title: 'What ${whoseRecords(context)} numbers show'),
+          ViewingPill(),
           Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 6),
             child: Row(children: [
@@ -92,8 +95,19 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
+  Widget _failed(BuildContext context) => ListView(children: [
+        Masthead(eyebrow: 'Insights', title: 'Insights could not run'),
+        ViewingPill(),
+        Note('Your records are unchanged. Try again; if it keeps failing, your reports are still in Records.', icon: LucideIcons.info, margin: EdgeInsets.fromLTRB(16, 16, 16, 0)),
+        Padding(
+          padding: EdgeInsets.fromLTRB(16, 20, 16, 28),
+          child: SlabButton('Try again', icon: LucideIcons.refreshCw, onPressed: () => setState(() => _run = AppScope.of(context).runInsights())),
+        ),
+      ]);
+
   Widget _off(BuildContext context) => ListView(children: [
         Masthead(eyebrow: 'Insights', title: 'Compare with published ranges'),
+        ViewingPill(),
         SizedBox(height: 8),
         for (final (icon, title, body) in const [
           (LucideIcons.chartColumn, 'Out-of-range values', 'Each report value compared with a published reference range for your age and sex.'),

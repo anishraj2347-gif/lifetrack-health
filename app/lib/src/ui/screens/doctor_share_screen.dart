@@ -8,6 +8,7 @@ import '../../share/access_requests.dart';
 import '../../share/clinical_share_service.dart';
 import '../app_scope.dart';
 import '../theme.dart';
+import '../widgets/family_bar.dart';
 import '../widgets/parts.dart';
 
 /// P4: scan the doctor's verified code → see who they are → pick a level →
@@ -142,7 +143,29 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
   Widget _choose(DoctorCertificate d) {
     final s = AppScope.of(context);
     final active = [for (final r in s.records()) if (r.isActiveAt(s.clock())) r];
+    final p = s.currentPatient!;
+    final whose = whoseRecords(context);
+    final first = p.name.split(' ').first;
     return ListView(children: [
+      // Whose records go, in words, before anything else: a caregiver who
+      // switched profiles elsewhere must not share the wrong person's.
+      Padding(
+        padding: EdgeInsets.fromLTRB(20, 4, 20, 10),
+        child: Row(children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: LT.raised,
+            child: Text(FamilyBar.initials(p.name), style: TextStyle(fontWeight: FontWeight.w600, color: LT.ink)),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text.rich(TextSpan(style: TextStyle(fontFamily: LT.body, fontSize: 15, color: LT.ink2), children: [
+              TextSpan(text: 'Sharing '),
+              TextSpan(text: p.id == s.selfPatientId ? 'your own records' : "${p.name}'s records", style: TextStyle(fontWeight: FontWeight.w600, color: LT.ink)),
+            ])),
+          ),
+        ]),
+      ),
       ShadCard(
         margin: EdgeInsets.fromLTRB(16, 8, 16, 16),
         color: LT.primary,
@@ -161,7 +184,7 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
       ),
       Eyebrow('What should this doctor see?', padding: EdgeInsets.fromLTRB(20, 0, 20, 10)),
       _level(AccessLevel.summary, 'Summary', 'Allergies, current medicines, conditions, latest results with their source', recommended: true),
-      _level(AccessLevel.allReports, 'All my reports', 'Every report, prescription and scan'),
+      _level(AccessLevel.allReports, whose == 'your' ? 'All my reports' : "All of $whose reports", 'Every report, prescription and scan'),
       if (_levels.contains(AccessLevel.allReports))
         Padding(
           padding: EdgeInsets.fromLTRB(20, 0, 20, 10),
@@ -196,7 +219,11 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
       if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 12, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
       Padding(
         padding: EdgeInsets.fromLTRB(16, 20, 16, 28),
-        child: SlabButton('Share with ${d.name}', icon: LucideIcons.send, onPressed: _busy || _levels.isEmpty ? null : _share),
+        child: SlabButton(
+          '${whose == 'your' ? 'Share' : 'Share $first\'s'} ${_levels.length == 1 ? levelsLabel(_levels) : 'records'} with ${d.name} · ${hoursLabel(_hours)}',
+          icon: LucideIcons.send,
+          onPressed: _busy || _levels.isEmpty ? null : _share,
+        ),
       ),
     ]);
   }

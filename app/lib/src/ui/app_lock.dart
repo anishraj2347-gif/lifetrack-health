@@ -132,7 +132,7 @@ class _LockScreen extends StatelessWidget {
                 Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => EmergencyScreen(fromLockScreen: true)));
               }),
               SizedBox(height: 8),
-              Text('Anyone holding the phone can open the Emergency ID. Each time is written to your access log.',
+              Text('Anyone who opens LifeTrack on this phone can see the Emergency ID without unlocking the app. Each time is written to your access log.',
                   textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: LT.ink3)),
             ]),
           ),

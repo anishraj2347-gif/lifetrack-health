@@ -6,6 +6,17 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.19.1 (10 Oct 2026)
+- **Whose records, on every tab**: with more than one person on the phone, Share and Insights
+  show "Viewing Aarav Sharma · son" with a Switch button. The doctor-share screen starts with
+  "Sharing Aarav Sharma's records" and the button names the person, level and time
+  ("Share Aarav's Summary with Dr Mehta · 1 hour").
+- **Emergency ID**: a Call button opens the dialer with the contact's number; empty fields say
+  "Not filled in" instead of "—"; the card now says a locked phone hides it and how to keep a
+  copy outside the phone. The "A stranger can read this" warning is readable in dark mode.
+- **Insights** shows "could not run · Try again" instead of spinning forever on a failure.
+- Contrast test now covers the Emergency ID editor and Show on my phone.
+
 ### 1.19.0 (3 Oct 2026)
 - **Choose how long a doctor can see your records**: 1 hour (default), 4 hours, 12 hours,
   1 day or 2 days, picked when you share. When a doctor asks by LifeTrack ID, their asked-for

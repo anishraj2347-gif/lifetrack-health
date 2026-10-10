@@ -12,7 +12,9 @@ import 'package:lifetrack/src/ui/screens/add_record_screen.dart';
 import 'package:lifetrack/src/ui/screens/backup_screens.dart';
 import 'package:lifetrack/src/ui/screens/custom_reminder_screen.dart';
 import 'package:lifetrack/src/ui/screens/data_rights_screen.dart';
+import 'package:lifetrack/src/emergency/emergency_card.dart';
 import 'package:lifetrack/src/ui/screens/emergency_screen.dart';
+import 'package:lifetrack/src/ui/screens/show_on_phone_screen.dart';
 import 'package:lifetrack/src/ui/screens/me_screen.dart';
 import 'package:lifetrack/src/ui/screens/reminders_screen.dart';
 import 'package:lifetrack/src/ui/screens/tests_you_have_screen.dart';
@@ -132,6 +134,13 @@ void main() {
         nav.pop();
         for (final (name, screen) in <(String, Widget)>[
           ('Emergency ID', const EmergencyScreen()),
+          (
+            'Emergency ID editor',
+            Scaffold(
+              body: EmergencyEditor(patientId: s.selfPatientId!, initial: EmergencyCard(), onSaved: () {}),
+            ),
+          ),
+          ('Show on my phone', const ShowOnPhoneScreen()),
           ('Reminder settings', const RemindersScreen()),
           ('New reminder', const CustomReminderScreen()),
           ('Tests you already have', const TestsYouHaveScreen()),
