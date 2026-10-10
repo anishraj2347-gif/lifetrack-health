@@ -40,7 +40,7 @@ class _FamilyInviteScreenState extends State<FamilyInviteScreen> {
               Masthead(
                 eyebrow: 'Invite an adult',
                 title: 'Ask them to scan this',
-                description: 'On their own phone, in LifeTrack: Me → Join a family.',
+                description: 'On their own phone, in LifeTrack: Me › Join a family.',
               ),
               ShadCard(
                 margin: EdgeInsets.fromLTRB(16, 16, 16, 10),

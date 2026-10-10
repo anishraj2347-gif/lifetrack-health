@@ -124,7 +124,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                 Note(
                   'A locked phone hides this card, because LifeTrack only opens once the phone is unlocked. '
                   'So also keep it where they can find it — save the wallet card below and print it, or set it as your lock-screen wallpaper, '
-                  'and copy your allergies and contact into your phone\'s own emergency information (Settings → Safety & emergency).',
+                  'and copy your allergies and contact into your phone\'s own emergency information (Settings › Safety & emergency).',
                   icon: LucideIcons.lockKeyhole,
                   margin: EdgeInsets.fromLTRB(16, 6, 16, 0),
                 ),
@@ -303,7 +303,7 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
           padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Chip2(noKnownAllergies, selected: _allergies.text.trim() == noKnownAllergies, onTap: () => setState(() {
+            child: Chip2(noKnownAllergies, exclusive: false, selected: _allergies.text.trim() == noKnownAllergies, onTap: () => setState(() {
               _allergies.text = _allergies.text.trim() == noKnownAllergies ? '' : noKnownAllergies;
             })),
           ),

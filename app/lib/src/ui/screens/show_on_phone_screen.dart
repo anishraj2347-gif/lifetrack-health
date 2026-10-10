@@ -52,7 +52,7 @@ class ShowOnPhoneScreen extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${p.name} · ${p.sex.name == 'female' ? 'F' : p.sex.name == 'male' ? 'M' : '—'} · ${p.ageAt(s.clock())}', style: LT.title.copyWith(fontSize: 22)),
             Text(
-              'Shown on the patient\'s phone · nothing is sent${updated == null ? '' : ' · updated by patient ${updated.substring(0, 10)}'}',
+              'Shown on the patient\'s phone · nothing is sent${updated == null ? '' : ' · updated by patient ${fullDate(DateTime.parse(updated))}'}',
               style: LT.small,
             ),
           ]),

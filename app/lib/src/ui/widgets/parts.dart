@@ -66,20 +66,22 @@ class SlabButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final v = variant ?? (outline ? ButtonVariant.outline : (color == LT.signal || color == LT.signalFill ? ButtonVariant.destructive : ButtonVariant.primary));
     final enabled = onPressed != null;
-    final (bg, fg, border) = switch (v) {
+    final (bg, fg, border) = !enabled
+        ? (v == ButtonVariant.ghost ? Colors.transparent : LT.raised, LT.ink3, null)
+        : switch (v) {
       ButtonVariant.primary => (LT.button, LT.onButton, null),
       ButtonVariant.destructive => (LT.signalFill, Colors.white, null),
       ButtonVariant.outline => (LT.raised, LT.ink, null),
       ButtonVariant.ghost => (Colors.transparent, LT.ink, null),
     };
     return Opacity(
-      opacity: enabled ? 1 : 0.65, // disabled stays readable (contrast_test)
+      opacity: 1, // disabled is drawn grey instead (readable, and plainly not the action)
       child: Pressable(
         enabled: enabled,
         child: DecoratedBox(
           decoration: ShapeDecoration(
             shape: StadiumBorder(),
-            shadows: v == ButtonVariant.ghost
+            shadows: v == ButtonVariant.ghost || !enabled
                 ? null
                 : [BoxShadow(color: Colors.black.withValues(alpha: v == ButtonVariant.outline ? (LT.dark ? 0.25 : 0.06) : (LT.dark ? 0.35 : 0.22)), blurRadius: 16, offset: Offset(0, 6))],
           ),
@@ -87,7 +89,7 @@ class SlabButton extends StatelessWidget {
           child: DecoratedBox(
           // Gloss: light catching the top half of the pill.
           position: DecorationPosition.foreground,
-          decoration: v == ButtonVariant.ghost
+          decoration: v == ButtonVariant.ghost || !enabled
               ? BoxDecoration()
               : ShapeDecoration(
                   shape: StadiumBorder(side: BorderSide(color: Colors.white.withValues(alpha: v == ButtonVariant.outline ? (LT.dark ? 0.08 : 0.8) : 0.14))),
@@ -126,32 +128,53 @@ class SlabButton extends StatelessWidget {
 
 /// Toggle pill (shadcn ToggleGroup item).
 class Chip2 extends StatelessWidget {
-  const Chip2(this.label, {super.key, required this.selected, this.onTap});
+  const Chip2(this.label, {super.key, required this.selected, this.onTap, this.exclusive = true});
   final String label;
   final bool selected;
   final VoidCallback? onTap;
 
+  /// One of a set (sex, duration): screen readers say "1 of 3, selected".
+  /// False for a lone on/off chip such as "Last 2 years only".
+  final bool exclusive;
+
   @override
   Widget build(BuildContext context) {
     final text = label.isEmpty ? label : label[0].toUpperCase() + label.substring(1);
-    return Material(
-      color: selected ? LT.button : LT.raised,
-      shape: StadiumBorder(side: BorderSide(color: selected ? Colors.white.withValues(alpha: 0.14) : Colors.white.withValues(alpha: LT.dark ? 0.08 : 0.9))),
-      elevation: selected ? 3 : 0,
-      shadowColor: Colors.black.withValues(alpha: 0.3),
-      child: InkWell(
-        onTap: onTap == null
-            ? null
-            : () {
-                HapticFeedback.selectionClick();
-                onTap!();
-              },
-        customBorder: StadiumBorder(),
-        child: Container(
-          constraints: BoxConstraints(minHeight: 48),
-          alignment: Alignment.center,
-          padding: EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          child: Text(text, style: TextStyle(fontFamily: LT.body, fontSize: 13.5, fontWeight: FontWeight.w500, color: selected ? LT.onButton : LT.ink)),
+    final shape = StadiumBorder(side: BorderSide(color: selected ? Colors.white.withValues(alpha: 0.14) : Colors.white.withValues(alpha: LT.dark ? 0.08 : 0.9)));
+    return Semantics(
+      button: true,
+      selected: selected,
+      inMutuallyExclusiveGroup: exclusive,
+      child: DecoratedBox(
+        // Selected: part of the glossy black button family — soft drop
+        // shadow below, light catching the top half.
+        decoration: ShapeDecoration(shape: StadiumBorder(), shadows: selected ? [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 10, offset: Offset(0, 4))] : null),
+        child: DecoratedBox(
+          position: DecorationPosition.foreground,
+          decoration: selected
+              ? ShapeDecoration(shape: StadiumBorder(), gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.center, colors: [Colors.white.withValues(alpha: 0.16), Colors.white.withValues(alpha: 0)]))
+              : BoxDecoration(),
+          child: Material(
+            color: selected ? LT.button : LT.raised,
+            shape: shape,
+            child: InkWell(
+              onTap: onTap == null
+                  ? null
+                  : () {
+                      HapticFeedback.selectionClick();
+                      onTap!();
+                    },
+              customBorder: StadiumBorder(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: 48),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  // Sized to its label: a chip in a Wrap must not stretch to the full row.
+                  child: Center(widthFactor: 1, heightFactor: 1, child: Text(text, style: TextStyle(fontFamily: LT.body, fontSize: 13.5, fontWeight: FontWeight.w500, color: selected ? LT.onButton : LT.ink))),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

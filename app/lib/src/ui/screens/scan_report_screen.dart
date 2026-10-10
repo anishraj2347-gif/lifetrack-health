@@ -409,7 +409,8 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
                     Positioned(
                       right: 4,
                       top: 4,
-                      child: IconButton.filledTonal(
+                      child: IconButton.filled(
+                        style: IconButton.styleFrom(backgroundColor: Colors.black54, foregroundColor: Colors.white),
                         tooltip: 'Remove page ${i + 1}',
                         icon: Icon(LucideIcons.x, size: 16),
                         onPressed: () => setState(() => _pages.removeAt(i)),

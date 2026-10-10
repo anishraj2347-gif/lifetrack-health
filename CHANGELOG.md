@@ -6,6 +6,14 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.27.1 (10 Oct 2026)
+- **Choice chips fit their label again** (since 1.20.0 they stretched to the full row, so
+  "Female / Male / Prefer not to say" looked like three big buttons). Selected chips are glossy
+  black with a soft shadow instead of a grey ring, and screen readers say "selected".
+- Disabled buttons are grey, so a blocked "Continue" no longer looks like a second black button.
+- Nothing turns lime by accident (the scan page's remove button was lime); dates on "Show on my
+  phone" read "1 Oct 2026"; the "→" arrows that Poppins lacks are now "›".
+
 ### 1.27.0 (10 Oct 2026)
 - **Liquid glass everywhere**: every screen sits on a soft wash of sky, lilac and peach (never a
   health colour, never lime). Cards are frosted glass with a bright rim, a sheen across the top

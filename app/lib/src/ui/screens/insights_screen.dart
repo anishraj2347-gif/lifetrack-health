@@ -129,7 +129,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
               ),
             ]),
           ),
-        Note('For the next 24 hours, LifeTrack will look at ${whoseRecords(context)} reports and prescriptions — on this phone only — to find these. Each look is listed in the access log. Stop any time from Share → Who has access now.', icon: LucideIcons.shieldCheck, margin: EdgeInsets.fromLTRB(16, 16, 16, 0)),
+        Note('For the next 24 hours, LifeTrack will look at ${whoseRecords(context)} reports and prescriptions — on this phone only — to find these. Each look is listed in the access log. Stop any time from Share › Who has access now.', icon: LucideIcons.shieldCheck, margin: EdgeInsets.fromLTRB(16, 16, 16, 0)),
         Padding(
           padding: EdgeInsets.fromLTRB(16, 20, 16, 28),
           child: SlabButton('Turn on for 24 hours', icon: LucideIcons.activity, onPressed: () async {

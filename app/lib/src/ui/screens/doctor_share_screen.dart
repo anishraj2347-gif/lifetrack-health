@@ -188,7 +188,7 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
       if (_levels.contains(AccessLevel.allReports))
         Padding(
           padding: EdgeInsets.fromLTRB(20, 0, 20, 10),
-          child: Chip2('Last 2 years only', selected: _lastTwoYears, onTap: () => setState(() => _lastTwoYears = !_lastTwoYears)),
+          child: Chip2('Last 2 years only', exclusive: false, selected: _lastTwoYears, onTap: () => setState(() => _lastTwoYears = !_lastTwoYears)),
         ),
       _level(AccessLevel.familyIllnesses, 'Family illnesses', 'What you have told LifeTrack about your family, marked "patient-reported"'),
       _level(AccessLevel.homeReadings, 'Home BP & sugar readings', 'What you measured at home in the last 30 days, marked "measured at home"'),

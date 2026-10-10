@@ -115,6 +115,9 @@ abstract final class LT {
       onPrimary: onButton,
       secondary: accent,
       onSecondary: onAccent,
+      // Tonal buttons and the like must not turn lime ("selected" only).
+      secondaryContainer: raised,
+      onSecondaryContainer: ink,
       error: signal,
       surface: surface,
       onSurface: ink,

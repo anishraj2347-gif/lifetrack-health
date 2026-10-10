@@ -192,7 +192,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             icon: LucideIcons.cloudOff,
             tone: BadgeTone.caution,
             title: 'No backup until you turn it on',
-            body: 'Until you turn on backup in Me → Backup, your records exist only here — if this phone is lost or reset, they are gone.',
+            body: 'Until you turn on backup in Me › Backup, your records exist only here — if this phone is lost or reset, they are gone.',
           ),
           ShadCard(
             margin: EdgeInsets.fromLTRB(16, 8, 16, 0),

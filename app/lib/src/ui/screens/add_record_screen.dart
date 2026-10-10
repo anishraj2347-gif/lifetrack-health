@@ -193,7 +193,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                   ),
                 ),
                 SizedBox(height: 10),
-                Chip2('Only when needed · no reminders', selected: _asNeeded, onTap: () => setState(() => _asNeeded = !_asNeeded)),
+                Chip2('Only when needed · no reminders', exclusive: false, selected: _asNeeded, onTap: () => setState(() => _asNeeded = !_asNeeded)),
               ]),
             ),
           ],
