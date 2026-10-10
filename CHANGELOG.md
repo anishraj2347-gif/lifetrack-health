@@ -6,6 +6,16 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.20.0 (10 Oct 2026)
+- **Every tab is labelled**: the bottom bar shows each icon with its name; the selected one sits
+  on the lime pill. The light/dark button moved to a new top bar beside the LifeTrack name.
+- **Feels responsive**: cards and buttons sink slightly under the finger, important buttons give
+  a light haptic tap, tabs and cards fade in. Animations are off when the phone asks for less
+  motion.
+- **Easier to tap and read at large text sizes**: buttons grow to two lines instead of cutting
+  the label; chips and round buttons are at least 48 dp.
+- 1.19.1 left the version shown on Me at 1.19.0; fixed.
+
 ### 1.19.1 (10 Oct 2026)
 - **Whose records, on every tab**: with more than one person on the phone, Share and Insights
   show "Viewing Aarav Sharma · son" with a Switch button. The doctor-share screen starts with

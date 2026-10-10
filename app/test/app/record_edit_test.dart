@@ -93,7 +93,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Correct it'), findsOneWidget);
     await tester.enterText(find.widgetWithText(TextField, 'Dr. S. IyerFortis'), 'Dr. S. Iyer');
-    await tester.dragUntilVisible(find.text('Save record'), find.ancestor(of: find.text('Correct it'), matching: find.byType(Scrollable)).first, const Offset(0, -300));
+    await tester.dragUntilVisible(find.text('Save record'), find.ancestor(of: find.widgetWithText(TextField, 'Dr. S. Iyer'), matching: find.byType(Scrollable)).first, const Offset(0, -300));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Save record'));
     await tester.pumpAndSettle();

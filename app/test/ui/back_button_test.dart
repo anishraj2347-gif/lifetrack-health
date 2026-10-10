@@ -10,6 +10,8 @@ import 'package:lifetrack/src/model/patient.dart';
 import 'package:lifetrack/src/share/relay.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
 import 'package:lifetrack/src/ui/lifetrack_app.dart';
+import 'package:lifetrack/src/ui/screens/me_screen.dart';
+import 'package:lifetrack/src/ui/screens/reminders_screen.dart';
 import 'package:lifetrack/src/vault/backup_vault.dart';
 
 /// Android back, as in other apps: another tab → the first tab; on the
@@ -40,14 +42,13 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel('Me'));
     await tester.pumpAndSettle();
-    // Only the selected tab shows its name in the bar.
-    expect(find.text('Me'), findsOneWidget);
+    expect(find.byType(MeScreen), findsOneWidget);
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(exits, isEmpty, reason: 'back from Me goes to Reminders, not out of the app');
-    expect(find.text('Me'), findsNothing);
-    expect(find.text('Reminders'), findsWidgets);
+    expect(find.byType(MeScreen), findsNothing);
+    expect(find.byType(RemindersTab), findsOneWidget);
 
     await tester.binding.handlePopRoute();
     await tester.pump();

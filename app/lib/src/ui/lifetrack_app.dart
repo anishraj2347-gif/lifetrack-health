@@ -178,37 +178,49 @@ class _HomeShellState extends State<HomeShell> {
   Widget _shell() => Scaffold(
     body: SafeArea(
       bottom: false,
-      child: switch (_tab) {
-        0 => RemindersTab(),
-        1 => RecordsScreen(),
-        2 => InsightsScreen(),
-        3 => ShareScreen(),
-        _ => MeScreen(),
-      },
+      child: Column(children: [
+        _TopBar(),
+        Expanded(
+          child: AnimatedSwitcher(
+            duration: Duration(milliseconds: 220),
+            switchInCurve: Curves.easeOutCubic,
+            transitionBuilder: (child, a) => FadeTransition(
+              opacity: a,
+              child: SlideTransition(position: Tween(begin: Offset(0, 0.02), end: Offset.zero).animate(a), child: child),
+            ),
+            child: KeyedSubtree(
+              key: ValueKey(_tab),
+              child: switch (_tab) {
+                0 => RemindersTab(),
+                1 => RecordsScreen(),
+                2 => InsightsScreen(),
+                3 => ShareScreen(),
+                _ => MeScreen(),
+              },
+            ),
+          ),
+        ),
+      ]),
     ),
     extendBody: true,
     bottomNavigationBar: SafeArea(
       top: false,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 0, 16, 10),
-        child: Row(children: [
-          Expanded(child: _tabBar()),
-          SizedBox(width: 8),
-          _ThemeToggle(),
-        ]),
+        padding: EdgeInsets.fromLTRB(12, 0, 12, 10),
+        child: _tabBar(),
       ),
     ),
   );
 
+  /// Every tab shows its icon and its name: icons alone lose people. The
+  /// lime pill marks the one you are on ("selected / now").
   Widget _tabBar() => Container(
-        margin: EdgeInsets.zero,
-        padding: EdgeInsets.all(6),
+        padding: EdgeInsets.all(5),
         decoration: ShapeDecoration(color: LT.primary, shape: StadiumBorder()),
         child: Row(
           children: [
             for (var i = 0; i < _tabs.length; i++)
               Expanded(
-                flex: i == _tab ? 5 : 3,
                 child: Semantics(
                   label: _tabs[i].$1,
                   button: true,
@@ -216,26 +228,34 @@ class _HomeShellState extends State<HomeShell> {
                   excludeSemantics: true,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() => _tab = i),
+                    onTap: () {
+                      if (i != _tab) HapticFeedback.selectionClick();
+                      setState(() => _tab = i);
+                    },
                     child: AnimatedContainer(
-                      duration: Duration(milliseconds: 180),
-                      height: 50,
+                      duration: Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      constraints: BoxConstraints(minHeight: 56),
+                      padding: EdgeInsets.symmetric(horizontal: 2, vertical: 6),
                       decoration: ShapeDecoration(color: i == _tab ? LT.accent : Colors.transparent, shape: StadiumBorder()),
-                      child: Row(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(_tabs[i].$2, size: 19, color: i == _tab ? LT.onAccent : LT.onDarkMuted),
-                          if (i == _tab) ...[
-                            SizedBox(width: 7),
-                            Flexible(
-                              child: Text(
-                                _tabs[i].$1,
-                                maxLines: 1,
-                                overflow: TextOverflow.clip,
-                                style: TextStyle(fontFamily: LT.body, fontSize: 13, fontWeight: FontWeight.w600, color: LT.onAccent),
-                              ),
+                          AnimatedScale(
+                            scale: i == _tab ? 1.12 : 1,
+                            duration: Duration(milliseconds: 200),
+                            child: Icon(_tabs[i].$2, size: 20, color: i == _tab ? LT.onAccent : LT.onDarkMuted),
+                          ),
+                          SizedBox(height: 3),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              _tabs[i].$1,
+                              maxLines: 1,
+                              style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: i == _tab ? FontWeight.w600 : FontWeight.w500, color: i == _tab ? LT.onAccent : LT.onDarkMuted),
                             ),
-                          ],
+                          ),
                         ],
                       ),
                     ),
@@ -247,7 +267,30 @@ class _HomeShellState extends State<HomeShell> {
       );
 }
 
-/// One tap between light and dark, beside the tab bar on every main screen.
+/// The app's name and the light/dark switch, above every main screen.
+class _TopBar extends StatelessWidget {
+  const _TopBar();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 6, 12, 0),
+        child: Row(children: [
+          Container(
+            width: 26,
+            height: 26,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: LT.primary, borderRadius: BorderRadius.circular(8)),
+            child: Icon(LucideIcons.heartPulse, size: 15, color: LT.onDark),
+          ),
+          SizedBox(width: 8),
+          Text('LifeTrack', style: TextStyle(fontFamily: LT.display, fontSize: 16, fontWeight: FontWeight.w600, color: LT.ink, letterSpacing: -0.2)),
+          Spacer(),
+          _ThemeToggle(),
+        ]),
+      );
+}
+
+/// One tap between light and dark, in the top bar of every main screen.
 /// Saved like the choice on Me → Appearance, which keeps "Follow phone".
 class _ThemeToggle extends StatelessWidget {
   const _ThemeToggle();
@@ -260,18 +303,19 @@ class _ThemeToggle extends StatelessWidget {
       label: dark ? 'Switch to light mode' : 'Switch to dark mode',
       excludeSemantics: true,
       child: Material(
-        color: LT.primary,
+        color: LT.raised,
         shape: CircleBorder(),
         child: InkWell(
           customBorder: CircleBorder(),
           onTap: () async {
+            HapticFeedback.lightImpact();
             final s = AppScope.of(context);
             final next = dark ? 'light' : 'dark';
             await s.setThemeChoice(next);
             appearance.value = themeModeOf(next);
             if (context.mounted) AppScope.changed(context);
           },
-          child: SizedBox(width: 62, height: 62, child: Icon(dark ? LucideIcons.sun : LucideIcons.moon, size: 20, color: LT.onDark)),
+          child: SizedBox(width: 48, height: 48, child: Icon(dark ? LucideIcons.sun : LucideIcons.moon, size: 20, color: LT.ink)),
         ),
       ),
     );

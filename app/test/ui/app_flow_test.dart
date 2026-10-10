@@ -39,6 +39,8 @@ void main() {
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Finish setup'), 200, scrollable: find.byType(Scrollable).first);
+    await tester.ensureVisible(find.text('Finish setup'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Finish setup'));
     await tester.pumpAndSettle();
     // The app opens on Reminders; the timeline is the next tab.
@@ -47,7 +49,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('the sun/moon button beside the tabs switches light and dark, and remembers', (tester) async {
+  testWidgets('the sun/moon button in the top bar switches light and dark, and remembers', (tester) async {
     await onboardWithSamples(tester);
     final start = LT.dark;
     await tester.tap(find.bySemanticsLabel(start ? 'Switch to light mode' : 'Switch to dark mode'));

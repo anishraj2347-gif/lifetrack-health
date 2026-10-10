@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../theme.dart';
@@ -71,21 +72,30 @@ class SlabButton extends StatelessWidget {
     };
     return Opacity(
       opacity: enabled ? 1 : 0.65, // disabled stays readable (contrast_test)
-      child: Material(
-        color: bg,
-        shape: StadiumBorder(side: border == null ? BorderSide.none : BorderSide(color: border)),
-        child: InkWell(
-          onTap: onPressed,
-          customBorder: StadiumBorder(),
-          child: Container(
-            height: 52,
-            padding: EdgeInsets.symmetric(horizontal: 12),
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              if (icon != null) ...[Icon(icon, size: 18, color: fg), SizedBox(width: 8)],
-              Flexible(
-                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.body, fontSize: 14.5, fontWeight: FontWeight.w600, color: fg)),
-              ),
-            ]),
+      child: Pressable(
+        enabled: enabled,
+        child: Material(
+          color: bg,
+          shape: StadiumBorder(side: border == null ? BorderSide.none : BorderSide(color: border)),
+          child: InkWell(
+            onTap: onPressed == null
+                ? null
+                : () {
+                    v == ButtonVariant.primary || v == ButtonVariant.destructive ? HapticFeedback.mediumImpact() : HapticFeedback.selectionClick();
+                    onPressed!();
+                  },
+            customBorder: StadiumBorder(),
+            // Grows for large system text instead of cutting the label off.
+            child: Container(
+              constraints: BoxConstraints(minHeight: 52),
+              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                if (icon != null) ...[Icon(icon, size: 18, color: fg), SizedBox(width: 8)],
+                Flexible(
+                  child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.body, fontSize: 14.5, fontWeight: FontWeight.w600, color: fg)),
+                ),
+              ]),
+            ),
           ),
         ),
       ),
@@ -107,9 +117,16 @@ class Chip2 extends StatelessWidget {
       color: selected ? LT.button : LT.raised,
       shape: StadiumBorder(),
       child: InkWell(
-        onTap: onTap,
+        onTap: onTap == null
+            ? null
+            : () {
+                HapticFeedback.selectionClick();
+                onTap!();
+              },
         customBorder: StadiumBorder(),
-        child: Padding(
+        child: Container(
+          constraints: BoxConstraints(minHeight: 48),
+          alignment: Alignment.center,
           padding: EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           child: Text(text, style: TextStyle(fontFamily: LT.body, fontSize: 13.5, fontWeight: FontWeight.w500, color: selected ? LT.onButton : LT.ink)),
         ),
@@ -158,7 +175,15 @@ class ShadCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: margin,
-        child: Material(
+        child: Appear(
+          child: Pressable(
+            enabled: onTap != null,
+            child: _card(),
+          ),
+        ),
+      );
+
+  Widget _card() => Material(
           color: color,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(LT.radiusLg), side: borderColor == null ? BorderSide.none : BorderSide(color: borderColor!)),
           clipBehavior: Clip.antiAlias,
@@ -173,8 +198,60 @@ class ShadCard extends StatelessWidget {
                   : child,
             ),
           ),
+        );
+}
+
+/// Sinks a little under the finger, so a tap is felt before anything opens.
+class Pressable extends StatefulWidget {
+  const Pressable({super.key, required this.child, this.enabled = true});
+  final Widget child;
+  final bool enabled;
+  @override
+  State<Pressable> createState() => _PressableState();
+}
+
+class _PressableState extends State<Pressable> {
+  bool _down = false;
+  void _set(bool v) {
+    if (widget.enabled && _down != v) setState(() => _down = v);
+  }
+
+  @override
+  Widget build(BuildContext context) => Listener(
+        onPointerDown: (_) => _set(true),
+        onPointerUp: (_) => _set(false),
+        onPointerCancel: (_) => _set(false),
+        child: AnimatedScale(
+          scale: _down ? 0.97 : 1,
+          duration: Duration(milliseconds: _down ? 90 : 160),
+          curve: Curves.easeOut,
+          child: widget.child,
         ),
       );
+}
+
+/// Fades and rises into place the first time it is built. Off when the
+/// phone asks for less motion.
+class Appear extends StatelessWidget {
+  const Appear({super.key, required this.child, this.delay = Duration.zero});
+  final Widget child;
+  final Duration delay;
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return child;
+    final total = delay + Duration(milliseconds: 280);
+    final start = delay.inMilliseconds / total.inMilliseconds;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: total,
+      curve: Interval(start, 1, curve: Curves.easeOutCubic),
+      child: child,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(offset: Offset(0, 12 * (1 - t)), child: child),
+      ),
+    );
+  }
 }
 
 /// Marks a dark surface, so parts placed on it (badges) use light colours.
@@ -299,7 +376,7 @@ class IconTile extends StatelessWidget {
 
 /// Black circular icon button.
 class RoundButton extends StatelessWidget {
-  const RoundButton(this.icon, {super.key, required this.onTap, this.dark = true, this.size = 44});
+  const RoundButton(this.icon, {super.key, required this.onTap, this.dark = true, this.size = 48});
   final IconData icon;
   final VoidCallback onTap;
   final bool dark;
