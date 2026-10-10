@@ -76,7 +76,7 @@ class ShareScreen extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Show on my phone', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
               SizedBox(height: 4),
-              Text('Hand the phone to the doctor. Nothing is sent; they can see only this summary until you unlock.', style: TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
+              Text('Hand the phone to the doctor. Nothing is sent; they can see only this summary until you unlock.', style: TextStyle(fontSize: 14, color: LT.onDarkMuted)),
             ]),
           ),
           Icon(LucideIcons.chevronRight, color: LT.onDarkMuted),

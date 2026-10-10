@@ -52,7 +52,7 @@ abstract final class LT {
   static Color get inactive => _p(0xFFA9A8A1, 0xFF6E6D67);
 
   /// Hero cards and the bottom bar: black in light mode, lifted in dark.
-  static Color get primary => _p(0xFF0E0E0E, 0xFF2E2E2A);
+  static Color get primary => _p(0xFF0E0E0E, 0xFF0B0B0A); // dark: below the glass, so heroes still stand out
   static Color get onDark => _p(0xFFF4F4EF, 0xFFF2F2EC);
   static Color get onDarkMuted => _p(0xFF9A9A94, 0xFFA6A59E);
 
@@ -102,12 +102,12 @@ abstract final class LT {
   /// The colour wash behind every page: soft, warm blobs that are never a
   /// health colour (no red, no green) and never lime.
   static List<(Alignment, double, Color)> get washes => dark
-      ? [(Alignment(-1.1, -0.9), 1.1, Color(0xFF243848)), (Alignment(1.2, -0.2), 1.0, Color(0xFF382A44)), (Alignment(-0.4, 1.1), 1.2, Color(0xFF42321F))]
+      ? [(Alignment(-1.1, -0.9), 1.1, Color(0xFF27445E)), (Alignment(1.2, -0.2), 1.0, Color(0xFF463257)), (Alignment(-0.4, 1.1), 1.2, Color(0xFF553D22))]
       : [(Alignment(-1.1, -0.9), 1.1, Color(0xFFBFD4EC)), (Alignment(1.2, -0.2), 1.0, Color(0xFFDCCBEE)), (Alignment(-0.4, 1.1), 1.2, Color(0xFFF4D2B8))];
 
   /// What a glass card can have behind it at worst, for contrast: the
   /// darkest wash in light mode (dark text), the lightest in dark mode.
-  static Color get washExtreme => _p(0xFFC8D7E8, 0xFF2E3A46);
+  static Color get washExtreme => _p(0xFFC8D7E8, 0xFF324458);
 
   static ThemeData theme() {
     final none = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(radius)), borderSide: BorderSide(color: raised));
@@ -188,8 +188,9 @@ abstract final class LT {
         ),
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
+      // One tick style everywhere: round.
       checkboxTheme: CheckboxThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(6))),
+        shape: CircleBorder(),
         side: BorderSide(color: ink, width: 1.3),
         checkColor: WidgetStatePropertyAll(dark ? onAccent : accent),
         fillColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? (dark ? accent : primary) : Colors.transparent),

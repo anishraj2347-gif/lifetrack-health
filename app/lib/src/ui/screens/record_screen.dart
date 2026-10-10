@@ -146,7 +146,7 @@ class _RecordScreenState extends State<RecordScreen> {
                       ),
                       child: Row(
                         children: [
-                          Expanded(child: Text(analyteName(res.analyte), style: LT.label.copyWith(fontSize: 14.5))),
+                          Expanded(child: Text(analyteName(res.analyte), style: LT.label.copyWith(fontSize: 15))),
                           Text('${_fmt(res.value)} ${res.unit}', style: LT.data),
                         ],
                       ),

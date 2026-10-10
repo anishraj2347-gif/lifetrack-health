@@ -177,7 +177,7 @@ class _RecordCard extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text([kindLabel(r.kind), ?r.doctor].join(' · '), style: LT.small.copyWith(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
             SizedBox(height: 2),
-            Text(r.title, style: LT.label.copyWith(fontSize: 15.5, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(r.title, style: LT.label.copyWith(fontSize: 16, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
             if (meta != null || r.facility != null) ...[
               SizedBox(height: 2),
               Text([?meta, ?r.facility].join(' · '), style: LT.small, maxLines: 1, overflow: TextOverflow.ellipsis),

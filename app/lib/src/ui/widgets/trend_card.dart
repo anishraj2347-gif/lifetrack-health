@@ -150,7 +150,7 @@ class _TrendCardState extends State<TrendCard> {
                 key: ValueKey(sel),
                 textAlign: TextAlign.right,
                 maxLines: 2,
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: LT.onDark),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: LT.onDark),
               ),
             ),
           ),

@@ -38,7 +38,7 @@ class PrescriptionCard extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(r.title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: LT.onDark)),
-              if (r.ingredient != null) Text('Contains ${r.ingredient}', style: TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
+              if (r.ingredient != null) Text('Contains ${r.ingredient}', style: TextStyle(fontSize: 14, color: LT.onDarkMuted)),
               SizedBox(height: 8),
               Badge2(
                 r.endDate == null

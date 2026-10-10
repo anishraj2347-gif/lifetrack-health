@@ -389,7 +389,7 @@ class _AuditScreenState extends State<AuditScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(
                   '${describeActor(e.actorId, names)} ${_verb(e.action)}${e.dataClass == null || e.action == AuditAction.emergencyRead ? '' : ' · ${dataClassNames[e.dataClass]}'}',
-                  style: LT.label.copyWith(fontSize: 14.5, color: _alert(e) ? LT.signal : LT.ink),
+                  style: LT.label.copyWith(fontSize: 15, color: _alert(e) ? LT.signal : LT.ink),
                 ),
                 if (e.detail != null) ...[SizedBox(height: 4), Text(_codes[e.detail] ?? e.detail!, style: LT.small)],
                 SizedBox(height: 4),

@@ -40,11 +40,11 @@ class _InsightsScreenState extends State<InsightsScreen> {
           ViewingPill(),
           Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 6),
-            child: Row(children: [
+            child: IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Expanded(child: _Stat(value: '$flagged', label: 'To discuss with your doctor', dark: true)),
               SizedBox(width: 10),
               Expanded(child: _Stat(value: '${run.unresolved.length}', label: 'Could not be checked')),
-            ]),
+            ])),
           ),
           Note(Insight.disclaimer, margin: EdgeInsets.fromLTRB(16, 6, 16, 4)),
           if (run.insights.isNotEmpty) Eyebrow('Findings'),
@@ -151,16 +151,26 @@ class _Stat extends StatelessWidget {
   final String label;
   final bool dark;
   @override
-  Widget build(BuildContext context) => ShadCard(
-        margin: EdgeInsets.zero,
-        color: dark ? LT.primary : LT.surface,
-        child: SizedBox(
-          height: 96,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: LT.small.copyWith(color: dark ? LT.onDarkMuted : LT.ink3), maxLines: 2),
-            Spacer(),
-            Text(value, style: LT.hero.copyWith(fontSize: 34, color: dark ? LT.onDark : LT.ink)),
-          ]),
-        ),
-      );
+  Widget build(BuildContext context) {
+    final n = int.tryParse(value);
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final style = LT.hero.copyWith(fontSize: 40, color: dark ? LT.onDark : LT.ink, fontFeatures: [FontFeature.tabularFigures()]);
+    return ShadCard(
+      margin: EdgeInsets.zero,
+      color: dark ? LT.primary : null,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: LT.small.copyWith(color: dark ? LT.onDarkMuted : LT.ink2), maxLines: 2),
+        SizedBox(height: 14),
+        // Counts up from 0 the first time it is shown.
+        n == null || still
+            ? Text(value, style: style)
+            : TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: n.toDouble()),
+                duration: Duration(milliseconds: 600),
+                curve: Curves.easeOutCubic,
+                builder: (context, v, _) => Text('${v.round()}', style: style),
+              ),
+      ]),
+    );
+  }
 }

@@ -282,7 +282,7 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
             SizedBox(width: 10),
             Expanded(
               child: Text.rich(
-                style: TextStyle(fontSize: 13.5, height: 1.5, color: LT.cautionInk),
+                style: TextStyle(fontSize: 14, height: 1.5, color: LT.cautionInk),
                 TextSpan(children: [
                 TextSpan(text: 'A stranger can read this. ', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF431407))),
                 TextSpan(text: 'Put in what a paramedic needs and nothing more — no address, no ID numbers.'),

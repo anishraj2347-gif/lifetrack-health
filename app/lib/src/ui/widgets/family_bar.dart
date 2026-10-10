@@ -119,7 +119,7 @@ class FamilyBar extends StatelessWidget {
                 Icon(LucideIcons.users, size: 16, color: LT.onDark),
                 SizedBox(width: 10),
                 Expanded(
-                  child: Text(authorityLine(c), style: TextStyle(color: LT.onDark, fontSize: 12.5, height: 1.4)),
+                  child: Text(authorityLine(c), style: TextStyle(color: LT.onDark, fontSize: 12, height: 1.4)),
                 ),
               ],
             ),
@@ -234,7 +234,7 @@ class ViewingPill extends StatelessWidget {
                       ]),
                     ),
                   ),
-                  Text('Switch', style: TextStyle(fontFamily: LT.body, fontSize: 13.5, fontWeight: FontWeight.w600, color: LT.ink)),
+                  Text('Switch', style: TextStyle(fontFamily: LT.body, fontSize: 14, fontWeight: FontWeight.w600, color: LT.ink)),
                   Icon(LucideIcons.chevronDown, size: 18, color: LT.ink),
                   SizedBox(width: 6),
                 ]),

@@ -175,7 +175,7 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(d.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
-              Text('${d.speciality} · ${d.registrationNo}', style: TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
+              Text('${d.speciality} · ${d.registrationNo}', style: TextStyle(fontSize: 14, color: LT.onDarkMuted)),
               Text(d.council, style: TextStyle(fontSize: 12, color: LT.onDarkMuted)),
             ]),
           ),
@@ -202,7 +202,7 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
           CheckboxListTile(
             value: _stillTaking.contains(r.id),
             onChanged: (v) => setState(() => v! ? _stillTaking.add(r.id) : _stillTaking.remove(r.id)),
-            title: Text('${r.title}${r.dose == null ? '' : ' · ${r.dose!.display}'}', style: LT.label.copyWith(fontSize: 14.5)),
+            title: Text('${r.title}${r.dose == null ? '' : ' · ${r.dose!.display}'}', style: LT.label.copyWith(fontSize: 15)),
             subtitle: Text(r.doctor ?? '', style: LT.small),
           ),
       ],
@@ -235,11 +235,10 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
   Widget _level(AccessLevel l, String title, String body, {bool recommended = false}) {
     final on = _levels.contains(l);
     return MergeSemantics(child: Semantics(checked: on, child: ShadCard(
-      color: on ? LT.raised : LT.surface,
-      borderColor: on ? LT.primary : null,
+      borderColor: on ? LT.ink : null,
       onTap: () => setState(() => on ? _levels.remove(l) : _levels.add(l)),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(on ? LucideIcons.squareCheck : LucideIcons.square, size: 22, color: on ? LT.ink : LT.inactive),
+        GlassCheck(value: on),
         SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

@@ -6,6 +6,17 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.29.0 (10 Oct 2026)
+- **Insights in glass**: findings are glass cards with a slim severity bar at the edge (orange for
+  "Next visit", grey for "Good to know"); only "Contact your doctor today" and "Seek care now"
+  stay solid orange. Badge words are short so they no longer repeat the sentence below. The two
+  counts are larger and count up from 0.
+- **One round tick everywhere** (checkboxes and the access-level cards); access-level cards are
+  glass with an ink outline when chosen.
+- **Dark mode**: black cards are darker than the glass again, so they stand out; the colour wash
+  is richer.
+- Type sizes snapped to one scale (12 / 14 / 15 / 16 / 20 …); descriptions on black cards are 14.
+
 ### 1.28.0 (10 Oct 2026)
 - **Branded start**: the launch screen is the page colour with the LifeTrack card-deck mark (light
   and dark, Android 12+ system splash too), then the same mark and name while records open — no

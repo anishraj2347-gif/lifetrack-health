@@ -115,7 +115,7 @@ class SlabButton extends StatelessWidget {
               child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 if (icon != null) ...[Icon(icon, size: 18, color: fg), SizedBox(width: 8)],
                 Flexible(
-                  child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.body, fontSize: 14.5, fontWeight: FontWeight.w600, color: fg)),
+                  child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.body, fontSize: 15, fontWeight: FontWeight.w600, color: fg)),
                 ),
               ]),
             ),
@@ -172,7 +172,7 @@ class Chip2 extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                   // Sized to its label: a chip in a Wrap must not stretch to the full row.
-                  child: Center(widthFactor: 1, heightFactor: 1, child: Text(text, style: TextStyle(fontFamily: LT.body, fontSize: 13.5, fontWeight: FontWeight.w500, color: selected ? LT.onButton : LT.ink))),
+                  child: Center(widthFactor: 1, heightFactor: 1, child: Text(text, style: TextStyle(fontFamily: LT.body, fontSize: 14, fontWeight: FontWeight.w500, color: selected ? LT.onButton : LT.ink))),
                 ),
               ),
             ),
@@ -431,10 +431,10 @@ class LabeledField extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(label, style: LT.label.copyWith(fontSize: 13.5, color: LT.ink2)),
+            Text(label, style: LT.label.copyWith(fontSize: 14, color: LT.ink2)),
             SizedBox(height: 8),
             child,
-            if (hint != null) ...[SizedBox(height: 6), Text(hint!, style: LT.small.copyWith(fontSize: 12.5))],
+            if (hint != null) ...[SizedBox(height: 6), Text(hint!, style: LT.small.copyWith(fontSize: 12))],
           ],
         ),
       );
@@ -952,6 +952,31 @@ class _FadeOutState extends State<_FadeOut> with SingleTickerProviderStateMixin 
         child: FadeTransition(
           opacity: ReverseAnimation(CurvedAnimation(parent: _c, curve: Curves.easeOut)),
           child: RawImage(image: widget.image, scale: widget.ratio, fit: BoxFit.fill, width: double.infinity, height: double.infinity),
+        ),
+      );
+}
+
+/// The round tick drawn by hand where a real Checkbox does not fit (a whole
+/// card is the tap target). Same look as the theme's checkbox; pops in.
+class GlassCheck extends StatelessWidget {
+  const GlassCheck({super.key, required this.value, this.size = 24});
+  final bool value;
+  final double size;
+  @override
+  Widget build(BuildContext context) => AnimatedScale(
+        scale: value ? 1 : 0.9,
+        duration: Duration(milliseconds: 160),
+        curve: Curves.easeOutBack,
+        child: AnimatedContainer(
+          duration: Duration(milliseconds: 160),
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: value ? (LT.dark ? LT.accent : LT.primary) : Colors.transparent,
+            border: value ? null : Border.all(color: LT.ink, width: 1.3),
+          ),
+          child: value ? Icon(LucideIcons.check, size: size * 0.62, color: LT.dark ? LT.onAccent : LT.accent) : null,
         ),
       );
 }
