@@ -306,7 +306,27 @@ class RemindersTab extends StatelessWidget {
                 Icon(LucideIcons.chevronRight, color: LT.inactive),
               ]),
             ),
-          if (p != null)
+          // None yet: say what they are for, with the button inside, rather
+          // than a lone button under a heading.
+          if (p != null && mine.isEmpty)
+            ShadCard(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  IconTile(LucideIcons.alarmClock),
+                  SizedBox(width: 14),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Make your own', style: LT.label),
+                      SizedBox(height: 2),
+                      Text('A check-up, a refill, a home reading — once or on a schedule.', style: LT.small),
+                    ]),
+                  ),
+                ]),
+                SizedBox(height: 14),
+                SlabButton('Create a reminder', variant: ButtonVariant.outline, icon: LucideIcons.plus, onPressed: () => _open(context, null)),
+              ]),
+            )
+          else if (p != null)
             Padding(
               padding: EdgeInsets.fromLTRB(16, 0, 16, 4),
               child: SlabButton('Create a reminder', variant: ButtonVariant.outline, icon: LucideIcons.plus, onPressed: () => _open(context, null)),
@@ -405,13 +425,16 @@ class TodayHero extends StatelessWidget {
     final st = s.reminderSettings;
     final now = s.clock();
     String? next;
+    // A dose still to take in the slot happening now comes first ("Now"),
+    // so the card never says "Next: night" while the morning one waits.
+    final cur = nowSlot(st.times, now);
+    final curPending = s.todaysDoses().any((d) => d.$1 == cur && !s.takenToday(cur, d.$2.id));
+    if (curPending) next = 'Now: ${cur.label} · ${hm(st.times[cur]!)}';
     for (final slot in DoseSlot.values) {
+      if (next != null) break;
       final (h, m) = st.times[slot]!;
       final pending = s.todaysDoses().where((d) => d.$1 == slot && !s.takenToday(slot, d.$2.id));
-      if (pending.isNotEmpty && h * 60 + m >= now.hour * 60 + now.minute) {
-        next = '${slot.label} · ${hm((h, m))}';
-        break;
-      }
+      if (pending.isNotEmpty && h * 60 + m >= now.hour * 60 + now.minute) next = 'Next: ${slot.label} · ${hm((h, m))}';
     }
     final all = done == total;
     return ShadCard(
@@ -437,7 +460,7 @@ class TodayHero extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(all ? 'All done for today' : '$done of $total done today', style: TextStyle(fontFamily: LT.body, fontSize: 17, fontWeight: FontWeight.w600, color: LT.onDark)),
             SizedBox(height: 4),
-            Text(all ? 'Nothing left to take or do.' : next == null ? 'Tick each one as you go.' : 'Next: $next', style: TextStyle(fontFamily: LT.body, fontSize: 14, color: LT.onDarkMuted)),
+            Text(all ? 'Nothing left to take or do.' : next ?? 'Tick each one as you go.', style: TextStyle(fontFamily: LT.body, fontSize: 14, color: LT.onDarkMuted)),
           ]),
         ),
       ]),

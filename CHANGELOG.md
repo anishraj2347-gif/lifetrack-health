@@ -6,6 +6,12 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.34.1 (10 Oct 2026)
+- **Reminders**: with no reminders of your own yet, a small card says what they are for ("A
+  check-up, a refill, a home reading") with the Create button inside it, instead of a lone button.
+- **Today card**: if a dose in the slot happening now is still waiting, it says "Now: Morning ·
+  8:00 AM" first, rather than pointing at a later slot.
+
 ### 1.34.0 (10 Oct 2026)
 - **Welcome screen**: a new first screen before any form — the LifeTrack mark, the name, one line
   ("Your family's health records, on your phone"), three glass cards saying what it does, then

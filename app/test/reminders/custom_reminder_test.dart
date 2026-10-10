@@ -139,6 +139,9 @@ void main() {
     await tester.pumpWidget(LifeTrackApp(boot: () async => s));
     await tester.pumpAndSettle();
 
+    // The empty-state card holds the button below Today; bring it out from under the tab bar.
+    await tester.runAsync(() => Scrollable.ensureVisible(tester.element(find.text('Create a reminder')), alignment: 0.5));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Create a reminder'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, 'Drink water');
