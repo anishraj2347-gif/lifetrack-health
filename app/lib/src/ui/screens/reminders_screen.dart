@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../app/app_services.dart';
 import '../../reminders/reminder_plan.dart';
 import '../app_scope.dart';
 import '../widgets/family_bar.dart';
@@ -150,15 +151,15 @@ class TodaysMedicines extends StatelessWidget {
         for (final slot in DoseSlot.values)
           if (doses.where((d) => d.$1 == slot).toList() case final list when list.isNotEmpty) ...[
             SizedBox(height: 8),
-            Text('${slot.label} · ${hm(st.times[slot]!)}', style: LT.small.copyWith(fontWeight: FontWeight.w600)),
+            Wrap(crossAxisAlignment: WrapCrossAlignment.center, runSpacing: 4, children: [
+              Text('${slot.label} · ${hm(st.times[slot]!)}', style: LT.small.copyWith(fontWeight: FontWeight.w600)),
+              if (slot == nowSlot(st.times, s.clock())) NowTag(),
+            ]),
             for (final (_, r, n) in list)
               SwipeToggle(
                 key: ValueKey('dose-${slot.name}-${r.id}'),
                 done: s.takenToday(slot, r.id),
-                onToggle: (v) async {
-                  await s.markTaken(slot, r.id, v);
-                  if (context.mounted) AppScope.changed(context);
-                },
+                onToggle: (v) => tickAndMaybeCelebrate(context, () => s.markTaken(slot, r.id, v), v),
                 child: CheckboxListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
@@ -173,15 +174,15 @@ class TodaysMedicines extends StatelessWidget {
                     if (context.mounted) AppScope.changed(context);
                   },
                 ),
-                onChanged: (v) async {
+                onChanged: (v) {
                   HapticFeedback.lightImpact();
-                  await s.markTaken(slot, r.id, v ?? false);
-                  if (context.mounted) AppScope.changed(context);
+                  tickAndMaybeCelebrate(context, () => s.markTaken(slot, r.id, v ?? false), v ?? false);
                 },
               ),
               ),
           ],
-        if (doses.length > 1)
+        // Shown until the first tick of the day; after that it is known.
+        if (doses.length > 1 && !doses.any((d) => s.takenToday(d.$1, d.$2.id)))
           Padding(
             padding: EdgeInsets.only(top: 6),
             child: Text('Tip: swipe a medicine sideways to tick it.', style: LT.small),
@@ -230,6 +231,7 @@ class RemindersTab extends StatelessWidget {
       AuthorityBanner(),
       Expanded(
         child: ListView(padding: EdgeInsets.only(top: 6, bottom: 96), children: [
+          TodayHero(),
           if (available)
             ShadCard(
               margin: EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -264,10 +266,7 @@ class RemindersTab extends StatelessWidget {
                     key: ValueKey('custom-${c.id}-$h-$m'),
                     done: s.customDoneToday(c, h, m),
                     doneLabel: 'Done',
-                    onToggle: (v) async {
-                      await s.markCustomDone(c, h, m, v);
-                      if (context.mounted) AppScope.changed(context);
-                    },
+                    onToggle: (v) => tickAndMaybeCelebrate(context, () => s.markCustomDone(c, h, m, v), v),
                     child: CheckboxListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,
@@ -275,10 +274,9 @@ class RemindersTab extends StatelessWidget {
                       value: s.customDoneToday(c, h, m),
                       title: _Struck(c.title, done: s.customDoneToday(c, h, m)),
                       subtitle: Text([hm((h, m)), ?c.note].join(' · '), style: LT.small),
-                      onChanged: (v) async {
+                      onChanged: (v) {
                         HapticFeedback.lightImpact();
-                        await s.markCustomDone(c, h, m, v ?? false);
-                        if (context.mounted) AppScope.changed(context);
+                        tickAndMaybeCelebrate(context, () => s.markCustomDone(c, h, m, v ?? false), v ?? false);
                       },
                     ),
                   ),
@@ -315,20 +313,27 @@ class RemindersTab extends StatelessWidget {
             ),
           if (coming.isNotEmpty) ...[
             Eyebrow('Coming up'),
-            for (final r in coming)
-              ShadCard(
-                child: Row(children: [
-                  Icon(r.vaccine != null ? LucideIcons.syringe : r.custom != null ? LucideIcons.alarmClock : switch (r.slot) { DoseSlot.morning => LucideIcons.sunrise, DoseSlot.afternoon => LucideIcons.sun, DoseSlot.night => LucideIcons.moon }, size: 18, color: LT.ink2),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('${r.title} · ${dateTime(r.at)}', style: LT.small),
-                      SizedBox(height: 4),
-                      Text(r.body(showNames: true, selfPatientId: s.selfPatientId), style: LT.label),
+            ShadCard(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Column(children: [
+                for (final (i, r) in coming.indexed)
+                  Container(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(border: i == coming.length - 1 ? null : Border(bottom: BorderSide(color: LT.rule))),
+                    child: Row(children: [
+                      Icon(r.vaccine != null ? LucideIcons.syringe : r.custom != null ? LucideIcons.alarmClock : switch (r.slot) { DoseSlot.morning => LucideIcons.sunrise, DoseSlot.afternoon => LucideIcons.sun, DoseSlot.night => LucideIcons.moon }, size: 18, color: LT.ink2),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(r.body(showNames: true, selfPatientId: s.selfPatientId), style: LT.label),
+                          SizedBox(height: 2),
+                          Text('${r.title} · ${dateTime(r.at)}', style: LT.meta),
+                        ]),
+                      ),
                     ]),
                   ),
-                ]),
-              ),
+              ]),
+            ),
           ],
         ]),
       ),
@@ -358,3 +363,120 @@ const _months = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
 
 /// "Friday, 10 October" — the eyebrow on the home tab.
 String _today(DateTime d) => '${_weekdays[d.weekday - 1]}, ${d.day} ${_months[d.month - 1]}';
+
+/// The dose slot happening now: the latest whose time has come (morning
+/// before the first). Lime "Now" marks it — lime means "now".
+DoseSlot nowSlot(Map<DoseSlot, (int, int)> times, DateTime now) {
+  var current = DoseSlot.morning;
+  for (final slot in DoseSlot.values) {
+    final (h, m) = times[slot]!;
+    if (now.hour * 60 + now.minute >= h * 60 + m) current = slot;
+  }
+  return current;
+}
+
+/// Ticks one item and, when it was the last one left today, celebrates.
+Future<void> tickAndMaybeCelebrate(BuildContext context, Future<void> Function() tick, bool nowDone) async {
+  final s = AppScope.of(context);
+  await tick();
+  if (!context.mounted) return;
+  AppScope.changed(context);
+  if (!nowDone) return;
+  final (done, total) = _progress(s);
+  if (total > 0 && done == total) celebrate(context, 'All done for today');
+}
+
+(int, int) _progress(AppServices s) {
+  final doses = s.todaysDoses();
+  final custom = s.todaysCustom();
+  final done = doses.where((d) => s.takenToday(d.$1, d.$2.id)).length + custom.where((c) => s.customDoneToday(c.$3, c.$1, c.$2)).length;
+  return (done, doses.length + custom.length);
+}
+
+/// Home moment: a glossy black card with a ring of today's progress, what is
+/// next, or "All done for today". The ring is white, not a status colour.
+class TodayHero extends StatelessWidget {
+  const TodayHero({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final (done, total) = _progress(s);
+    if (total == 0) return SizedBox.shrink();
+    final st = s.reminderSettings;
+    final now = s.clock();
+    String? next;
+    for (final slot in DoseSlot.values) {
+      final (h, m) = st.times[slot]!;
+      final pending = s.todaysDoses().where((d) => d.$1 == slot && !s.takenToday(slot, d.$2.id));
+      if (pending.isNotEmpty && h * 60 + m >= now.hour * 60 + now.minute) {
+        next = '${slot.label} · ${hm((h, m))}';
+        break;
+      }
+    }
+    final all = done == total;
+    return ShadCard(
+      color: LT.primary,
+      margin: EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: EdgeInsets.all(18),
+      child: Row(children: [
+        SizedBox(
+          width: 64,
+          height: 64,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(end: done / total),
+            duration: Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            builder: (context, v, _) => CustomPaint(
+              painter: _RingPainter(v, LT.onDark, LT.onDarkChip),
+              child: Center(child: Text('$done/$total', style: TextStyle(fontFamily: LT.body, fontSize: 16, fontWeight: FontWeight.w700, color: LT.onDark))),
+            ),
+          ),
+        ),
+        SizedBox(width: 16),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(all ? 'All done for today' : '$done of $total done today', style: TextStyle(fontFamily: LT.body, fontSize: 17, fontWeight: FontWeight.w600, color: LT.onDark)),
+            SizedBox(height: 4),
+            Text(all ? 'Nothing left to take or do.' : next == null ? 'Tick each one as you go.' : 'Next: $next', style: TextStyle(fontFamily: LT.body, fontSize: 14, color: LT.onDarkMuted)),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+class _RingPainter extends CustomPainter {
+  _RingPainter(this.value, this.ink, this.track);
+  final double value;
+  final Color ink, track;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = Rect.fromLTWH(4, 4, size.width - 8, size.height - 8);
+    canvas.drawArc(r, 0, 6.2832, false, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..color = track);
+    if (value > 0) {
+      canvas.drawArc(r, -1.5708, 6.2832 * value, false, Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 6
+        ..strokeCap = StrokeCap.round
+        ..color = ink);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) => old.value != value || old.ink != ink;
+}
+
+/// The small lime "Now" tag beside the current dose time.
+class NowTag extends StatelessWidget {
+  const NowTag({super.key});
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: EdgeInsets.only(left: 8),
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(color: LT.accent, borderRadius: BorderRadius.circular(99)),
+        child: Text('Now', style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: FontWeight.w700, color: LT.onAccent)),
+      );
+}

@@ -6,6 +6,11 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.31.0 (10 Oct 2026)
+- **Today on Reminders**: a black card with a ring of today's progress ("1 of 2 done today") and
+  what is next; when the last one is ticked, "All done for today". The current dose time has a
+  lime "Now" tag. The swipe tip shows only until the first tick. "Coming up" is one grouped card.
+
 ### 1.30.0 (10 Oct 2026)
 - **Rounded top bar**: the top bar is a floating glass pill like the tab bar, and so is the header
   of every inner screen.
