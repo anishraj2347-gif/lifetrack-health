@@ -114,7 +114,7 @@ class _LockScreen extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(24, 24, 24, 20),
             child: Column(children: [
               Spacer(),
-              IconTile(LucideIcons.lock, color: LT.onAccent, background: LT.accent),
+              IconTile(LucideIcons.lock, color: LT.onButton, background: LT.button),
               SizedBox(height: 20),
               Text(noScreenLock ? 'Set a screen lock first' : 'LifeTrack is locked',
                   textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.body, fontSize: 24, fontWeight: FontWeight.w600, color: LT.ink)),
@@ -146,6 +146,10 @@ class AppLockControl {
   final _AppLockGateState _gate;
 
   bool get available => _gate._available ?? false;
+
+  /// Asks for the phone's own lock (fingerprint, face or PIN) before a
+  /// sensitive step. True straight away when the phone has no lock to ask.
+  Future<bool> confirm(String reason) async => !available || await _gate.widget.unlocker.unlock(reason);
 
   /// Turning the lock off needs the phone's lock first, so whoever picks up
   /// an unlocked phone cannot switch it off.

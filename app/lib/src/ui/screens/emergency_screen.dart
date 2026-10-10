@@ -16,6 +16,10 @@ import '../theme.dart';
 import '../widgets/parts.dart';
 import 'onboarding_screen.dart' show StepIndicator;
 
+/// What the "No known allergies" chip stores: said on purpose, unlike a
+/// blank field, which means nobody filled it in.
+const noKnownAllergies = 'No known allergies';
+
 /// Read view of the Emergency ID. The allergy block is the one place a
 /// signal flood is earned.
 class EmergencyScreen extends StatefulWidget {
@@ -64,7 +68,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
               Masthead(eyebrow: 'Emergency ID', title: (widget.fromLockScreen ? s.selfPatient : s.currentPatient)?.name ?? '', trailing: Icon(LucideIcons.heartPulse, color: LT.signal)),
               SizedBox(height: 14),
               if (c.isEmpty) Note('This card is empty. Anyone treating you would see nothing here.', margin: EdgeInsets.fromLTRB(16, 0, 16, 10)),
-              if (c.allergies.isNotEmpty)
+              if (c.allergies.isNotEmpty && c.allergies != noKnownAllergies)
                 ShadCard(
                   color: LT.signalFill,
                   borderColor: LT.signalFill,
@@ -83,6 +87,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
               ShadCard(
                 padding: EdgeInsets.zero,
                 child: Column(children: [
+                  if (c.allergies == noKnownAllergies) _field(LucideIcons.shieldCheck, 'Allergies', noKnownAllergies),
                   _field(LucideIcons.droplet, 'Blood type', c.bloodType),
                   _field(LucideIcons.activity, 'Ongoing conditions', c.conditions),
                   _field(LucideIcons.pill, 'Current medicines', c.medications),
@@ -294,6 +299,15 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
           ]),
         ),
         _text('Allergies', _allergies),
+        Padding(
+          padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Chip2(noKnownAllergies, selected: _allergies.text.trim() == noKnownAllergies, onTap: () => setState(() {
+              _allergies.text = _allergies.text.trim() == noKnownAllergies ? '' : noKnownAllergies;
+            })),
+          ),
+        ),
         _text('Ongoing conditions', _conditions),
         _text('Current medicines', _meds),
         _text('Emergency contact', _contact),

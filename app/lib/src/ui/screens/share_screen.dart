@@ -23,7 +23,7 @@ String describeActor(String actorId, [Map<String, String> doctorNames = const {}
     return doctorNames[reg] == null ? 'Doctor · $reg' : '${doctorNames[reg]} · $reg';
   }
   if (actorId.startsWith('patient:')) return 'You';
-  if (actorId.startsWith('unauthenticated:')) return 'Someone without your PIN';
+  if (actorId.startsWith('unauthenticated:')) return 'Opened from the lock screen (not unlocked)';
   if (actorId.startsWith('family:')) return actorId.substring(7);
   return actorId;
 }
@@ -70,13 +70,13 @@ class ShareScreen extends StatelessWidget {
         color: LT.primary,
         onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ShowOnPhoneScreen())),
         child: Row(children: [
-          IconTile(LucideIcons.smartphone, color: LT.onAccent, background: LT.accent),
+          IconTile(LucideIcons.smartphone, color: LT.onDark, background: LT.onDarkChip),
           SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Show on my phone', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: LT.onDark)),
               SizedBox(height: 4),
-              Text('Hand the phone to the doctor. Nothing is sent.', style: TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
+              Text('Hand the phone to the doctor. Nothing is sent; they can see only this summary until you unlock.', style: TextStyle(fontSize: 12.5, color: LT.onDarkMuted)),
             ]),
           ),
           Icon(LucideIcons.chevronRight, color: LT.onDarkMuted),
@@ -120,36 +120,50 @@ class ShareScreen extends StatelessWidget {
         ),
       for (final g in grants)
         ShadCard(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            IconTile(iconForActor(g.grantedToActorId)),
-            SizedBox(width: 14),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(describeActor(g.grantedToActorId, s.doctorNames()), style: LT.label),
-                SizedBox(height: 4),
-                Text(g.levels.isNotEmpty ? levelsLabel(g.levels) : g.scopes.map((c) => dataClassNames[c]).join(', '), style: LT.small),
-                SizedBox(height: 8),
-                Badge2('Until ${dateTime(g.expiresAt)}', tone: BadgeTone.outline),
-              ]),
-            ),
-            SizedBox(width: 8),
-            SizedBox(
-              width: 92,
-              child: Column(children: [
-                if (isClinicalShare(g) && sharing != null) ...[
-                  SlabButton('Time', variant: ButtonVariant.outline, onPressed: () => _changeTime(context, g)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              IconTile(iconForActor(g.grantedToActorId)),
+              SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(describeActor(g.grantedToActorId, s.doctorNames()), style: LT.label),
+                  SizedBox(height: 4),
+                  Text(g.levels.isNotEmpty ? levelsLabel(g.levels) : g.scopes.map((c) => dataClassNames[c]).join(', '), style: LT.small),
                   SizedBox(height: 8),
-                ],
-                SlabButton('End', variant: ButtonVariant.outline, onPressed: () async {
-                if (isClinicalShare(g) && sharing != null) {
-                  await sharing.endAccess(g, s.clock());
-                } else {
-                  await s.revoke(g);
-                }
-                if (context.mounted) AppScope.changed(context);
+                  Badge2('Until ${dateTime(g.expiresAt)}', tone: BadgeTone.outline),
+                ]),
+              ),
+            ]),
+            SizedBox(height: 12),
+            Row(children: [
+              if (isClinicalShare(g) && sharing != null) ...[
+                Expanded(child: SlabButton('Change time', variant: ButtonVariant.outline, icon: LucideIcons.clock, onPressed: () => _changeTime(context, g))),
+                SizedBox(width: 8),
+              ],
+              Expanded(
+                child: SlabButton('End access', variant: ButtonVariant.outline, icon: LucideIcons.circleX, onPressed: () async {
+                  final who = describeActor(g.grantedToActorId, s.doctorNames());
+                  final sure = await showDialog<bool>(
+                    context: context,
+                    builder: (c) => AlertDialog(
+                      title: Text('End access now?'),
+                      content: Text('$who will need a new share to see these records again.'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(c, false), child: Text('Keep')),
+                        TextButton(onPressed: () => Navigator.pop(c, true), child: Text('End access')),
+                      ],
+                    ),
+                  );
+                  if (sure != true) return;
+                  if (isClinicalShare(g) && sharing != null) {
+                    await sharing.endAccess(g, s.clock());
+                  } else {
+                    await s.revoke(g);
+                  }
+                  if (context.mounted) AppScope.changed(context);
                 }),
-              ]),
-            ),
+              ),
+            ]),
           ]),
         ),
       SizedBox(height: 28),

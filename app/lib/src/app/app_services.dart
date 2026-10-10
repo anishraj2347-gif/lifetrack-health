@@ -1157,14 +1157,21 @@ class AppServices {
 
   // ---- export -------------------------------------------------------------
 
-  /// A complete, unencrypted copy of the profile on screen, for the patient
-  /// to keep or pass on. The export is logged before the file exists (#13).
+  /// A complete copy of the profile on screen, for the patient to keep or
+  /// pass on; [encrypted] says whether the zip will carry a password, and the
+  /// log says so. The export is logged before the file exists (#13).
   /// A parent may export a child's records; the same rule as sharing decides.
-  Future<RecordExport> exportCurrent() async {
+  Future<RecordExport> exportCurrent({bool encrypted = false}) async {
     final id = currentPatientId!;
     final grantor = actingGrantor();
     final at = clock();
-    await audit.append(AuditEntry(at: at, actorId: grantor, patientId: id, action: AuditAction.export, detail: 'records, Emergency ID, originals and access log'));
+    await audit.append(AuditEntry(
+      at: at,
+      actorId: grantor,
+      patientId: id,
+      action: AuditAction.export,
+      detail: '${encrypted ? 'password-protected' : 'not encrypted'}: records, Emergency ID, originals and access log',
+    ));
     final records = repository.recordsOf(id);
     return RecordExport(
       vitals: repository.vitalsOf(id),

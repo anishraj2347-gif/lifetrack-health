@@ -102,17 +102,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: SlabButton('Continue', onPressed: _busy ? null : () => _createProfile(demo: false)),
             ),
           Note('Everyone needs Aadhaar to create a profile. A newborn without Aadhaar is added later by a verified parent, from the parent\'s DigiLocker birth certificate.', icon: LucideIcons.info),
-          Padding(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, 6),
-            child: SlabButton('Explore with sample records', variant: ButtonVariant.outline, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true)),
-          ),
           if (AppScope.of(context).backupEnabled)
             Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 28),
-              child: SlabButton('Restore from backup', variant: ButtonVariant.ghost, icon: LucideIcons.cloudDownload, onPressed: _busy
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: SlabButton('I\'ve used LifeTrack before — restore', variant: ButtonVariant.outline, icon: LucideIcons.cloudDownload, onPressed: _busy
                   ? null
                   : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RestoreScreen(onRestored: widget.onDone)))),
             ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, 10, 20, 28),
+            child: SlabButton('Look around with sample records', variant: ButtonVariant.ghost, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true)),
+          ),
         ],
       );
 
@@ -144,6 +144,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 initialDate: DateTime(1990),
                 firstDate: DateTime(1900),
                 lastDate: DateTime.now(),
+                // Start on years: someone born in 1952 should not page back month by month.
+                initialDatePickerMode: DatePickerMode.year,
               );
               if (d != null) setState(() => _dob = d);
             },
@@ -162,17 +164,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           padding: EdgeInsets.fromLTRB(20, 24, 20, 10),
           child: SlabButton('Continue', onPressed: ready && !_busy ? () => _createProfile(demo: false) : null),
         ),
-        Padding(
-          padding: EdgeInsets.fromLTRB(20, 6, 20, 28),
-          child: SlabButton('Explore with sample records', variant: ButtonVariant.outline, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true)),
-        ),
         if (AppScope.of(context).backupEnabled)
           Padding(
-            padding: EdgeInsets.fromLTRB(20, 0, 20, 28),
-            child: SlabButton('Restore from backup', variant: ButtonVariant.ghost, icon: LucideIcons.cloudDownload, onPressed: _busy
+            padding: EdgeInsets.fromLTRB(20, 6, 20, 0),
+            child: SlabButton('I\'ve used LifeTrack before — restore', variant: ButtonVariant.outline, icon: LucideIcons.cloudDownload, onPressed: _busy
                 ? null
                 : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RestoreScreen(onRestored: widget.onDone)))),
           ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(20, 10, 20, 28),
+          child: SlabButton('Look around with sample records', variant: ButtonVariant.ghost, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true)),
+        ),
       ],
     );
   }

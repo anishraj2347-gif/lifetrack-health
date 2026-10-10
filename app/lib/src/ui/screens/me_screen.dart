@@ -53,12 +53,25 @@ class MeScreen extends StatelessWidget {
                 Badge2('Not verified', tone: BadgeTone.outline),
               if (s.lifeTrackIdOf(p.id) case final id?) ...[
                 SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () {
-                    Clipboard.setData(ClipboardData(text: id));
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('LifeTrack ID copied.')));
-                  },
-                  child: Text('LifeTrack ID  ${LifeTrackId.display(id)}', style: LT.small.copyWith(color: LT.ink, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+                Semantics(
+                  button: true,
+                  label: 'Copy LifeTrack ID ${LifeTrackId.display(id)}',
+                  excludeSemantics: true,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(LT.radius),
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: id));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('LifeTrack ID copied.')));
+                    },
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: 48),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Flexible(child: Text('LifeTrack ID  ${LifeTrackId.display(id)}', style: LT.small.copyWith(color: LT.ink, fontWeight: FontWeight.w600, letterSpacing: 0.5))),
+                        SizedBox(width: 8),
+                        Icon(LucideIcons.copy, size: 16, color: LT.ink2),
+                      ]),
+                    ),
+                  ),
                 ),
               ] else if (s.ids != null) ...[
                 SizedBox(height: 8),
@@ -85,6 +98,9 @@ class MeScreen extends StatelessWidget {
             ),
           ]),
         ),
+      // Settings for the person on screen, then settings for the phone
+      // itself — so it is clear which follow a switch of profile.
+      Eyebrow(p.id == s.selfPatientId ? 'Your profile' : "${p.name.split(' ').first}'s profile", padding: EdgeInsets.fromLTRB(20, 4, 20, 10)),
       ShadCard(
         padding: EdgeInsets.zero,
         child: Column(children: [
@@ -96,6 +112,7 @@ class MeScreen extends StatelessWidget {
           _link(context, LucideIcons.scale, 'Your data and your rights', 'What is held where, and how to erase it', DataRightsScreen(), last: true),
         ]),
       ),
+      Eyebrow('This phone'),
       if (AppLockGate.of(context) case final lock? when lock.available)
         ShadCard(
           padding: EdgeInsets.fromLTRB(16, 8, 8, 8),
@@ -295,7 +312,7 @@ class _AuditScreenState extends State<AuditScreen> {
         AuditAction.vaultBackup => 'backed up',
         AuditAction.vaultRestore => 'restored from backup',
         AuditAction.erasure => 'erased the profile',
-        AuditAction.export => 'exported an unencrypted copy of the records',
+        AuditAction.export => 'exported a copy of the records',
         AuditAction.accessRequested => 'asked for access',
       };
 

@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../model/custody.dart';
 import '../../app/app_services.dart';
+import '../app_lock.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
@@ -27,7 +28,6 @@ const kDataFiduciary = '[Data Fiduciary — legal entity to be named before pilo
 const kGrievanceContact = '[Grievance Officer — name and email to be added before pilot]';
 
 class _DataRightsScreenState extends State<DataRightsScreen> {
-  final _confirm = TextEditingController();
   bool _erasing = false;
   bool _exporting = false;
   bool _protect = true;
@@ -43,7 +43,7 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
         password = AppServices.newBackupPassword();
         if (!await _showPassword(password)) return;
       }
-      final export = await s.exportCurrent();
+      final export = await s.exportCurrent(encrypted: password != null);
       file = File('${(await getTemporaryDirectory()).path}/${export.fileName}');
       await file.writeAsBytes(export.zip(password: password), flush: true);
       await SharePlus.instance.share(ShareParams(files: [XFile(file.path, mimeType: 'application/zip')], subject: 'My LifeTrack records'));
@@ -128,34 +128,59 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
           ),
           Eyebrow('Danger zone'),
           Note(icon: LucideIcons.trash2, 'Deletes this profile\'s records, notes, permissions and Emergency ID from this phone. Erasing your own profile also deletes your backup. It cannot be undone.', margin: EdgeInsets.fromLTRB(20, 0, 20, 12)),
-          LabeledField(label: 'Type ERASE to confirm', child: TextField(controller: _confirm, onChanged: (_) => setState(() {}), decoration: InputDecoration(hintText: 'ERASE'))),
           Padding(
             padding: EdgeInsets.fromLTRB(16, 4, 16, 28),
             child: SlabButton(
-              'Erase my profile',
+              'Erase $_whose profile',
               variant: ButtonVariant.destructive,
               icon: LucideIcons.trash2,
-              onPressed: _confirm.text.trim() == 'ERASE' && !_erasing
-                  ? () async {
-                      setState(() => _erasing = true);
-                      final s = AppScope.of(context);
-                      final messenger = ScaffoldMessenger.of(context);
-                      try {
-                        await s.eraseProfile();
-                      } on CustodyRefused catch (e) {
-                        setState(() => _erasing = false);
-                        messenger.showSnackBar(SnackBar(content: Text(e.message)));
-                        return;
-                      }
-                      if (!context.mounted) return;
-                      Navigator.of(context).popUntil((r) => r.isFirst);
-                      AppScope.changed(context);
-                    }
-                  : null,
+              onPressed: _erasing ? null : _erase,
             ),
           ),
         ]),
       );
+
+  String get _whose {
+    final s = AppScope.of(context);
+    final p = s.currentPatient!;
+    return p.id == s.selfPatientId ? 'my' : "${p.name.split(' ').first}'s";
+  }
+
+  /// Names the person, then asks for the phone's own lock — not a typed
+  /// English word, which is hard for many users and easy for anyone holding
+  /// an unlocked phone.
+  Future<void> _erase() async {
+    final s = AppScope.of(context);
+    final p = s.currentPatient!;
+    final self = p.id == s.selfPatientId;
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(self ? 'Erase your profile?' : "Erase ${p.name}'s profile?"),
+        content: Text('${self ? 'Your' : "${p.name}'s"} records, notes, permissions and Emergency ID are deleted from this phone${self ? ', and your backup too' : ''}. This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text('Keep')),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: Text('Erase', style: TextStyle(color: LT.signal))),
+        ],
+      ),
+    );
+    if (sure != true || !mounted) return;
+    final lock = AppLockGate.of(context);
+    if (lock != null && !await lock.confirm(self ? 'Confirm it is you to erase your profile' : "Confirm it is you to erase ${p.name}'s profile")) return;
+    if (!mounted) return;
+    setState(() => _erasing = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await s.eraseProfile();
+    } on CustodyRefused catch (e) {
+      setState(() => _erasing = false);
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      return;
+    }
+    if (!mounted) return;
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    AppScope.changed(context);
+  }
 
   Widget _section(String title, String body) => ShadCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

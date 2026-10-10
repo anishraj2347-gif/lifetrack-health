@@ -6,6 +6,24 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.25.0 (10 Oct 2026)
+- **Show on my phone is locked to the summary**: back, and "Give back", ask for your fingerprint,
+  face or PIN first, so the doctor cannot wander into the rest of the app.
+- **Erase** names the person ("Erase Aarav's profile?") and asks for the phone's own lock instead
+  of typing ERASE.
+- **Access log**: an export now says "password-protected" or "not encrypted", as it was made.
+  Lock-screen reads say "Opened from the lock screen (not unlocked)".
+- **Share**: each access has full-width "Change time" and "End access" buttons; ending asks first.
+  Access levels use tick boxes (you can pick several); the medicines question explains what
+  ticking does.
+- **Emergency ID**: a "No known allergies" choice, shown plainly rather than as an allergy alert.
+- **Times** are 12-hour everywhere (2:30 PM). Date of birth pickers open on the year.
+- **Backup**: a warning to keep the password off WhatsApp, Gmail and Google Photos.
+- **First screen**: "I've used LifeTrack before — restore" comes before sample records.
+- **Insights**: plainer words ("Check my reports"; what turning it on does, in one sentence).
+- **Me** is grouped into "Your profile" and "This phone"; the LifeTrack ID has a copy button.
+- Lime is now only for "selected / now"; icon tiles on black cards are dark grey.
+
 ### 1.24.0 (10 Oct 2026)
 - **Easier to read**: secondary text is 14 sp and darker (it carries most of the consent wording);
   nothing in the app is smaller than 12 sp. The main tabs and nine inner screens are tested at

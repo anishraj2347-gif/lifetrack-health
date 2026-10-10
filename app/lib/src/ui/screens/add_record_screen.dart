@@ -133,7 +133,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               if (saved == true && context.mounted) Navigator.of(context).pop();
             },
             child: Row(children: [
-              IconTile(LucideIcons.camera, color: LT.onAccent, background: LT.accent),
+              IconTile(LucideIcons.camera, color: LT.onDark, background: LT.onDarkChip),
               SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

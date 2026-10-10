@@ -116,7 +116,7 @@ class FamilyBar extends StatelessWidget {
             decoration: BoxDecoration(color: LT.primary, borderRadius: BorderRadius.circular(LT.radius)),
             child: Row(
               children: [
-                Icon(LucideIcons.users, size: 16, color: LT.accent),
+                Icon(LucideIcons.users, size: 16, color: LT.onDark),
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(authorityLine(c), style: TextStyle(color: LT.onDark, fontSize: 12.5, height: 1.4)),

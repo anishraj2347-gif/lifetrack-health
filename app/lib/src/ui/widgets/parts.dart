@@ -400,7 +400,8 @@ String monthYear(DateTime d) => '${_monthNames[d.month - 1]} ${d.year}';
 String fullDate(DateTime d) => '${d.day} ${_monthNames[d.month - 1].substring(0, 3)} ${d.year}';
 String dateTime(DateTime d) => '${fullDate(d)}, ${time(d)}';
 
-String time(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+/// "2:30 PM" — the same 12-hour form as reminders, everywhere.
+String time(DateTime d) => '${d.hour % 12 == 0 ? 12 : d.hour % 12}:${d.minute.toString().padLeft(2, '0')} ${d.hour < 12 ? 'AM' : 'PM'}';
 
 /// An error in words a patient can act on — never a stack of exception names.
 String plainError(Object e) {

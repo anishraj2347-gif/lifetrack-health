@@ -26,9 +26,9 @@ void main() {
     await tester.pumpWidget(LifeTrackApp(boot: boot));
     await tester.pumpAndSettle();
     expect(find.text('Who are these records for?'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Explore with sample records'), 200, scrollable: find.byType(Scrollable).first);
+    await tester.scrollUntilVisible(find.text('Look around with sample records'), 200, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Explore with sample records'));
+    await tester.tap(find.text('Look around with sample records'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.byType(Checkbox), 200, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();

@@ -33,7 +33,7 @@ class PrescriptionCard extends StatelessWidget {
       ShadCard(
         color: LT.primary,
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          IconTile(LucideIcons.pill, color: LT.onAccent, background: LT.accent),
+          IconTile(LucideIcons.pill, color: LT.onDark, background: LT.onDarkChip),
           SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

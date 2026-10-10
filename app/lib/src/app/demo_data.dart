@@ -2,7 +2,7 @@ import '../model/clinical_profile.dart';
 import '../model/health_record.dart';
 import '../model/patient.dart';
 
-/// Sample records for "Explore with sample records". Only ever written when
+/// Sample records for "Look around with sample records". Only ever written when
 /// the patient chooses it at onboarding, into an empty store — never on a
 /// later launch, where it would overwrite the patient's own records.
 ///

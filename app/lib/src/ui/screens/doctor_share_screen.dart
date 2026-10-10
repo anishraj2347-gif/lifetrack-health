@@ -170,7 +170,7 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
         margin: EdgeInsets.fromLTRB(16, 8, 16, 16),
         color: LT.primary,
         child: Row(children: [
-          IconTile(LucideIcons.stethoscope, color: LT.onAccent, background: LT.accent),
+          IconTile(LucideIcons.stethoscope, color: LT.onDark, background: LT.onDarkChip),
           SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -194,6 +194,10 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
       _level(AccessLevel.homeReadings, 'Home BP & sugar readings', 'What you measured at home in the last 30 days, marked "measured at home"'),
       if (active.isNotEmpty) ...[
         Eyebrow('Are you still taking these?'),
+        Padding(
+          padding: EdgeInsets.fromLTRB(20, 0, 20, 4),
+          child: Text('Tick the ones you still take; your doctor sees "confirmed today" on those. The others are still shown, without that mark.', style: LT.small),
+        ),
         for (final r in active)
           CheckboxListTile(
             value: _stillTaking.contains(r.id),
@@ -230,12 +234,12 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
 
   Widget _level(AccessLevel l, String title, String body, {bool recommended = false}) {
     final on = _levels.contains(l);
-    return ShadCard(
+    return MergeSemantics(child: Semantics(checked: on, child: ShadCard(
       color: on ? LT.raised : LT.surface,
       borderColor: on ? LT.primary : null,
       onTap: () => setState(() => on ? _levels.remove(l) : _levels.add(l)),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(on ? LucideIcons.circleCheck : LucideIcons.circle, size: 20, color: on ? LT.ink : LT.inactive),
+        Icon(on ? LucideIcons.squareCheck : LucideIcons.square, size: 22, color: on ? LT.ink : LT.inactive),
         SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -247,8 +251,7 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
             Text(body, style: LT.small),
           ]),
         ),
-      ]),
-    );
+      ]))));
   }
 
   Widget _done(ShareReceipt r) => ListView(children: [

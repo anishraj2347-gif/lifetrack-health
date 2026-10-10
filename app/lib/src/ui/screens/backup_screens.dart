@@ -190,7 +190,7 @@ class _RecoveryKitScreenState extends State<RecoveryKitScreen> {
       'Account code: ${widget.kit.account}\n'
       'Password: ${widget.kit.password}\n'
       'Recovery code: ${widget.kit.printCode}\n\n'
-      'To restore on a new phone: install LifeTrack, choose "Restore from backup", enter the account code and the password.';
+      'To restore on a new phone: install LifeTrack, choose "I\'ve used LifeTrack before — restore" on the first screen, enter the account code and the password.';
 
   String get _contactMessage => 'Please keep this LifeTrack recovery code for me. I may ask for it if I lose my phone.\n\n'
       'Account code: ${widget.kit.account}\n'
@@ -215,7 +215,13 @@ class _RecoveryKitScreenState extends State<RecoveryKitScreen> {
               Text('Password', style: LT.small),
               SizedBox(height: 4),
               SelectableText(k.password, style: LT.title.copyWith(fontSize: 20, letterSpacing: 1)),
+              SizedBox(height: 6),
+              Text('When you type it back, capitals, spaces and dashes do not matter, and O and 0 count as the same.', style: LT.meta),
             ]),
+          ),
+          CautionPanel(
+            title: 'Keep it off WhatsApp, Gmail and Google Photos',
+            child: Text('Anyone who gets into those accounts could restore your records with it. Writing it on paper, or printing the sheet, is safer.', style: LT.small.copyWith(color: LT.cautionInk)),
           ),
           Note('With the account code and password, a new phone gets everything back.', icon: LucideIcons.keyRound),
           Padding(

@@ -103,8 +103,8 @@ class _TrendCardState extends State<TrendCard> {
           Container(
             width: 36,
             height: 36,
-            decoration: BoxDecoration(color: LT.accent, shape: BoxShape.circle),
-            child: Icon(LucideIcons.flaskConical, size: 17, color: LT.onAccent),
+            decoration: BoxDecoration(color: LT.onDarkChip, shape: BoxShape.circle),
+            child: Icon(LucideIcons.flaskConical, size: 17, color: LT.onDark),
           ),
           SizedBox(width: 10),
           Expanded(

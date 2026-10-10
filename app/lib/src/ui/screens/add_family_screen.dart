@@ -181,7 +181,7 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
           text: _dob == null ? 'Pick a date' : fullDate(_dob!),
           placeholder: _dob == null,
           onTap: () async {
-            final d = await showDatePicker(context: context, initialDate: child ? DateTime(2018) : DateTime(1955), firstDate: DateTime(1900), lastDate: DateTime.now());
+            final d = await showDatePicker(context: context, initialDate: child ? DateTime(2018) : DateTime(1955), firstDate: DateTime(1900), lastDate: DateTime.now(), initialDatePickerMode: DatePickerMode.year);
             if (d != null) setState(() => _dob = d);
           },
         ),
