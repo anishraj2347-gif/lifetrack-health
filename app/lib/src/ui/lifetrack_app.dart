@@ -240,6 +240,52 @@ class _HomeShellState extends State<HomeShell> {
 
   /// Every tab shows its icon and its name: icons alone lose people. The
   /// lime pill marks the one you are on ("selected / now").
+  /// One tab: [on] is how much of the lime pill is under it (0–1).
+  Widget _tabItem(int i, double on) => Semantics(
+        label: _tabs[i].$1,
+        button: true,
+        selected: i == _tab,
+        excludeSemantics: true,
+        child: Tooltip(
+          message: _tabs[i].$1,
+          textStyle: TextStyle(fontFamily: LT.body, fontSize: 18, color: LT.onDark),
+          triggerMode: TooltipTriggerMode.longPress,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              if (i != _tab) HapticFeedback.selectionClick();
+              setState(() => _tab = i);
+            },
+            // The selected label sits on the lime pill.
+            child: GlassTone(
+              tone: i == _tab ? LT.accent : Color.alphaBlend(LT.primary.withValues(alpha: 0.80), Colors.white),
+              child: Pressable(
+                shape: StadiumBorder(),
+                child: Container(
+                  constraints: BoxConstraints(minHeight: 56),
+                  padding: EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+                  child: Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Transform.scale(
+                      scale: 1 + 0.12 * on,
+                      child: Icon(_tabs[i].$2, size: 20, color: Color.lerp(LT.onDarkMuted, LT.onAccent, on)),
+                    ),
+                    SizedBox(height: 3),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        _tabs[i].$1,
+                        maxLines: 1,
+                        style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: on > 0.5 ? FontWeight.w600 : FontWeight.w500, color: Color.lerp(LT.onDark, LT.onAccent, on)),
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
   Widget _tabBar() => DecoratedBox(
         decoration: ShapeDecoration(shape: StadiumBorder(), shadows: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 24, offset: Offset(0, 8))]),
         child: Glass(
@@ -247,83 +293,37 @@ class _HomeShellState extends State<HomeShell> {
           opacity: 0.80,
           lightText: true,
           padding: EdgeInsets.all(5),
-          child: Stack(children: [
-            // One lime pill that slides to the tab you pick, with a little
-            // overshoot — instead of one blinking out and another in.
-            Positioned.fill(
-              child: AnimatedAlign(
-                alignment: Alignment(-1 + 2 * _tab / (_tabs.length - 1), 0),
-                duration: Duration(milliseconds: 320),
-                curve: Curves.easeOutBack,
-                child: FractionallySizedBox(
-                  widthFactor: 1 / _tabs.length,
-                  heightFactor: 1,
-                  child: DecoratedBox(
-                    decoration: ShapeDecoration(
-                      shape: StadiumBorder(),
-                      gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color.alphaBlend(Colors.white.withValues(alpha: 0.25), LT.accent), LT.accent]),
-                      shadows: [BoxShadow(color: LT.accent.withValues(alpha: 0.35), blurRadius: 12)],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Row(children: [
-              for (var i = 0; i < _tabs.length; i++)
-                Expanded(
-                  child: Semantics(
-                    label: _tabs[i].$1,
-                    button: true,
-                    selected: i == _tab,
-                    excludeSemantics: true,
-                    child: Tooltip(
-                      message: _tabs[i].$1,
-                      textStyle: TextStyle(fontFamily: LT.body, fontSize: 18, color: LT.onDark),
-                      triggerMode: TooltipTriggerMode.longPress,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          if (i != _tab) HapticFeedback.selectionClick();
-                          setState(() => _tab = i);
-                        },
-                        // The selected label sits on the lime pill.
-                        child: GlassTone(
-                          tone: i == _tab ? LT.accent : Color.alphaBlend(LT.primary.withValues(alpha: 0.80), Colors.white),
-                          child: Pressable(
-                          shape: StadiumBorder(),
-                          child: Container(
-                            constraints: BoxConstraints(minHeight: 56),
-                            padding: EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AnimatedScale(
-                                  scale: i == _tab ? 1.12 : 1,
-                                  duration: Duration(milliseconds: 220),
-                                  curve: Curves.easeOutBack,
-                                  child: Icon(_tabs[i].$2, size: 20, color: i == _tab ? LT.onAccent : LT.onDarkMuted),
-                                ),
-                                SizedBox(height: 3),
-                                FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: AnimatedDefaultTextStyle(
-                                    duration: Duration(milliseconds: 200),
-                                    style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: i == _tab ? FontWeight.w600 : FontWeight.w500, color: i == _tab ? LT.onAccent : LT.onDark),
-                                    child: Text(_tabs[i].$1, maxLines: 1),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          ),
-                        ),
+          // One animation drives both the lime pill and the labels: each
+          // label turns dark only as the pill arrives under it, so nothing
+          // ever sits dark-on-black mid-slide. No overshoot, so the pill never
+          // runs past the ends of the bar.
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(end: _tab.toDouble()),
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            builder: (context, t, _) => Stack(children: [
+              Positioned.fill(
+                child: Align(
+                  alignment: Alignment(-1 + 2 * t / (_tabs.length - 1), 0),
+                  child: FractionallySizedBox(
+                    widthFactor: 1 / _tabs.length,
+                    heightFactor: 1,
+                    child: DecoratedBox(
+                      decoration: ShapeDecoration(
+                        shape: StadiumBorder(),
+                        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color.alphaBlend(Colors.white.withValues(alpha: 0.25), LT.accent), LT.accent]),
+                        shadows: [BoxShadow(color: LT.accent.withValues(alpha: 0.35), blurRadius: 12)],
                       ),
                     ),
                   ),
                 ),
+              ),
+              Row(children: [
+                for (var i = 0; i < _tabs.length; i++)
+                  Expanded(child: _tabItem(i, (1 - (t - i).abs()).clamp(0.0, 1.0))),
+              ]),
             ]),
-          ]),
+          ),
         ),
       );
 }

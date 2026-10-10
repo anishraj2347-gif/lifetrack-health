@@ -6,6 +6,11 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.37.1 (11 Oct 2026)
+- **Tab switching looks right**: the lime pill and the tab names now move together — a name turns
+  dark only as the pill slides under it, so it never vanishes against the black bar mid-switch.
+  The pill no longer overshoots past the ends of the bar.
+
 ### 1.37.0 (11 Oct 2026)
 - **Records cards are richer**: each record has a soft tinted tile for its type (prescription
   lilac, report sky, scan peach, note sand — never a health colour), the doctor and clinic with a
