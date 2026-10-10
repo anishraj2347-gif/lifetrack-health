@@ -121,7 +121,8 @@ class _CustomReminderScreenState extends State<CustomReminderScreen> {
   Widget build(BuildContext context) {
     final editing = widget.existing != null;
     return Scaffold(
-      appBar: AppBar(),
+      appBar: GlassAppBar(),
+      extendBodyBehindAppBar: true,
       body: ListView(children: [
         Masthead(
           eyebrow: editing ? 'Edit reminder' : 'New reminder',

@@ -44,7 +44,8 @@ class FamilyOverviewScreen extends StatelessWidget {
           ]);
 
     return Scaffold(
-      appBar: AppBar(),
+      appBar: GlassAppBar(),
+      extendBodyBehindAppBar: true,
       body: ListView(children: [
         Masthead(
           eyebrow: 'Family overview',

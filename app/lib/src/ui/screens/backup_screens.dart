@@ -48,7 +48,8 @@ class _BackupScreenState extends State<BackupScreen> {
     final s = AppScope.of(context);
     final on = s.backupAccount != null;
     return Scaffold(
-      appBar: AppBar(),
+      appBar: GlassAppBar(),
+      extendBodyBehindAppBar: true,
       body: ListView(children: [
         Masthead(
           eyebrow: 'Backup',
@@ -202,7 +203,8 @@ class _RecoveryKitScreenState extends State<RecoveryKitScreen> {
     return PopScope(
       canPop: _saved,
       child: Scaffold(
-        appBar: AppBar(automaticallyImplyLeading: false),
+        appBar: GlassAppBar(automaticallyImplyLeading: false),
+        extendBodyBehindAppBar: true,
         body: ListView(children: [
           Masthead(eyebrow: 'Backup is on', title: 'Your recovery kit', description: 'Shown once. The app does not keep the password.'),
           SizedBox(height: 14),
@@ -314,7 +316,8 @@ class _RestoreScreenState extends State<RestoreScreen> {
   Widget build(BuildContext context) {
     final ready = _account.text.trim().isNotEmpty && (_withCodes ? _code1.text.trim().isNotEmpty && _code2.text.trim().isNotEmpty : _password.text.trim().isNotEmpty);
     return Scaffold(
-      appBar: AppBar(),
+      appBar: GlassAppBar(),
+      extendBodyBehindAppBar: true,
       body: ListView(children: [
         Masthead(eyebrow: 'Restore', title: 'Bring back your records', description: 'Use the recovery sheet you saved when you turned on backup.'),
         SizedBox(height: 14),

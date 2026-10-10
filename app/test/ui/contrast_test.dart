@@ -103,6 +103,9 @@ void main() {
           scrollable: find.byType(Scrollable).first,
         );
         await tester.pumpAndSettle();
+        // Centre it: lists scroll under the glass tab bar.
+        await tester.runAsync(() => Scrollable.ensureVisible(tester.element(find.text('Family overview')), alignment: 0.5));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Family overview'));
         await check(tester, 'Family overview');
         Navigator.of(tester.element(find.byType(FamilyOverviewScreen))).pop();

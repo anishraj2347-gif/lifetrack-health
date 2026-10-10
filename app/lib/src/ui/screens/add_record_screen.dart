@@ -122,7 +122,8 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(),
+        appBar: GlassAppBar(),
+        extendBodyBehindAppBar: true,
         body: ListView(children: [
           Masthead(eyebrow: widget.editing == null ? 'Add record' : 'Edit record', title: widget.editing == null ? 'Type it in' : 'Correct it'),
           if (widget.editing == null) ShadCard(

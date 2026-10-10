@@ -6,6 +6,12 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.26.0 (10 Oct 2026)
+- **Glass bars**: the bottom tab bar, the top bar and the header of every inner screen are now
+  frosted glass. What scrolls underneath shows through, blurred and tinted, with a thin bright
+  rim and a soft sheen. The "done" card is glass too. Text on glass is checked against the worst
+  case (the brightest or darkest thing that could pass behind it), so it stays readable.
+
 ### 1.25.1 (10 Oct 2026)
 - Test fix only: the app-lock test scrolls to the switch, which moved under "This phone" on Me.
 

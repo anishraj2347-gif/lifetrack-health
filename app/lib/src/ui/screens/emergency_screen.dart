@@ -61,7 +61,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
         ? ''
         : emergencyQrText(name: who.name, card: c, lifeTrackId: ltId, abhaMasked: abha?.masked, updated: s.clock());
     return Scaffold(
-      appBar: AppBar(),
+      appBar: GlassAppBar(),
       body: c == null
           ? Center(child: CircularProgressIndicator())
           : ListView(children: [
@@ -139,7 +139,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                 child: SlabButton('Edit card', icon: LucideIcons.pencil, variant: ButtonVariant.outline, onPressed: () async {
                   await Navigator.of(context).push(MaterialPageRoute<void>(
                     builder: (_) => Scaffold(
-                      appBar: AppBar(),
+                      appBar: GlassAppBar(),
                       body: EmergencyEditor(
                         patientId: s.currentPatientId!,
                         initial: c,

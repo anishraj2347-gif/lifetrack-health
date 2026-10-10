@@ -87,7 +87,8 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(),
+        appBar: GlassAppBar(),
+        extendBodyBehindAppBar: true,
         body: ListView(children: [
           Masthead(eyebrow: 'Your data', title: 'What is held, where'),
           SizedBox(height: 14),

@@ -100,7 +100,7 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(),
+        appBar: GlassAppBar(),
         body: _who == null
             ? _choose()
             : _consentStep

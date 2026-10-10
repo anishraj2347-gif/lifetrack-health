@@ -15,6 +15,7 @@ import 'screens/reminders_screen.dart';
 import 'screens/scan_report_screen.dart';
 import 'screens/share_screen.dart';
 import 'theme.dart';
+import 'widgets/parts.dart';
 
 /// [boot] assembles the services. Widget tests pass one over an in-memory
 /// store — without that, boot waits forever on a platform channel that does
@@ -175,12 +176,18 @@ class _HomeShellState extends State<HomeShell> {
     child: _shell(),
   );
 
+  static const _topBarHeight = 48.0;
+
+  /// Content runs under both glass bars: the tab sees the bars as extra
+  /// padding (lists scroll beneath them), and the bars blur what passes.
   Widget _shell() => Scaffold(
-    body: SafeArea(
-      bottom: false,
-      child: Column(children: [
-        _TopBar(),
-        Expanded(
+    extendBody: true,
+    body: Builder(builder: (context) {
+      final mq = MediaQuery.of(context);
+      final top = mq.padding.top + _topBarHeight;
+      return Stack(children: [
+        MediaQuery(
+          data: mq.copyWith(padding: mq.padding.copyWith(top: top)),
           child: AnimatedSwitcher(
             duration: Duration(milliseconds: 220),
             switchInCurve: Curves.easeOutCubic,
@@ -191,8 +198,8 @@ class _HomeShellState extends State<HomeShell> {
             child: KeyedSubtree(
               key: ValueKey(_tab),
               child: switch (_tab) {
-                0 => RemindersTab(),
-                1 => RecordsScreen(),
+                0 => SafeArea(bottom: false, child: RemindersTab()),
+                1 => SafeArea(bottom: false, child: RecordsScreen()),
                 2 => InsightsScreen(),
                 3 => ShareScreen(),
                 _ => MeScreen(),
@@ -200,9 +207,19 @@ class _HomeShellState extends State<HomeShell> {
             ),
           ),
         ),
-      ]),
-    ),
-    extendBody: true,
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Glass(
+            tint: LT.ground,
+            opacity: 0.72,
+            radius: BorderRadius.zero,
+            child: Padding(padding: EdgeInsets.only(top: mq.padding.top), child: SizedBox(height: _topBarHeight, child: _TopBar())),
+          ),
+        ),
+      ]);
+    }),
     bottomNavigationBar: SafeArea(
       top: false,
       child: Padding(
@@ -214,9 +231,13 @@ class _HomeShellState extends State<HomeShell> {
 
   /// Every tab shows its icon and its name: icons alone lose people. The
   /// lime pill marks the one you are on ("selected / now").
-  Widget _tabBar() => Container(
+  Widget _tabBar() => DecoratedBox(
+        decoration: ShapeDecoration(shape: StadiumBorder(), shadows: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 24, offset: Offset(0, 8))]),
+        child: Glass(
+        tint: LT.primary,
+        opacity: 0.80,
+        lightText: true,
         padding: EdgeInsets.all(5),
-        decoration: ShapeDecoration(color: LT.primary, shape: StadiumBorder()),
         child: Row(
           children: [
             for (var i = 0; i < _tabs.length; i++)
@@ -253,7 +274,7 @@ class _HomeShellState extends State<HomeShell> {
                             child: Text(
                               _tabs[i].$1,
                               maxLines: 1,
-                              style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: i == _tab ? FontWeight.w600 : FontWeight.w500, color: i == _tab ? LT.onAccent : LT.onDarkMuted),
+                              style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: i == _tab ? FontWeight.w600 : FontWeight.w500, color: i == _tab ? LT.onAccent : LT.onDark),
                             ),
                           ),
                         ],
@@ -264,6 +285,7 @@ class _HomeShellState extends State<HomeShell> {
               ),
           ],
         ),
+        ),
       );
 }
 
@@ -273,7 +295,7 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 10, 20, 2),
+        padding: EdgeInsets.fromLTRB(20, 0, 20, 0),
         child: Row(children: [
           Container(
             width: 26,

@@ -29,7 +29,7 @@ class _VitalsScreenState extends State<VitalsScreen> {
     final since = s.clock().subtract(Duration(days: 30));
     final recent = [for (final v in all) if (!v.at.isBefore(since)) v].reversed.toList();
     return Scaffold(
-      appBar: AppBar(),
+      appBar: GlassAppBar(),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: LT.primary,
         foregroundColor: LT.onDark,

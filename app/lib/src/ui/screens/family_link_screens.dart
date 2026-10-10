@@ -28,7 +28,7 @@ class _FamilyInviteScreenState extends State<FamilyInviteScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(),
+        appBar: GlassAppBar(),
         body: FutureBuilder<FamilyInvite>(
           future: _invite,
           builder: (context, snap) {
@@ -124,7 +124,7 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(), body: _invite == null ? _scan() : _choose());
+  Widget build(BuildContext context) => Scaffold(appBar: GlassAppBar(), body: _invite == null ? _scan() : _choose());
 
   Widget _scan() => ListView(children: [
         Masthead(eyebrow: 'Join a family', title: 'Scan their invite', description: 'The family member who invited you shows a code on their phone.'),
@@ -276,7 +276,8 @@ class _LinkedAdultScreenState extends State<LinkedAdultScreen> {
     final meds = _l.theirMedicines;
     String f(String k) => (em?[k] as String?) ?? '';
     return Scaffold(
-      appBar: AppBar(),
+      appBar: GlassAppBar(),
+      extendBodyBehindAppBar: true,
       body: ListView(children: [
         Masthead(
           eyebrow: 'Linked family',

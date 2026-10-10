@@ -51,7 +51,7 @@ class _RecordScreenState extends State<RecordScreen> {
     final unchecked = _run?.unresolved.where((u) => u.recordId == r.id).toList() ?? <NotChecked>[];
 
     return Scaffold(
-      appBar: AppBar(actions: [
+      appBar: GlassAppBar(actions: [
         PopupMenuButton<String>(
           tooltip: 'More',
           icon: Icon(LucideIcons.ellipsisVertical),

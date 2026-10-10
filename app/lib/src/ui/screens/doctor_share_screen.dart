@@ -99,7 +99,7 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(),
+        appBar: GlassAppBar(),
         body: _receipt != null
             ? _done(_receipt!)
             : _doctor == null

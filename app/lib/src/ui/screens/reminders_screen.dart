@@ -44,7 +44,8 @@ class _RemindersScreenState extends State<RemindersScreen> {
     final st = s.reminderSettings;
     final plan = st.on ? s.reminderPlan().take(5).toList() : <PlannedReminder>[];
     return Scaffold(
-      appBar: AppBar(),
+      appBar: GlassAppBar(),
+      extendBodyBehindAppBar: true,
       body: ListView(children: [
         Masthead(
           eyebrow: 'Reminder settings',

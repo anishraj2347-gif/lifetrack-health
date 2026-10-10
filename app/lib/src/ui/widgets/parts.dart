@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -612,20 +614,104 @@ class _CelebrationState extends State<_Celebration> with SingleTickerProviderSta
             return Opacity(opacity: o.clamp(0, 1), child: child);
           },
           child: Center(
-            child: Material(
-              color: LT.surface,
-              elevation: 8,
-              shadowColor: Colors.black38,
-              borderRadius: BorderRadius.circular(LT.radiusLg),
-              child: Padding(
+            child: DecoratedBox(
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(LT.radiusLg), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 30, offset: Offset(0, 10))]),
+              child: Glass(
+                tint: LT.surface,
+                opacity: 0.82,
+                lightText: LT.dark,
+                radius: BorderRadius.circular(LT.radiusLg),
                 padding: EdgeInsets.fromLTRB(28, 18, 28, 22),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  DoneMark(size: 72),
-                  Text(widget.message, textAlign: TextAlign.center, style: LT.label.copyWith(fontSize: 17, fontWeight: FontWeight.w600)),
-                ]),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    DoneMark(size: 72),
+                    Text(widget.message, textAlign: TextAlign.center, style: LT.label.copyWith(fontSize: 17, fontWeight: FontWeight.w600)),
+                  ]),
+                ),
               ),
             ),
           ),
         ),
+      );
+}
+
+/// Frosted glass: whatever scrolls behind is blurred and tinted, with a thin
+/// bright rim and a soft sheen across the top, like light on water.
+///
+/// Text on glass must stay readable whatever passes behind it, so the glass
+/// reports a worst-case solid [GlassTone] — its tint over the brightest
+/// (for light text) or darkest (for dark text) thing that could be under it.
+/// contrast_test checks text against that.
+class Glass extends StatelessWidget {
+  const Glass({super.key, required this.child, required this.tint, this.opacity = 0.75, this.blur = 22, this.radius, this.lightText = false, this.padding});
+  final Widget child;
+  final Color tint;
+  final double opacity;
+  final double blur;
+
+  /// Null: a stadium (pill). Otherwise the corner radius.
+  final BorderRadius? radius;
+  final bool lightText;
+  final EdgeInsetsGeometry? padding;
+
+  Color get tone => Color.alphaBlend(tint.withValues(alpha: opacity), lightText ? Colors.white : Colors.black);
+
+  @override
+  Widget build(BuildContext context) {
+    final ShapeBorder shape = radius == null ? StadiumBorder() : RoundedRectangleBorder(borderRadius: radius!);
+    final rim = lightText ? Colors.white.withValues(alpha: 0.16) : Colors.white.withValues(alpha: LT.dark ? 0.10 : 0.55);
+    return ClipPath(
+      clipper: ShapeBorderClipper(shape: shape),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+        child: DecoratedBox(
+          decoration: ShapeDecoration(
+            shape: radius == null ? StadiumBorder(side: BorderSide(color: rim)) : RoundedRectangleBorder(borderRadius: radius!, side: BorderSide(color: rim)),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color.alphaBlend(Colors.white.withValues(alpha: lightText ? 0.07 : 0.18), tint.withValues(alpha: opacity)),
+                tint.withValues(alpha: opacity),
+                tint.withValues(alpha: (opacity + 0.06).clamp(0, 1)),
+              ],
+              stops: const [0, 0.45, 1],
+            ),
+          ),
+          child: GlassTone(tone: tone, child: padding == null ? child : Padding(padding: padding!, child: child)),
+        ),
+      ),
+    );
+  }
+}
+
+/// Marks the solid colour text on a [Glass] is judged against.
+class GlassTone extends StatelessWidget {
+  const GlassTone({super.key, required this.tone, required this.child});
+  final Color tone;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => child;
+}
+
+/// An app bar of frosted glass over the page. Screens whose body is a plain
+/// ListView set `extendBodyBehindAppBar` so their content slides under it.
+class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const GlassAppBar({super.key, this.title, this.actions, this.automaticallyImplyLeading = true});
+  final Widget? title;
+  final List<Widget>? actions;
+  final bool automaticallyImplyLeading;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) => AppBar(
+        title: title,
+        actions: actions,
+        automaticallyImplyLeading: automaticallyImplyLeading,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Glass(tint: LT.ground, opacity: 0.72, radius: BorderRadius.zero, child: SizedBox.expand()),
       );
 }

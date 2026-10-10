@@ -401,7 +401,8 @@ class _AuditScreenState extends State<AuditScreen> {
       ));
     }
     return Scaffold(
-      appBar: AppBar(),
+      appBar: GlassAppBar(),
+      extendBodyBehindAppBar: true,
       body: ListView(children: [
         Masthead(eyebrow: 'Access log', title: 'Who opened what'),
         Note('Every read, change and permission is recorded here, on this phone. LifeTrack has no way to edit or remove an entry; erasing your profile is the only thing that clears it.', icon: LucideIcons.history),

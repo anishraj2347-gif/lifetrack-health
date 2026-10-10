@@ -23,7 +23,8 @@ class VaccinationsScreen extends StatelessWidget {
       groups.putIfAbsent(r.$1.ageLabel, () => []).add(r);
     }
     return Scaffold(
-      appBar: AppBar(),
+      appBar: GlassAppBar(),
+      extendBodyBehindAppBar: true,
       body: ListView(children: [
         Masthead(eyebrow: 'Vaccinations', title: p.name, description: 'Born ${fullDate(p.dateOfBirth)}'),
         Padding(

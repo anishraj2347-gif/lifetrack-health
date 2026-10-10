@@ -45,7 +45,8 @@ class TestsYouHaveScreen extends StatelessWidget {
           );
 
     return Scaffold(
-      appBar: AppBar(),
+      appBar: GlassAppBar(),
+      extendBodyBehindAppBar: true,
       body: ListView(children: [
         Masthead(eyebrow: 'Tests you already have', title: p.name, description: '${h.count} test${h.count == 1 ? '' : 's'} on this phone'),
         Note(

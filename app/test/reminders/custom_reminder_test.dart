@@ -148,6 +148,8 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Thu'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Save reminder'), 200, scrollable: find.byType(Scrollable).first);
+    await tester.runAsync(() => Scrollable.ensureVisible(tester.element(find.text('Save reminder')), alignment: 0.5));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Save reminder'));
     await tester.pumpAndSettle();
 
@@ -159,6 +161,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, 'Drink 2 glasses of water');
     await tester.scrollUntilVisible(find.text('Save changes'), 200, scrollable: find.byType(Scrollable).first);
+    await tester.runAsync(() => Scrollable.ensureVisible(tester.element(find.text('Save changes')), alignment: 0.5));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Save changes'));
     await tester.pumpAndSettle();
     expect(s.customRemindersOf(s.selfPatientId!).single.title, 'Drink 2 glasses of water');
@@ -166,6 +170,8 @@ void main() {
     await tester.tap(find.textContaining('11:00 AM · Mon, Thu'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.widgetWithText(SlabButton, 'Delete'), 200, scrollable: find.byType(Scrollable).first);
+    await tester.runAsync(() => Scrollable.ensureVisible(tester.element(find.widgetWithText(SlabButton, 'Delete')), alignment: 0.5));
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(SlabButton, 'Delete'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(TextButton, 'Delete'));

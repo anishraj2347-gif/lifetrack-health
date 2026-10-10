@@ -355,7 +355,7 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(),
+        appBar: GlassAppBar(),
         body: switch (_step) {
           _Step.capture => _capture(),
           _Step.reading => _reading(),

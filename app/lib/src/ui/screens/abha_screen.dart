@@ -48,7 +48,8 @@ class _AbhaScreenState extends State<AbhaScreen> {
     final p = s.currentPatient!;
     final abha = p.abha;
     return Scaffold(
-      appBar: AppBar(),
+      appBar: GlassAppBar(),
+      extendBodyBehindAppBar: true,
       body: ListView(children: [
         Masthead(eyebrow: 'ABHA health ID', title: p.name, description: 'Ayushman Bharat Health Account — the 14-digit health ID hospitals and labs on ABDM use.'),
         SizedBox(height: 14),
@@ -168,7 +169,8 @@ class AbhaQrScreen extends StatelessWidget {
     final p = AppScope.of(context).currentPatient!;
     final a = p.abha!;
     return Scaffold(
-      appBar: AppBar(),
+      appBar: GlassAppBar(),
+      extendBodyBehindAppBar: true,
       body: ListView(children: [
         Masthead(eyebrow: 'ABHA for registration', title: p.name),
         ShadCard(

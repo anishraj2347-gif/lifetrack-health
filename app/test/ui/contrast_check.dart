@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lifetrack/src/ui/widgets/parts.dart' show GlassTone;
 
 /// Every visible text against the nearest solid colour behind it — the
 /// widget tree's own colours, not pixels, so a small badge on a black card is
@@ -28,6 +29,8 @@ List<String> lowContrastTexts(WidgetTester tester, {Color page = const Color(0xF
         DecoratedBox(decoration: ShapeDecoration(:final color)) => solid(color),
         Container(:final color) when color != null => solid(color),
         Scaffold(:final backgroundColor) when backgroundColor != null => solid(backgroundColor),
+        // Glass: its worst case over whatever may scroll behind.
+        GlassTone(:final tone) => tone,
         _ => null,
       };
 

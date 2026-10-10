@@ -38,8 +38,8 @@ class ShowOnPhoneScreen extends StatelessWidget {
       },
       child: Scaffold(
       backgroundColor: LT.raised,
-      appBar: AppBar(
-        backgroundColor: LT.raised,
+      extendBodyBehindAppBar: true,
+      appBar: GlassAppBar(
         automaticallyImplyLeading: false,
         title: Text('For the doctor', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
         actions: [
