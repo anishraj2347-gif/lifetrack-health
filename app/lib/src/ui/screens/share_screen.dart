@@ -7,7 +7,6 @@ import '../../model/health_record.dart';
 import '../../share/access_requests.dart';
 import '../app_scope.dart';
 import '../theme.dart';
-import '../widgets/family_bar.dart';
 import '../widgets/parts.dart';
 import 'doctor_share_screen.dart';
 import 'show_on_phone_screen.dart';
@@ -63,7 +62,6 @@ class ShareScreen extends StatelessWidget {
         title: 'Show a doctor your records',
         trailing: Badge2(grants.isEmpty ? 'No access' : '${grants.length} active', tone: grants.isEmpty ? BadgeTone.outline : BadgeTone.trace),
       ),
-      ViewingPill(),
       if (grants.isEmpty) PhotoBanner(Photos.doctor, height: 150),
       SizedBox(height: 12),
       ShadCard(

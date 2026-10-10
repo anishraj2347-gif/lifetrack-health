@@ -8,6 +8,8 @@ import 'package:lifetrack/src/model/custody.dart';
 import 'package:lifetrack/src/model/patient.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
 import 'package:lifetrack/src/ui/lifetrack_app.dart';
+import 'package:lifetrack/src/ui/widgets/family_bar.dart';
+import 'package:lifetrack/src/ui/widgets/parts.dart';
 import 'package:lifetrack/src/ui/screens/family_overview_screen.dart';
 import 'package:lifetrack/src/vault/backup_vault.dart';
 
@@ -84,7 +86,9 @@ void main() {
     await tester.pumpWidget(LifeTrackApp(boot: () async => s));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.bySemanticsLabel('Family overview'));
+    await tester.tap(find.byType(PersonButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(SlabButton, 'Family'));
     await tester.pumpAndSettle();
     expect(find.byType(FamilyOverviewScreen), findsOneWidget);
     expect(find.text("Rahul's family"), findsOneWidget);

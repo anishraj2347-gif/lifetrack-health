@@ -819,13 +819,28 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
-  Widget build(BuildContext context) => AppBar(
-        title: title,
-        actions: actions,
-        automaticallyImplyLeading: automaticallyImplyLeading,
-        backgroundColor: Colors.transparent,
-        flexibleSpace: Glass(tint: LT.ground, opacity: 0.72, radius: BorderRadius.zero, child: SizedBox.expand()),
-      );
+  Widget build(BuildContext context) {
+    final canPop = automaticallyImplyLeading && (ModalRoute.of(context)?.impliesAppBarDismissal ?? false);
+    return AppBar(
+      title: title,
+      actions: actions == null ? null : [...actions!, SizedBox(width: 8)],
+      automaticallyImplyLeading: false,
+      leadingWidth: 60,
+      leading: canPop ? Padding(padding: EdgeInsets.only(left: 10), child: BackButton()) : null,
+      backgroundColor: Colors.transparent,
+      // A floating glass pill, like the tab bar and the main top bar.
+      flexibleSpace: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(8, 4, 8, 2),
+          child: DecoratedBox(
+            decoration: ShapeDecoration(shape: StadiumBorder(), shadows: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.35 : 0.10), blurRadius: 20, offset: Offset(0, 6))]),
+            child: Glass(tint: LT.ground, opacity: 0.72, child: SizedBox.expand()),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// The LifeTrack mark: the launcher icon's card deck, bundled. Branding, not

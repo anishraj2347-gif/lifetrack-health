@@ -10,6 +10,7 @@ import 'package:lifetrack/src/model/patient.dart';
 import 'package:lifetrack/src/share/relay.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
 import 'package:lifetrack/src/ui/lifetrack_app.dart';
+import 'package:lifetrack/src/ui/widgets/family_bar.dart';
 import 'package:lifetrack/src/vault/backup_vault.dart';
 
 void main() {
@@ -33,7 +34,9 @@ void main() {
     await tester.pumpWidget(LifeTrackApp(boot: () async => s));
     await tester.pumpAndSettle();
     expect(s.currentPatient!.name, 'Baby of Anjali Sharma');
-    await tester.tap(find.text('You'));
+    await tester.tap(find.byType(PersonButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Anjali Sharma (you)'));
     await tester.pumpAndSettle();
     expect(s.currentPatient!.name, 'Anjali Sharma', reason: 'after tapping You');
     await tester.tap(find.bySemanticsLabel('Share'));

@@ -6,6 +6,16 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.30.0 (10 Oct 2026)
+- **Rounded top bar**: the top bar is a floating glass pill like the tab bar, and so is the header
+  of every inner screen.
+- **Person switcher in the top bar**: the lime avatar and first name at the top right show whose
+  records are open on every tab; tap it to switch person, open the family overview or add someone.
+  The avatar row above Reminders and Records is gone (more room), and so is the "Viewing …" pill
+  on Share and Insights. When the records are not your own, the authority line ("you are the
+  parent — declared") still shows under the title.
+- Reminders' eyebrow is today's date; Records' is how many records there are.
+
 ### 1.29.0 (10 Oct 2026)
 - **Insights in glass**: findings are glass cards with a slim severity bar at the edge (orange for
   "Next visit", grey for "Good to know"); only "Contact your doctor today" and "Seek care now"

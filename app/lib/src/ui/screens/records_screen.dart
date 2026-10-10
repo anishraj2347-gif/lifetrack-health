@@ -73,8 +73,8 @@ class _RecordsScreenState extends State<RecordsScreen> {
     final big = trends.where((t) => _shown != null && _shown!.$1 == pid && _shown!.$2 == key(t)).firstOrNull ?? trends.firstOrNull;
     void openTrend(TrendSeries t) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TestTrendScreen(analyte: t.analyte, unit: t.unit)));
     return Column(children: [
-      FamilyBar(),
-      Masthead(eyebrow: 'Records', title: name),
+      Masthead(eyebrow: all.isEmpty ? 'Records' : '${all.length} record${all.length == 1 ? '' : 's'}', title: name),
+      AuthorityBanner(),
       Padding(
         padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
         child: TextField(

@@ -7,6 +7,7 @@ import '../app_scope.dart';
 import '../screens/add_family_screen.dart';
 import '../screens/family_overview_screen.dart';
 import '../theme.dart';
+import 'parts.dart';
 
 /// Everyone whose records are on this phone, as avatars. Tap to switch; the
 /// one you are viewing is lime. When it is not you, a banner says whose
@@ -246,31 +247,129 @@ class ViewingPill extends StatelessWidget {
     );
   }
 
-  static Future<void> _switcher(BuildContext context) async {
-    final s = AppScope.of(context);
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: LT.surface,
-      builder: (sheet) => SafeArea(
-        child: ListView(shrinkWrap: true, padding: EdgeInsets.symmetric(vertical: 12), children: [
-          Padding(padding: EdgeInsets.fromLTRB(20, 4, 20, 8), child: Text('Whose records?', style: LT.label.copyWith(fontWeight: FontWeight.w600))),
+  static Future<void> _switcher(BuildContext context) => showPersonSheet(context);
+
+}
+
+/// Whose records are open, and the family around them: switch person, see
+/// the family overview, or add someone. Opened from the top bar.
+Future<void> showPersonSheet(BuildContext context) async {
+  final s = AppScope.of(context);
+  final picked = await showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    builder: (sheet) => SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(sheet).height * 0.8),
+        child: ListView(shrinkWrap: true, padding: EdgeInsets.fromLTRB(0, 0, 0, 12), children: [
+          Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 8), child: Text('Whose records?', style: LT.title.copyWith(fontSize: 20))),
           for (final p in s.familyOnPhone())
             ListTile(
-              minTileHeight: 56,
+              minTileHeight: 60,
+              contentPadding: EdgeInsets.symmetric(horizontal: 20),
               leading: CircleAvatar(
                 backgroundColor: p.id == s.currentPatientId ? LT.accent : LT.raised,
                 child: Text(FamilyBar.initials(p.name), style: TextStyle(fontWeight: FontWeight.w600, color: p.id == s.currentPatientId ? LT.onAccent : LT.ink)),
               ),
               title: Text(p.id == s.selfPatientId ? '${p.name} (you)' : p.name, style: LT.label),
+              subtitle: p.id == s.selfPatientId ? null : Builder(builder: (_) {
+                final c = s.custodyOf(p.id);
+                return c == null ? SizedBox.shrink() : Text(FamilyRole.describe(c.relation), style: LT.meta);
+              }),
               trailing: p.id == s.currentPatientId ? Icon(LucideIcons.check, color: LT.ink) : null,
               selected: p.id == s.currentPatientId,
               onTap: () => Navigator.of(sheet).pop(p.id),
             ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(children: [
+              Expanded(child: SlabButton('Family', variant: ButtonVariant.outline, icon: LucideIcons.users, onPressed: () => Navigator.of(sheet).pop('#family'))),
+              SizedBox(width: 8),
+              Expanded(child: SlabButton('Add person', variant: ButtonVariant.outline, icon: LucideIcons.userPlus, onPressed: () => Navigator.of(sheet).pop('#add'))),
+            ]),
+          ),
         ]),
       ),
-    );
-    if (picked == null || picked == s.currentPatientId) return;
-    await s.switchTo(picked);
+    ),
+  );
+  if (picked == null || !context.mounted) return;
+  if (picked == '#family' || picked == '#add') {
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => picked == '#family' ? FamilyOverviewScreen() : AddFamilyScreen()));
     if (context.mounted) AppScope.changed(context);
+    return;
+  }
+  if (picked == s.currentPatientId) return;
+  await s.switchTo(picked);
+  if (context.mounted) AppScope.changed(context);
+}
+
+/// The top bar's person button: avatar (lime — the one selected) and first
+/// name, on every tab, so it is always plain whose records are open.
+class PersonButton extends StatelessWidget {
+  const PersonButton({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final p = s.currentPatient;
+    if (p == null) return SizedBox.shrink();
+    final self = p.id == s.selfPatientId;
+    final many = s.familyOnPhone().length > 1;
+    final name = self ? 'You' : p.name.split(' ').first;
+    return Semantics(
+      button: true,
+      label: self ? 'Viewing your own records. Switch person or add family.' : "Viewing ${p.name}'s records. Switch person.",
+      excludeSemantics: true,
+      child: Material(
+        color: LT.raised.withValues(alpha: 0.7),
+        shape: StadiumBorder(side: BorderSide(color: Colors.white.withValues(alpha: LT.dark ? 0.08 : 0.9))),
+        child: InkWell(
+          customBorder: StadiumBorder(),
+          onTap: () => showPersonSheet(context),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(4, 4, many ? 10 : 4, 4),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: LT.accent, shape: BoxShape.circle),
+                child: Text(FamilyBar.initials(p.name), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: LT.onAccent)),
+              ),
+              if (many) ...[
+                SizedBox(width: 8),
+                Flexible(
+                  child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.body, fontSize: 14, fontWeight: FontWeight.w600, color: LT.ink)),
+                ),
+                SizedBox(width: 2),
+                Icon(LucideIcons.chevronDown, size: 16, color: LT.ink),
+              ],
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Under the title on Reminders and Records when the records are not your
+/// own: whose they are and on what authority ("declared" unless verified).
+class AuthorityBanner extends StatelessWidget {
+  const AuthorityBanner({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final id = s.currentPatientId;
+    final c = id == null ? null : s.custodyOf(id);
+    if (c == null || c.kind == CustodyKind.self) return SizedBox.shrink();
+    return Container(
+      margin: EdgeInsets.fromLTRB(16, 4, 16, 4),
+      padding: EdgeInsets.fromLTRB(14, 10, 14, 10),
+      decoration: BoxDecoration(color: LT.primary, borderRadius: BorderRadius.circular(LT.radius)),
+      child: Row(children: [
+        Icon(LucideIcons.users, size: 16, color: LT.onDark),
+        SizedBox(width: 10),
+        Expanded(child: Text(FamilyBar.authorityLine(c), style: TextStyle(color: LT.onDark, fontSize: 14, height: 1.4))),
+      ]),
+    );
   }
 }

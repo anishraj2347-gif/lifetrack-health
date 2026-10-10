@@ -15,6 +15,7 @@ import 'screens/reminders_screen.dart';
 import 'screens/scan_report_screen.dart';
 import 'screens/share_screen.dart';
 import 'theme.dart';
+import 'widgets/family_bar.dart';
 import 'widgets/parts.dart';
 
 /// [boot] assembles the services. Widget tests pass one over an in-memory
@@ -183,7 +184,8 @@ class _HomeShellState extends State<HomeShell> {
     child: _shell(),
   );
 
-  static const _topBarHeight = 48.0;
+  static const _topBarHeight = 52.0;
+  static const _topGap = 8.0;
 
   /// Content runs under both glass bars: the tab sees the bars as extra
   /// padding (lists scroll beneath them), and the bars blur what passes.
@@ -191,7 +193,8 @@ class _HomeShellState extends State<HomeShell> {
     extendBody: true,
     body: Builder(builder: (context) {
       final mq = MediaQuery.of(context);
-      final top = mq.padding.top + _topBarHeight;
+      // A floating glass pill like the tab bar, with a little air around it.
+      final top = mq.padding.top + _topGap + _topBarHeight + _topGap;
       return Stack(children: [
         MediaQuery(
           data: mq.copyWith(padding: mq.padding.copyWith(top: top)),
@@ -215,14 +218,16 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ),
         Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: Glass(
-            tint: LT.ground,
-            opacity: 0.72,
-            radius: BorderRadius.zero,
-            child: Padding(padding: EdgeInsets.only(top: mq.padding.top), child: SizedBox(height: _topBarHeight, child: _TopBar())),
+          top: mq.padding.top + _topGap,
+          left: 12,
+          right: 12,
+          child: DecoratedBox(
+            decoration: ShapeDecoration(shape: StadiumBorder(), shadows: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.35 : 0.10), blurRadius: 24, offset: Offset(0, 8))]),
+            child: Glass(
+              tint: LT.ground,
+              opacity: 0.72,
+              child: SizedBox(height: _topBarHeight, child: _TopBar()),
+            ),
           ),
         ),
       ]);
@@ -329,11 +334,13 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 0, 20, 0),
+        padding: EdgeInsets.fromLTRB(12, 0, 6, 0),
         child: Row(children: [
-          BrandMark(size: 28),
+          BrandMark(size: 30),
+          SizedBox(width: 10),
+          Expanded(child: Text('LifeTrack', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.display, fontSize: 17, fontWeight: FontWeight.w600, color: LT.ink, letterSpacing: -0.3))),
           SizedBox(width: 8),
-          Text('LifeTrack', style: TextStyle(fontFamily: LT.display, fontSize: 16, fontWeight: FontWeight.w600, color: LT.ink, letterSpacing: -0.2)),
+          Flexible(child: Align(alignment: Alignment.centerRight, child: PersonButton())),
         ]),
       );
 }

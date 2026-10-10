@@ -222,12 +222,12 @@ class RemindersTab extends StatelessWidget {
         if (doses.any((d) => d.$1 == slot)) '${slot.label} ${hm(st.times[slot]!)}',
     ];
     return Column(children: [
-      FamilyBar(),
       Masthead(
-        eyebrow: 'Reminders',
+        eyebrow: _today(s.clock()),
         title: p?.name ?? '',
         trailing: available ? Badge2(st.on ? 'On' : 'Off', tone: st.on ? BadgeTone.trace : BadgeTone.outline) : null,
       ),
+      AuthorityBanner(),
       Expanded(
         child: ListView(padding: EdgeInsets.only(top: 6, bottom: 96), children: [
           if (available)
@@ -352,3 +352,9 @@ class _Struck extends StatelessWidget {
         child: Text(text),
       );
 }
+
+const _weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const _months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/// "Friday, 10 October" — the eyebrow on the home tab.
+String _today(DateTime d) => '${_weekdays[d.weekday - 1]}, ${d.day} ${_months[d.month - 1]}';

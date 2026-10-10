@@ -37,8 +37,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
         final flagged = run.insights.where((i) => i.severity != Severity.note).length;
         return ListView(children: [
           Masthead(eyebrow: 'Insights · runs on this phone', title: 'What ${whoseRecords(context)} numbers show'),
-          ViewingPill(),
-          Padding(
+              Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 6),
             child: IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Expanded(child: _Stat(value: '$flagged', label: 'To discuss with your doctor', dark: true)),
@@ -97,8 +96,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
   Widget _failed(BuildContext context) => ListView(children: [
         Masthead(eyebrow: 'Insights', title: 'Insights could not run'),
-        ViewingPill(),
-        Note('Your records are unchanged. Try again; if it keeps failing, your reports are still in Records.', icon: LucideIcons.info, margin: EdgeInsets.fromLTRB(16, 16, 16, 0)),
+          Note('Your records are unchanged. Try again; if it keeps failing, your reports are still in Records.', icon: LucideIcons.info, margin: EdgeInsets.fromLTRB(16, 16, 16, 0)),
         Padding(
           padding: EdgeInsets.fromLTRB(16, 20, 16, 28),
           child: SlabButton('Try again', icon: LucideIcons.refreshCw, onPressed: () => setState(() => _run = AppScope.of(context).runInsights())),
@@ -107,8 +105,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
   Widget _off(BuildContext context) => ListView(children: [
         Masthead(eyebrow: 'Insights', title: 'Check ${whoseRecords(context) == 'your' ? 'my' : whoseRecords(context)} reports'),
-        ViewingPill(),
-        PhotoBanner(Photos.reading, height: 170),
+          PhotoBanner(Photos.reading, height: 170),
         SizedBox(height: 8),
         for (final (icon, title, body) in const [
           (LucideIcons.chartColumn, 'Out-of-range values', 'Each report value compared with a published reference range for your age and sex.'),
