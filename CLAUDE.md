@@ -205,10 +205,12 @@ copy predate the claim fixes; the app's wording is authoritative).
 - A test whose outcome depends on wall-clock time is not an invariant test. Every clock is a
   parameter; `plane_boundary_test.dart` forbids `DateTime.now()` under `lib/src/ai/`.
 - Source-scanning tests must strip comments first (`codeOf` in `test/invariants/source.dart`).
-- Never use `google_fonts`; Poppins is bundled in `app/fonts/`.
-- Visual direction: warm-grey medical dashboard (black pills, soft 22 px cards, black hero cards,
-  lime accent) after a Dribbble reference the user supplied; components are native, in
-  `lib/src/ui/widgets/parts.dart`. Lime means "selected / now" only — never a health status.
+- Never use `google_fonts`; Sora (and the older Poppins) are bundled in `app/fonts/`.
+- Visual direction (12 Oct 2026): the "Coffee Shop Mobile App" Figma kit the user supplied —
+  near-white page, white cards, near-black hero cards, photo-hero welcome/lock screens, Sora;
+  components are native, in `lib/src/ui/widgets/parts.dart`. The caramel accent (#A65E30) means
+  "selected / now" only — never a health status. **Open:** it is too close to signal #C2410C under
+  CVD (ΔE protan 12.3, deutan 15.8); fix before adding screens that put them side by side.
   Do not add the `shadcn_ui` package: it pulls in `http` and `extended_image` (network-capable).
 - Build the APK with `scripts/build_apk.sh` (obfuscated release). Since 12 Oct 2026 it builds for
   the home-Wi-Fi server (`scripts/run_server_lan.sh`, which must be running; the laptop's address is
