@@ -210,7 +210,10 @@ copy predate the claim fixes; the app's wording is authoritative).
   lime accent) after a Dribbble reference the user supplied; components are native, in
   `lib/src/ui/widgets/parts.dart`. Lime means "selected / now" only — never a health status.
   Do not add the `shadcn_ui` package: it pulls in `http` and `extended_image` (network-capable).
-- Build the APK with `scripts/build_apk.sh` (obfuscated release).
+- Build the APK with `scripts/build_apk.sh` (obfuscated release). Since 12 Oct 2026 it builds for
+  the home-Wi-Fi server (`scripts/run_server_lan.sh`, which must be running; the laptop's address is
+  built in, so rebuild if it changes) with demo tools off; `LT_SERVER=usb` / `LT_DEMO_TOOLS=true`
+  for the old cable-and-demo build.
 - `integration/` runs both apps' real code against the real server handler (`flutter test` there):
   scan, share, confirmed sender, prescription back, request by ID, decline, end access, revocation.
   Run it after any change to what one app sends the other.

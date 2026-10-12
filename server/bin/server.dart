@@ -19,7 +19,14 @@ import 'package:shelf/shelf_io.dart' as io;
 ///
 ///   dart run bin/server.dart [--port 8787] [--data data]
 ///       [--public-base https://lifetrack.example] [--allow-origin https://doctor.example]
-///       [--trust-proxy]
+///       [--trust-proxy] [--lan]
+///
+/// `--lan` (home Wi-Fi, 12 Oct 2026): also listens on the laptop's Wi-Fi
+/// address so the phone works without the cable. Plain HTTP on the home
+/// network: shares, family-link messages and backups are end-to-end
+/// encrypted before they reach it, but anyone on the same Wi-Fi can see
+/// which IDs talk to the server and when. Pass `--public-base
+/// http://<laptop-ip>:<port>` with it (scripts/run_server_lan.sh does).
 ///
 /// `--trust-proxy`: a reverse proxy you run is in front and appends the
 /// caller's address to X-Forwarded-For; rate limits then count per caller
@@ -70,10 +77,15 @@ Future<void> main(List<String> args) async {
       allowedOrigins: {for (var i = 0; i < args.length - 1; i++) if (args[i] == '--allow-origin') args[i + 1]},
     ),
   );
-  final server = await io.serve(api.handler, InternetAddress.loopbackIPv4, port);
+  final lan = args.contains('--lan');
+  if (lan && publicBase == null) {
+    stderr.writeln('--lan needs --public-base http://<laptop-ip>:$port (the address the phone uses).');
+    exit(64);
+  }
+  final server = await io.serve(api.handler, lan ? InternetAddress.anyIPv4 : InternetAddress.loopbackIPv4, port);
   final pub = base64Encode((await signingKey.extractPublicKey()).bytes);
   stdout
-    ..writeln('LifeTrack local server on http://${server.address.address}:${server.port}')
+    ..writeln(lan ? 'LifeTrack server on this laptop and the Wi-Fi: $publicBase (and http://127.0.0.1:${server.port})' : 'LifeTrack local server on http://${server.address.address}:${server.port}')
     ..writeln('Registry public key (pin this in the apps): $pub')
     ..writeln('Admin token is in ${dataDir.path}/admin_token')
     ..writeln(args.contains('--trust-proxy')

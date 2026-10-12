@@ -6,6 +6,20 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.40.0 (12 Oct 2026) — trial branch `try/coffee-template`
+- **Works without the cable, demo off**: the phone build talks to the LifeTrack server on the laptop
+  over the home Wi-Fi (`scripts/run_server_lan.sh`, server `--lan`; `scripts/build_apk.sh` builds in
+  the laptop's address and allows plain HTTP to that one address only). Sharing with a doctor,
+  backup, LifeTrack IDs, requests by ID, family links and the practice DigiLocker sign-up all go
+  through it. `LT_DEMO_TOOLS` is now off by default: no sample records, no sample page, and the
+  screen lock is enforced (`LT_DEMO_TOOLS=true` still builds a demonstration copy).
+- **New add pages in the coffee style**: creating your profile and adding a family member use a
+  photo header, numbered steps (verify → photo → who they are) and the main button in a bottom bar.
+  "An adult with their own phone" sends a family-link invite.
+- **Profile photos** for everyone on the phone (camera or gallery): a 320 px square JPEG with all
+  metadata dropped, sealed like a report page, logged, in the backup, erased with the profile, never
+  on the Emergency ID. Shown in the family bar, the family overview and Me (tap to change).
+
 ### 1.39.0 (12 Oct 2026) — trial branch `try/coffee-template`
 - **Welcome and lock screens in the coffee template's opening style**: a full-bleed photo (the
   family on welcome, the couple reading on the lock screen) fading into a black panel, a large

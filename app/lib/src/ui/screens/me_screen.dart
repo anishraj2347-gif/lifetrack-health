@@ -12,6 +12,7 @@ import '../../model/custody.dart';
 import '../widgets/digilocker_step.dart';
 import '../widgets/family_bar.dart';
 import '../widgets/parts.dart';
+import '../widgets/person_avatar.dart';
 import 'data_rights_screen.dart';
 import 'abha_screen.dart';
 import 'add_family_screen.dart';
@@ -30,7 +31,6 @@ class MeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final p = s.currentPatient!;
-    final initials = p.name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).take(2).map((w) => w[0].toUpperCase()).join();
     final self = p.id == s.selfPatientId;
     return ListView(children: [
       Masthead(eyebrow: 'Me', title: self ? 'Profile and settings' : "${p.name.split(' ').first}'s profile"),
@@ -42,12 +42,20 @@ class MeScreen extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(18, 18, 18, 14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Container(
-              width: 56,
-              height: 56,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: LT.accent, shape: BoxShape.circle),
-              child: Text(initials, style: TextStyle(fontFamily: LT.display, fontSize: 19, fontWeight: FontWeight.w700, color: LT.onAccent)),
+            // Tap the face to add or change this person's photo.
+            Semantics(
+              button: true,
+              label: 'Profile photo',
+              child: GestureDetector(
+                onTap: () async {
+                  final s = AppScope.of(context);
+                  final pick = await pickProfilePhoto(context, canRemove: s.photoOf(p.id) != null);
+                  if (pick == null || !context.mounted) return;
+                  await s.setPhoto(p.id, pick.jpeg);
+                  if (context.mounted) AppScope.changed(context);
+                },
+                child: PersonAvatar(patientId: p.id, name: p.name, size: 56, selected: true),
+              ),
             ),
             SizedBox(width: 14),
             Expanded(

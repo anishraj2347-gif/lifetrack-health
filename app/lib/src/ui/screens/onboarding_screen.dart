@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show Uint8List;
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -9,7 +10,9 @@ import '../widgets/parts.dart';
 import 'package:lifetrack_protocol/lifetrack_protocol.dart' show IdentityAttestation;
 
 import '../../identity/identity_verifier.dart';
+import '../widgets/add_person_parts.dart';
 import '../widgets/digilocker_step.dart';
+import '../widgets/person_avatar.dart';
 import 'backup_screens.dart';
 import 'emergency_screen.dart';
 
@@ -35,6 +38,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   IdentityAttestation? _verified;
   String? _error;
 
+  /// Optional, chosen before the profile exists; saved right after it.
+  Uint8List? _photo;
+
   Future<void> _createProfile({required bool demo}) async {
     setState(() {
       _busy = true;
@@ -56,6 +62,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       });
       return;
     }
+    if (_photo != null && !demo && mounted) await AppScope.of(context).setPhoto(p.id, _photo);
     if (!mounted) return;
     setState(() {
       _patientId = p.id;
@@ -69,10 +76,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       // The welcome photo runs under the status bar; PhotoHero keeps the
       // buttons clear of the system bar at the bottom.
       ? Scaffold(backgroundColor: LT.night, body: _welcomeStep())
-      : Scaffold(
+      // The profile page brings its own scaffold (photo under the status bar).
+      : _step == 0
+          ? _profile()
+          : Scaffold(
         body: SafeArea(
           child: switch (_step) {
-            0 => _profile(),
             1 => _custody(),
             _ => EmergencyEditor(
                 patientId: _patientId!,
@@ -111,8 +120,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         SizedBox(height: 28),
         SlabButton('Get started', icon: LucideIcons.arrowRight, iconAfter: true, onPressed: () => setState(() => _welcome = false)),
         if (AppScope.of(context).backupEnabled) ...[SizedBox(height: 10), _restoreButton()],
-        SizedBox(height: 6),
-        _sampleButton(),
+        if (AppScope.of(context).demoTools) ...[SizedBox(height: 6), _sampleButton()],
       ]);
 
   /// Progress first, above the picture, so where you are is the first thing read.
@@ -127,84 +135,114 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ]),
       );
 
+  Widget _photoSection(int number, String name) => StepSection(
+        number: number,
+        title: 'Add your photo',
+        caption: 'Optional. It tells family profiles apart at a glance.',
+        done: _photo != null,
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.only(top: 6, bottom: 4),
+            child: PhotoEditButton(name: name, photo: _photo, onPicked: (p) => setState(() => _photo = p.jpeg)),
+          ),
+        ),
+      );
+
+  Widget _errorLine() => _error == null ? SizedBox.shrink() : Padding(padding: EdgeInsets.fromLTRB(20, 10, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal)));
+
   /// Real builds: the profile comes from DigiLocker (Aadhaar), not a form.
-  Widget _verifiedStart() => ListView(
+  Widget _verifiedStart() => AddPersonScaffold(
+        photo: Photos.family,
+        eyebrow: 'Step 1 of 3',
+        progress: StepIndicator(step: _step),
+        title: 'Create your profile',
+        description: 'Made from DigiLocker with your Aadhaar: your name, date of birth and gender, exactly as confirmed. LifeTrack keeps no Aadhaar number.',
+        bottom: SlabButton(_verified == null ? 'Verify first to continue' : 'Create my profile', icon: LucideIcons.arrowRight, iconAfter: true, onPressed: _verified == null || _busy ? null : () => _createProfile(demo: false)),
         children: [
-          _progress(),
-          PhotoBanner(Photos.family, height: 200),
-          _intro('Verify who you are', 'Your profile is made from DigiLocker with your Aadhaar: your name, date of birth and gender, exactly as confirmed. LifeTrack keeps no Aadhaar number.'),
-          DigiLockerStep(purpose: 'self', buttonLabel: 'Verify with DigiLocker (Aadhaar)', onVerified: (v) => setState(() => _verified = v)),
-          if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 10, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
-          if (_verified != null)
-            Padding(
-              padding: EdgeInsets.fromLTRB(20, 20, 20, 10),
-              child: SlabButton('Continue', onPressed: _busy ? null : () => _createProfile(demo: false)),
-            ),
+          StepSection(
+            number: 1,
+            title: 'Verify with DigiLocker',
+            done: _verified != null,
+            padChild: false,
+            child: DigiLockerStep(purpose: 'self', buttonLabel: 'Verify with DigiLocker (Aadhaar)', onVerified: (v) => setState(() => _verified = v)),
+          ),
+          _photoSection(2, _verified?.name ?? ''),
+          _errorLine(),
+          SizedBox(height: 10),
           Note('Everyone needs Aadhaar to create a profile. A newborn without Aadhaar is added later by a verified parent, from the parent\'s DigiLocker birth certificate.', icon: LucideIcons.info),
-          SizedBox(height: 28),
         ],
       );
 
   Widget _profile() {
     if (AppScope.of(context).identityRequired) return _verifiedStart();
     final ready = _name.text.trim().isNotEmpty && _dob != null;
-    return ListView(
-      children: [
-        _progress(),
-        PhotoBanner(Photos.family, height: 200),
-        _intro('Who are these records for?', 'This profile lives on this phone. Other family members create their own.'),
-        LabeledField(
-          label: 'Full name',
-          child: TextField(
-            controller: _name,
-            onChanged: (_) => setState(() {}),
-            textCapitalization: TextCapitalization.words,
-            decoration: InputDecoration(hintText: 'e.g. Anjali Sharma'),
-          ),
-        ),
-        LabeledField(
-          label: 'Date of birth',
-          hint: 'Reference ranges depend on age. Adult ranges are never applied to a child.',
-          child: FieldButton(
-            text: _dob == null ? 'Pick a date' : fullDate(_dob!),
-            placeholder: _dob == null,
-            onTap: () async {
-              final d = await showDatePicker(
-                context: context,
-                initialDate: DateTime(1990),
-                firstDate: DateTime(1900),
-                lastDate: DateTime.now(),
-                // Start on years: someone born in 1952 should not page back month by month.
-                initialDatePickerMode: DatePickerMode.year,
-              );
-              if (d != null) setState(() => _dob = d);
-            },
-          ),
-        ),
-        LabeledField(
-          label: 'Sex',
-          hint: 'Some ranges differ by sex. If you leave this unset, those results are shown as not checked.',
-          child: Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final s in Sex.values)
-              Chip2(s == Sex.unspecified ? 'Prefer not to say' : s.name, selected: _sex == s, onTap: () => setState(() => _sex = s)),
-          ]),
-        ),
-        Note('We ask for as little as we can. Nothing here is shared with a doctor until you grant access.', icon: LucideIcons.shieldCheck),
-        Padding(
-          padding: EdgeInsets.fromLTRB(20, 24, 20, 0),
-          child: SlabButton('Continue', onPressed: ready && !_busy ? () => _createProfile(demo: false) : null),
-        ),
+    return AddPersonScaffold(
+      photo: Photos.family,
+      eyebrow: 'Step 1 of 3',
+      progress: StepIndicator(step: _step),
+      title: 'Who are these records for?',
+      description: 'This profile lives on this phone. Other family members create their own.',
+      bottom: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         // A grey button alone does not say why; this does.
         if (!ready)
           Padding(
-            padding: EdgeInsets.fromLTRB(20, 8, 20, 0),
+            padding: EdgeInsets.only(bottom: 8),
             child: Text(
               _name.text.trim().isEmpty && _dob == null ? 'Enter a name and date of birth to continue' : _dob == null ? 'Pick a date of birth to continue' : 'Enter a name to continue',
               textAlign: TextAlign.center,
               style: LT.small,
             ),
           ),
-        SizedBox(height: 28),
+        SlabButton('Create my profile', icon: LucideIcons.arrowRight, iconAfter: true, onPressed: ready && !_busy ? () => _createProfile(demo: false) : null),
+      ]),
+      children: [
+        StepSection(
+          number: 1,
+          title: 'About you',
+          done: ready,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            LabeledField(
+              label: 'Full name',
+              child: TextField(
+                controller: _name,
+                onChanged: (_) => setState(() {}),
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(hintText: 'e.g. Anjali Sharma'),
+              ),
+            ),
+            LabeledField(
+              label: 'Date of birth',
+              hint: 'Reference ranges depend on age. Adult ranges are never applied to a child.',
+              child: FieldButton(
+                text: _dob == null ? 'Pick a date' : fullDate(_dob!),
+                placeholder: _dob == null,
+                onTap: () async {
+                  final d = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime(1990),
+                    firstDate: DateTime(1900),
+                    lastDate: DateTime.now(),
+                    // Start on years: someone born in 1952 should not page back month by month.
+                    initialDatePickerMode: DatePickerMode.year,
+                  );
+                  if (d != null) setState(() => _dob = d);
+                },
+              ),
+            ),
+            LabeledField(
+              label: 'Sex',
+              hint: 'Some ranges differ by sex. If you leave this unset, those results are shown as not checked.',
+              child: Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final s in Sex.values)
+                  Chip2(s == Sex.unspecified ? 'Prefer not to say' : s.name, selected: _sex == s, onTap: () => setState(() => _sex = s)),
+              ]),
+            ),
+          ]),
+        ),
+        _photoSection(2, _name.text.trim()),
+        _errorLine(),
+        SizedBox(height: 10),
+        Note('We ask for as little as we can. Nothing here is shared with a doctor until you grant access.', icon: LucideIcons.shieldCheck),
       ],
     );
   }

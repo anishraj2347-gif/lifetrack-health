@@ -10,20 +10,33 @@ import 'package:lifetrack/src/ui/theme.dart';
 import 'package:lifetrack/src/vault/backup_vault.dart';
 
 void main() {
-  Future<AppServices> boot() => AppServices.open(
+  // These flows start from the sample records, which only a demonstration
+  // build (LT_DEMO_TOOLS=true) offers.
+  Future<AppServices> boot({bool demoTools = true}) => AppServices.open(
         bytes: InMemoryByteStore(),
         deviceKey: SecretKey(List.filled(32, 9)),
         remote: InMemoryRemoteVaultStore(),
         kdf: KdfParams.weakForTests(),
         cloudFactory: defaultCloud,
         clock: () => DateTime(2026, 4, 1, 9),
+        demoTools: demoTools,
       );
+
+  testWidgets('a normal build offers no sample records on the welcome screen', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.6;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(LifeTrackApp(boot: () => boot(demoTools: false)));
+    await tester.pumpAndSettle();
+    expect(find.text('Get started'), findsOneWidget);
+    expect(find.text('Look around with sample records'), findsNothing);
+  });
 
   Future<void> onboardWithSamples(WidgetTester tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.6;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(LifeTrackApp(boot: boot));
+    await tester.pumpWidget(LifeTrackApp(boot: () => boot()));
     await tester.pumpAndSettle();
     expect(find.text('Get started'), findsOneWidget, reason: 'a welcome before any form');
     await tester.scrollUntilVisible(find.text('Look around with sample records'), 200, scrollable: find.byType(Scrollable).first);

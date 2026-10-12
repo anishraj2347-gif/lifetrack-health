@@ -8,6 +8,7 @@ import '../screens/add_family_screen.dart';
 import '../screens/family_overview_screen.dart';
 import '../theme.dart';
 import 'parts.dart';
+import 'person_avatar.dart';
 
 /// Everyone whose records are on this phone, as avatars. Tap to switch; the
 /// one you are viewing is lime. When it is not you, a banner says whose
@@ -50,20 +51,7 @@ class FamilyBar extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: p.id == current ? LT.accent : LT.raised,
-                              shape: BoxShape.circle,
-                              border: p.id == current ? Border.all(color: LT.ink, width: 1.5) : null,
-                            ),
-                            child: Text(
-                              initials(p.name),
-                              style: TextStyle(fontWeight: FontWeight.w600, color: p.id == current ? LT.onAccent : LT.ink),
-                            ),
-                          ),
+                          PersonAvatar(patientId: p.id, name: p.name, size: 48, selected: p.id == current),
                           SizedBox(height: 4),
                           // Initials collide within a family (Aarav and Anjali
                           // Sharma are both "AS"); the first name does not.
@@ -267,10 +255,7 @@ Future<void> showPersonSheet(BuildContext context) async {
             ListTile(
               minTileHeight: 60,
               contentPadding: EdgeInsets.symmetric(horizontal: 20),
-              leading: CircleAvatar(
-                backgroundColor: p.id == s.currentPatientId ? LT.accent : LT.raised,
-                child: Text(FamilyBar.initials(p.name), style: TextStyle(fontWeight: FontWeight.w600, color: p.id == s.currentPatientId ? LT.onAccent : LT.ink)),
-              ),
+              leading: PersonAvatar(patientId: p.id, name: p.name, size: 40, selected: p.id == s.currentPatientId),
               title: Text(p.id == s.selfPatientId ? '${p.name} (you)' : p.name, style: LT.label),
               subtitle: p.id == s.selfPatientId ? null : Builder(builder: (_) {
                 final c = s.custodyOf(p.id);
@@ -334,13 +319,7 @@ class PersonButton extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.fromLTRB(4, 4, many ? 10 : 4, 4),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Container(
-                width: 32,
-                height: 32,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(color: LT.accent, shape: BoxShape.circle),
-                child: Text(FamilyBar.initials(p.name), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: LT.onAccent)),
-              ),
+              PersonAvatar(patientId: p.id, name: p.name, size: 32, selected: true),
               if (many) ...[
                 SizedBox(width: 8),
                 Flexible(

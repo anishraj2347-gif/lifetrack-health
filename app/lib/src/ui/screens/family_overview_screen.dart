@@ -9,8 +9,8 @@ import '../../model/patient.dart';
 import '../../vaccines/uip_schedule.dart';
 import '../app_scope.dart';
 import '../theme.dart';
-import '../widgets/family_bar.dart';
 import '../widgets/parts.dart';
+import '../widgets/person_avatar.dart';
 import 'add_family_screen.dart';
 
 /// Everyone on this phone, around the head of family (the phone owner):
@@ -122,11 +122,7 @@ class _MemberCard extends StatelessWidget {
       },
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: head ? LT.accent : LT.raised,
-            child: Text(FamilyBar.initials(p.name), style: TextStyle(color: head ? LT.onAccent : LT.ink, fontWeight: FontWeight.w600)),
-          ),
+          PersonAvatar(patientId: p.id, name: p.name, size: 44, selected: head),
           SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

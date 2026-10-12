@@ -229,6 +229,7 @@ class AppServices {
     services._backup = ((await sealed.read(_backupBlob) as Map?) ?? {}).cast<String, Object?>();
     consent.evictFinished(now());
     await services._settleOwner();
+    await services._loadPhotos();
     unawaited(services.refreshReminders());
     if (share != null && share.isComplete) {
       final tokens = _SealedTokens(sealed);
@@ -737,6 +738,38 @@ class AppServices {
   }
 
   Future<void> updatePatient(Patient p) => repository.savePatient(p);
+
+  // ---- profile photos ----------------------------------------------------
+
+  /// Each person's photo, sealed on disk like a report page and held in
+  /// memory once the records are open. Never in the Emergency ID (#7).
+  final Map<String, Uint8List> _photos = {};
+  static String _photoBlob(String patientId) => 'photo-$patientId';
+
+  Uint8List? photoOf(String patientId) => _photos[patientId];
+
+  Future<void> _loadPhotos() async {
+    for (final p in repository.patients) {
+      final pages = await attachments.load(_photoBlob(p.id)).then((x) => x, onError: (_) => const <Uint8List>[]);
+      if (pages.isNotEmpty) _photos[p.id] = pages.first;
+    }
+  }
+
+  /// Sets or (with null) removes the photo of someone on this phone. [jpeg]
+  /// is already prepared (prepareProfilePhoto): small, upright, no metadata.
+  Future<void> setPhoto(String patientId, Uint8List? jpeg) async {
+    if (!familyOnPhone().any((p) => p.id == patientId)) throw const CustodyRefused('That profile is not on this phone.');
+    if (jpeg == null) {
+      await attachments.delete(_photoBlob(patientId));
+      _photos.remove(patientId);
+    } else {
+      await attachments.save(_photoBlob(patientId), [jpeg]);
+      _photos[patientId] = jpeg;
+    }
+    await audit.append(AuditEntry(
+        at: clock(), actorId: Actors.patient(selfPatientId ?? patientId), patientId: patientId, action: AuditAction.edit, detail: jpeg == null ? 'Profile photo removed' : 'Profile photo changed'));
+    await _backUpQuietly();
+  }
 
   bool get isDemo => settings['demo'] == true;
 
@@ -1253,6 +1286,7 @@ class AppServices {
       // Home readings, like notes, only when the patient opted in (#6).
       if (includeNotes) 'customReminders': _custom,
       if (includeNotes) 'vitals': [for (final p in patients) for (final v in repository.vitalsOf(p.id)) v.toJson()],
+      'photos': {for (final MapEntry(:key, :value) in _photos.entries) if (patients.any((p) => p.id == key)) key: base64Encode(value)},
       'originals': {
         for (final r in records)
           if (r.attachmentId != null)
@@ -1358,6 +1392,10 @@ class AppServices {
     for (final MapEntry(:key, :value) in (b['originals']! as Map).cast<String, Object?>().entries) {
       await attachments.save(key, [for (final pg in (value! as List).cast<String>()) base64Decode(pg)]);
     }
+    for (final MapEntry(:key, :value) in ((b['photos'] as Map?) ?? const {}).cast<String, Object?>().entries) {
+      await attachments.save(_photoBlob(key), [base64Decode(value! as String)]);
+    }
+    await _loadPhotos();
     final records = [for (final r in (b['records']! as List).cast<Map>()) HealthRecord.fromJson(r.cast())];
     await repository.addAll(records);
     for (final v in (b['vitals'] as List?) ?? const []) {
@@ -1425,6 +1463,8 @@ class AppServices {
     } on Object {
       // Offline: the ID's entry stays on the server until erased again.
     }
+    await attachments.delete(_photoBlob(id));
+    _photos.remove(id);
     await repository.eraseFor(id);
     if (_vaccines.remove(id) != null) await sealed.write(_vaccinesBlob, _vaccines);
     if (_custom.remove(id) != null) await sealed.write(_customBlob, _custom);

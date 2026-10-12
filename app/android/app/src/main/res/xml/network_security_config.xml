@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- HTTPS everywhere, except the local development relay reached over USB
-     (adb reverse → 127.0.0.1). The shares it carries are end-to-end
-     encrypted regardless; a real deployment uses https only. -->
+<!-- HTTPS everywhere, except the local LifeTrack server: over USB
+     (adb reverse → 127.0.0.1), or on the home Wi-Fi, whose one address
+     scripts/build_apk.sh adds here for that build only. The shares it
+     carries are end-to-end encrypted regardless; a real deployment uses
+     https only. -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false" />
     <domain-config cleartextTrafficPermitted="true">
