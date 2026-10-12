@@ -25,11 +25,13 @@ const out = String.fromEnvironment('SHOTS');
 void main() {
   testWidgets('dark screens', skip: out.isEmpty, (tester) async {
     await tester.runAsync(() async {
-      final loader = FontLoader('Poppins');
-      for (final f in Directory('fonts').listSync().whereType<File>().where((f) => f.path.endsWith('.ttf'))) {
-        loader.addFont(Future.value(ByteData.sublistView(f.readAsBytesSync())));
+      for (final family in ['Poppins', 'Sora']) {
+        final loader = FontLoader(family);
+        for (final f in Directory('fonts').listSync().whereType<File>().where((f) => f.path.endsWith('.ttf') && f.uri.pathSegments.last.startsWith('$family-'))) {
+          loader.addFont(Future.value(ByteData.sublistView(f.readAsBytesSync())));
+        }
+        await loader.load();
       }
-      await loader.load();
       // Icon fonts, so icons are drawn instead of empty boxes.
       const lucide = 'packages/lucide_icons_flutter';
       for (final (family, asset) in [

@@ -6,6 +6,16 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.38.0 (12 Oct 2026) — trial branch `try/coffee-template`
+- **Coffee-template restyle (trial)**, after the Nam Design "Coffee Shop Mobile App" Figma kit the
+  user supplied: near-white page (#F9F9F9), white cards, near-black hero cards, a caramel accent in
+  place of lime (still "selected / now" only), caramel primary buttons, ticks and switches, and the
+  Sora typeface (OFL, bundled; Poppins stays bundled). The kit's #C67C4E carries white text at
+  only 3.3:1, so the accent is deepened to #A65E30 (4.9:1); the tab pill now darkens instead of
+  lightening, and the dark "Photograph it" card's subtitle is white. `contrast_test` passes in both
+  modes. **Open:** caramel has not been CVD-measured against signal orange (#C2410C) — do that
+  before merging to main.
+
 ### 1.37.3 (11 Oct 2026)
 - **Fixed the bottom bar for real**: after a tab had been tapped once, its icon and name shifted to
   the left, so the lime pill looked off-centre from the second switch on. The cause was the touch

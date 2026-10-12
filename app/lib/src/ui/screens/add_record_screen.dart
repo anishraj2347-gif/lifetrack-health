@@ -161,7 +161,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   /// in light mode, near-white in dark mode, so it stands out in both.
   Widget _option(IconData icon, String title, String body, VoidCallback onTap, {bool primary = false}) {
     final fg = !primary ? LT.ink : LT.dark ? LT.onButton : LT.onDark;
-    final muted = !primary ? LT.ink2 : LT.dark ? Color(0xFF4A4A45) : LT.onDarkMuted;
+    final muted = !primary ? LT.ink2 : LT.dark ? LT.onButton : LT.onDarkMuted; // only white passes AA on caramel
     return ShadCard(
       margin: EdgeInsets.zero,
       color: primary ? (LT.dark ? LT.button : LT.primary) : null,

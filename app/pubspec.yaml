@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.37.3+2057
+version: 1.38.0+2058
 
 environment:
   sdk: ^3.12.2
@@ -92,6 +92,16 @@ flutter:
         - asset: fonts/Poppins-SemiBold.ttf
           weight: 600
         - asset: fonts/Poppins-Bold.ttf
+          weight: 700
+    # Sora (OFL, fonts/Sora-OFL.txt): the coffee-template trial's typeface.
+    - family: Sora
+      fonts:
+        - asset: fonts/Sora-Regular.ttf
+        - asset: fonts/Sora-Medium.ttf
+          weight: 500
+        - asset: fonts/Sora-SemiBold.ttf
+          weight: 600
+        - asset: fonts/Sora-Bold.ttf
           weight: 700
 
   # Bundled photos (AI-generated in Canva, 10 Oct 2026); see Photos in parts.dart.

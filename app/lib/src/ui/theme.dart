@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-/// Warm-grey clinical dashboard: black pills, large soft cards, one lime
-/// accent. Poppins throughout, bundled.
+/// Coffee-template trial (12 Oct 2026, branch try/coffee-template): after the
+/// Nam Design "Coffee Shop Mobile App" Figma kit the user supplied — near-white
+/// page, white cards, near-black hero blocks, one caramel accent, Sora.
 ///
-/// **Lime means "selected / current" and nothing else** — never a health
-/// status. It is measured against the semantic colours so it cannot be
-/// mistaken for one (worst: vs caution fill ΔE 38.9 under deuteranopia).
+/// **Caramel means "selected / current" and nothing else** — never a health
+/// status. The kit's #C67C4E carries white text at only 3.3:1, so the accent
+/// is deepened to #A65E30 (white 4.9:1, AA). Not yet CVD-measured against
+/// signal (#C2410C) — see the CHANGELOG note before keeping this.
 ///
 /// Three semantic colours, CVD-checked (ΔE76, Machado 2009 simulation):
 ///
@@ -41,33 +43,33 @@ abstract final class LT {
 
   static Color _p(int light, int darkValue) => Color(dark ? darkValue : light);
 
-  static Color get ground => _p(0xFFE3E3DC, 0xFF121210); // page
-  static Color get surface => _p(0xFFF4F4EF, 0xFF1D1D1A); // card
-  static Color get raised => _p(0xFFFBFBF8, 0xFF272724); // pills, inputs, icon circles
+  static Color get ground => _p(0xFFF9F9F9, 0xFF121212); // page
+  static Color get surface => _p(0xFFFFFFFF, 0xFF1E1E1E); // card
+  static Color get raised => _p(0xFFF3F3F3, 0xFF2A2A2A); // pills, inputs, icon circles
   static Color get band => surface; // muted panels
-  static Color get rule => _p(0xFFD4D3CC, 0xFF3A3935);
-  static Color get ink => _p(0xFF0E0E0E, 0xFFF2F2EC);
-  static Color get ink2 => _p(0xFF45443F, 0xFFD0CFC8);
-  static Color get ink3 => _p(0xFF64635D, 0xFFA6A59E); // ≥ 4.5:1 on ground and cards (contrast_test)
-  static Color get inactive => _p(0xFFA9A8A1, 0xFF6E6D67);
+  static Color get rule => _p(0xFFE3E3E3, 0xFF3A3A3A);
+  static Color get ink => _p(0xFF242424, 0xFFF2F2F2);
+  static Color get ink2 => _p(0xFF4A4644, 0xFFD0CCC9);
+  static Color get ink3 => _p(0xFF625B58, 0xFFADA6A2); // ≥ 4.5:1 on ground and cards (contrast_test)
+  static Color get inactive => _p(0xFFA2A2A2, 0xFF6E6B69);
 
   /// Hero cards and the bottom bar: black in light mode, lifted in dark.
-  static Color get primary => _p(0xFF0E0E0E, 0xFF0B0B0A); // dark: below the glass, so heroes still stand out
-  static Color get onDark => _p(0xFFF4F4EF, 0xFFF2F2EC);
-  static Color get onDarkMuted => _p(0xFF9A9A94, 0xFFA6A59E);
+  static Color get primary => _p(0xFF1C1C1C, 0xFF0B0B0B); // dark: below the glass, so heroes still stand out
+  static Color get onDark => _p(0xFFFFFFFF, 0xFFF2F2F2);
+  static Color get onDarkMuted => _p(0xFFA2A2A2, 0xFFADA6A2);
 
   /// A chip or empty dot sitting on a hero card.
-  static Color get onDarkChip => _p(0xFF2A2A28, 0xFF45453F);
+  static Color get onDarkChip => _p(0xFF313131, 0xFF45413E);
 
-  /// Primary buttons: black on the light page, cream on the dark one.
-  static Color get button => _p(0xFF0E0E0E, 0xFFF2F2EC);
-  static Color get onButton => _p(0xFFF4F4EF, 0xFF121210);
+  /// Primary buttons: caramel with white text in both modes, as in the kit.
+  static Color get button => _p(0xFFA65E30, 0xFFA65E30);
+  static Color get onButton => _p(0xFFFFFFFF, 0xFFFFFFFF);
 
   /// Selection / "now" only.
-  static const accent = Color(0xFFEEF36A);
+  static const accent = Color(0xFFA65E30);
 
-  /// Anything drawn on lime.
-  static const onAccent = Color(0xFF0E0E0E);
+  /// Anything drawn on the caramel accent.
+  static const onAccent = Color(0xFFFFFFFF);
 
   /// Text and icons on the page.
   static Color get trace => _p(0xFF065F46, 0xFF10B981);
@@ -83,9 +85,9 @@ abstract final class LT {
   static const radius = 16.0;
   static const radiusLg = 22.0;
 
-  static const display = 'Poppins';
-  static const body = 'Poppins';
-  static const mono = 'Poppins';
+  static const display = 'Sora';
+  static const body = 'Sora';
+  static const mono = 'Sora';
 
   static TextStyle get eyebrow => TextStyle(fontFamily: body, fontSize: 13, fontWeight: FontWeight.w500, color: ink2);
   static TextStyle get title => TextStyle(fontFamily: display, fontSize: 26, fontWeight: FontWeight.w600, height: 1.15, letterSpacing: -0.6, color: ink);
@@ -102,12 +104,12 @@ abstract final class LT {
   /// The colour wash behind every page: soft, warm blobs that are never a
   /// health colour (no red, no green) and never lime.
   static List<(Alignment, double, Color)> get washes => dark
-      ? [(Alignment(-1.1, -0.9), 1.1, Color(0xFF27445E)), (Alignment(1.2, -0.2), 1.0, Color(0xFF463257)), (Alignment(-0.4, 1.1), 1.2, Color(0xFF553D22))]
-      : [(Alignment(-1.1, -0.9), 1.1, Color(0xFFBFD4EC)), (Alignment(1.2, -0.2), 1.0, Color(0xFFDCCBEE)), (Alignment(-0.4, 1.1), 1.2, Color(0xFFF4D2B8))];
+      ? [(Alignment(-1.1, -0.9), 1.1, Color(0xFF2A211B)), (Alignment(1.2, -0.2), 1.0, Color(0xFF241D18)), (Alignment(-0.4, 1.1), 1.2, Color(0xFF4A3628))]
+      : [(Alignment(-1.1, -0.9), 1.1, Color(0xFFF9F2ED)), (Alignment(1.2, -0.2), 1.0, Color(0xFFF5E9DF)), (Alignment(-0.4, 1.1), 1.2, Color(0xFFEDD6C8))];
 
   /// What a glass card can have behind it at worst, for contrast: the
   /// darkest wash in light mode (dark text), the lightest in dark mode.
-  static Color get washExtreme => _p(0xFFC8D7E8, 0xFF324458);
+  static Color get washExtreme => _p(0xFFEDD6C8, 0xFF4A3628);
 
   /// A soft tint per record type, from the same family as the page wash.
   /// It only tells types apart — never a health status (no red, no green).
@@ -202,12 +204,12 @@ abstract final class LT {
       checkboxTheme: CheckboxThemeData(
         shape: CircleBorder(),
         side: BorderSide(color: ink, width: 1.3),
-        checkColor: WidgetStatePropertyAll(dark ? onAccent : accent),
-        fillColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? (dark ? accent : primary) : Colors.transparent),
+        checkColor: WidgetStatePropertyAll(onAccent),
+        fillColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? accent : Colors.transparent),
       ),
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? (dark ? onAccent : onDark) : ink3),
-        trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? (dark ? accent : primary) : raised),
+        thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? onAccent : ink3),
+        trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? accent : raised),
         trackOutlineColor: WidgetStatePropertyAll(rule),
       ),
       textTheme: ThemeData(brightness: dark ? Brightness.dark : Brightness.light).textTheme.apply(fontFamily: body, bodyColor: ink, displayColor: ink),

@@ -315,7 +315,7 @@ class _HomeShellState extends State<HomeShell> {
                       child: DecoratedBox(
                       decoration: ShapeDecoration(
                         shape: StadiumBorder(),
-                        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color.alphaBlend(Colors.white.withValues(alpha: 0.25), LT.accent), LT.accent]),
+                        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [LT.accent, Color.alphaBlend(Colors.black.withValues(alpha: 0.14), LT.accent)]),
                         shadows: [BoxShadow(color: LT.accent.withValues(alpha: 0.30), blurRadius: 10)],
                       ),
                     ),

@@ -1234,10 +1234,10 @@ class GlassCheck extends StatelessWidget {
           height: size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: value ? (LT.dark ? LT.accent : LT.primary) : Colors.transparent,
+            color: value ? LT.accent : Colors.transparent,
             border: value ? null : Border.all(color: LT.ink, width: 1.3),
           ),
-          child: value ? Icon(LucideIcons.check, size: size * 0.62, color: LT.dark ? LT.onAccent : LT.accent) : null,
+          child: value ? Icon(LucideIcons.check, size: size * 0.62, color: LT.onAccent) : null,
         ),
       );
 }
