@@ -395,8 +395,8 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
           ]),
         ),
         ShadCard(
-          color: Color(0xFFFFF7ED),
-          borderColor: Color(0xFFFED7AA),
+          color: LT.signalPale,
+          borderColor: LT.signalPaleBorder,
           margin: EdgeInsets.fromLTRB(16, 0, 16, 18),
           padding: EdgeInsets.all(14),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [

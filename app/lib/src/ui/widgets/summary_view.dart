@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../ai/plane_a/reference_ranges.dart' show analyteName;
 import '../theme.dart';
@@ -60,8 +61,14 @@ class SummaryView extends StatelessWidget {
           margin: EdgeInsets.fromLTRB(16, 0, 16, 8),
           padding: EdgeInsets.fromLTRB(14, 12, 14, 12),
           decoration: BoxDecoration(color: LT.signalFill, borderRadius: BorderRadius.circular(LT.radius)),
-          child: Text('Allergy: ${(a as Map)['substance']}${a['reaction'] == null ? '' : ' — ${a['reaction']}'}',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+          child: Row(children: [
+            Icon(LucideIcons.triangleAlert, size: 16, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text('Allergy: ${(a as Map)['substance']}${a['reaction'] == null ? '' : ' — ${a['reaction']}'}',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+            ),
+          ]),
         ),
       _block('Active medicines', [
         for (final m in (meds['active'] as List?) ?? [])

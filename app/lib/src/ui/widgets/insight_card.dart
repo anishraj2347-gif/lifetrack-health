@@ -24,7 +24,7 @@ class InsightCard extends StatelessWidget {
       Severity.urgentCare => ('Seek care now', LucideIcons.siren),
     };
     if (flood) {
-      // The one place a signal flood is earned: solid orange, white text.
+      // The one place a signal flood is earned: solid signal fill, white text.
       return ShadCard(
         color: LT.signalFill,
         borderColor: LT.signalFill,

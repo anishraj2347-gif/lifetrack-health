@@ -293,14 +293,22 @@ class Badge2 extends StatelessWidget {
       BadgeTone.outline when dark => (Colors.transparent, LT.onDark, LT.onDarkMuted),
       BadgeTone.neutral => (LT.raised, LT.ink, LT.raised),
       BadgeTone.outline => (Colors.transparent, LT.ink2, LT.rule),
-      BadgeTone.signal => (Color(0xFFFFF7ED), LT.signalFill, Color(0xFFFED7AA)),
+      BadgeTone.signal => (LT.signalPale, LT.signalFill, LT.signalPaleBorder),
       BadgeTone.trace => (Color(0xFFECFDF5), LT.traceInk, Color(0xFFA7F3D0)),
       BadgeTone.caution => (LT.caution, LT.cautionInk, LT.cautionBorder),
     };
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999), border: Border.all(color: border)),
-      child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: FontWeight.w500, color: fg)),
+      // The signal badge always carries a warning mark: colour alone is
+      // never the message (some eyes cannot tell it from the accent).
+      child: tone == BadgeTone.signal
+          ? Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(LucideIcons.triangleAlert, size: 12, color: fg),
+              SizedBox(width: 4),
+              Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: FontWeight.w500, color: fg))),
+            ])
+          : Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: FontWeight.w500, color: fg)),
     );
   }
 }
@@ -1171,7 +1179,7 @@ class BootSplash extends StatelessWidget {
 
 /// "Are you sure?" as a glass sheet from the bottom: the question, what will
 /// happen, then a big confirm button above "Keep". Destructive actions are
-/// orange (signal), like the rest of the app. True only on confirm.
+/// in the signal colour, like the rest of the app. True only on confirm.
 Future<bool> confirmAction(BuildContext context, {required String title, required String body, required String confirm, String keep = 'Keep', bool destructive = true}) async {
   final yes = await showModalBottomSheet<bool>(
     context: context,

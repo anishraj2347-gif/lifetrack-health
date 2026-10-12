@@ -6,6 +6,15 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.40.1 (12 Oct 2026)
+- **Out of range is no longer mistakable for "selected"**: measured for colour-blind viewers, the old
+  orange (#C2410C) sat ΔE 12.3 from the caramel accent under protanopia. Out-of-range results,
+  allergies and other warnings are now purple (#7E22CE; #C084FC as text in dark mode) — at least
+  43 from caramel in every kind of colour vision. The "stayed on this phone" green moves to teal
+  (#115E59; was 23.9 from caramel, now 35.6). Warning badges and the shared allergy line now always
+  carry a warning icon, so colour is never the only signal. New `cvd_test.dart` keeps every pair
+  ≥ 25 apart in light and dark mode.
+
 ### 1.40.0 (12 Oct 2026) — trial branch `try/coffee-template`
 - **Works without the cable, demo off**: the phone build talks to the LifeTrack server on the laptop
   over the home Wi-Fi (`scripts/run_server_lan.sh`, server `--lan`; `scripts/build_apk.sh` builds in

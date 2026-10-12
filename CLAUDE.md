@@ -209,8 +209,8 @@ copy predate the claim fixes; the app's wording is authoritative).
 - Visual direction (12 Oct 2026): the "Coffee Shop Mobile App" Figma kit the user supplied —
   near-white page, white cards, near-black hero cards, photo-hero welcome/lock screens, Sora;
   components are native, in `lib/src/ui/widgets/parts.dart`. The caramel accent (#A65E30) means
-  "selected / now" only — never a health status. **Open:** it is too close to signal #C2410C under
-  CVD (ΔE protan 12.3, deutan 15.8); fix before adding screens that put them side by side.
+  "selected / now" only — never a health status. Signal is purple #7E22CE and trace teal #115E59
+  (1.40.1) so every pair stays ≥ 25 ΔE apart for every colour vision (`cvd_test.dart`).
   Do not add the `shadcn_ui` package: it pulls in `http` and `extended_image` (network-capable).
 - Build the APK with `scripts/build_apk.sh` (obfuscated release). Since 12 Oct 2026 it builds for
   the home-Wi-Fi server (`scripts/run_server_lan.sh`, which must be running; the laptop's address is

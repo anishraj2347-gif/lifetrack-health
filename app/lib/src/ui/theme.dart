@@ -8,17 +8,23 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 ///
 /// **Caramel means "selected / current" and nothing else** — never a health
 /// status. The kit's #C67C4E carries white text at only 3.3:1, so the accent
-/// is deepened to #A65E30 (white 4.9:1, AA). Not yet CVD-measured against
-/// signal (#C2410C) — see the CHANGELOG note before keeping this.
+/// is deepened to #A65E30 (white 4.9:1, AA). Measured 12 Oct 2026 against
+/// the old orange signal #C2410C it failed (ΔE protan 12.3, deutan 15.8), so
+/// signal moved to purple — see below.
 ///
 /// Three semantic colours, CVD-checked (ΔE76, Machado 2009 simulation):
 ///
-///   trace   #065F46  emerald-800 — stayed on device / live control
-///   signal  #C2410C  orange-700  — outside the reference interval; allergies
+///   trace   #115E59  teal-800    — stayed on device / live control
+///           (was emerald-800 #065F46 until 12 Oct 2026: ΔE 23.9 from caramel
+///           under protanopia; teal-800 is 35.6)
+///   signal  #7E22CE  purple-700  — outside the reference interval; allergies
 ///   caution #FEF3C7  amber-100   — could not check. Fill only, amber-900 text.
 ///
-///   worst pair: trace–signal ΔE 34.3 under protanopia (deutan 53.1).
-///   caution–signal ≥ 56.8 in every mode. White on signal 5.2:1 (AA).
+///   worst pairs (12 Oct 2026, purple signal): signal–caramel ΔE 44.3 and
+///   signal–trace 45.1, both under tritanopia; caution–signal ≥ 61.1 in
+///   every mode. White on signal 7.0:1 (AA). Signal is never colour alone:
+///   its badges carry a warning icon and the words say what it means.
+///   Orange #C2410C was dropped: ΔE 12.3 from caramel under protanopia.
 ///
 /// Pure red (#DC2626) was rejected: under protanopia it darkens onto the green
 /// (ΔE 11.6). The amber border #FDE68A was rejected next to lime (ΔE 14.4).
@@ -28,9 +34,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// changes. Lime and the fill-only colours are the same in both modes.
 /// Dark text variants of the semantic colours, measured the same way:
 ///
-///   trace  #10B981 emerald-500 · signal #F97316 orange-500 (text on dark)
-///   worst pair 38.9 under protanopia (deutan 55.6); vs lime ≥ 26.7;
-///   ≥ 5.3:1 on every dark surface. Fills stay #C2410C (white 5.2:1).
+///   trace  #10B981 emerald-500 · signal #C084FC purple-400 (text on dark)
+///   signal–caramel 43.0, signal–trace 58.4 (tritanopia, the worst mode);
+///   signal ≥ 5.4:1 on every dark surface. Fills stay #7E22CE (white 7.0:1).
 /// Follow phone, light or dark — the patient's choice (Me → Appearance).
 /// The app root listens and redraws everything when it changes.
 final appearance = ValueNotifier<ThemeMode>(ThemeMode.system);
@@ -77,12 +83,16 @@ abstract final class LT {
   static const onNightMuted = Color(0xFFA2A2A2);
 
   /// Text and icons on the page.
-  static Color get trace => _p(0xFF065F46, 0xFF10B981);
-  static Color get signal => _p(0xFFC2410C, 0xFFF97316);
+  static Color get trace => _p(0xFF115E59, 0xFF10B981);
+  static Color get signal => _p(0xFF7E22CE, 0xFFC084FC);
 
   /// On their own pale fills (badges, tiles) — the same in both modes.
-  static const traceInk = Color(0xFF065F46);
-  static const signalFill = Color(0xFFC2410C); // also the fill behind white text
+  static const traceInk = Color(0xFF115E59);
+  static const signalFill = Color(0xFF7E22CE); // also the fill behind white text
+
+  /// The pale badge fill and border that go with [signalFill].
+  static const signalPale = Color(0xFFFAF5FF);
+  static const signalPaleBorder = Color(0xFFE9D5FF);
   static const caution = Color(0xFFFEF3C7);
   static const cautionBorder = Color(0xFFE3C878);
   static const cautionInk = Color(0xFF78350F);

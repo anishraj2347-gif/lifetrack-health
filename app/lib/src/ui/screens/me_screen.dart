@@ -392,7 +392,7 @@ class _AuditScreenState extends State<AuditScreen> {
               Container(
                 width: 32,
                 height: 32,
-                decoration: BoxDecoration(color: _alert(e) ? Color(0xFFFFF7ED) : LT.band, shape: BoxShape.circle),
+                decoration: BoxDecoration(color: _alert(e) ? LT.signalPale : LT.band, shape: BoxShape.circle),
                 child: Icon(iconForActor(e.actorId), size: 15, color: _alert(e) ? LT.signal : LT.ink2),
               ),
               Expanded(child: Container(width: 1, color: lastOfDay ? Colors.transparent : LT.rule)),
