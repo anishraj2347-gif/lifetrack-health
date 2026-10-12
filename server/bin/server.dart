@@ -74,6 +74,8 @@ Future<void> main(List<String> args) async {
     adminToken: adminToken,
     identity: identity,
     requireIdentity: args.contains('--require-identity'),
+    // Sample IDs only alongside the practice stand-in, never with real keys.
+    allowSampleIds: args.contains('--allow-sample-ids') && real == null,
     publicBase: publicBase,
     trustProxy: args.contains('--trust-proxy'),
     origins: OriginPolicy(

@@ -15,4 +15,4 @@ PORT="${LT_PORT:-8787}"
 cd ../server
 exec dart run bin/server.dart --port "$PORT" --data data --lan \
   --public-base "http://$IP:$PORT" \
-  --practice-digilocker --require-identity
+  --practice-digilocker --require-identity --allow-sample-ids

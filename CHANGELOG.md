@@ -21,6 +21,14 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.42.0 (12 Oct 2026)
+- **LifeTrack IDs for the sample family**: in a demonstration build the sample people ask for their
+  IDs marked as samples; the server accepts that only in practice mode (`--allow-sample-ids`, passed
+  by the laptop service only while there are no real DigiLocker keys) and records them as
+  `sample`. Everyone in the ten-person family gets a 12-digit ID; a normal build never asks for one.
+- **Fixed: duplicate IDs** — two ID registrations for the same person at once (app start and a
+  profile just added) each registered an ID, leaving orphans on the server. They now share one.
+
 ### 1.41.0 (12 Oct 2026)
 - **Family tree**: the family overview now opens with a drawn tree — a row per generation, couples
   joined, lines down to their children, faces or initials, the person open now ringed in caramel.

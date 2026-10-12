@@ -180,10 +180,10 @@ class HttpIdDirectory implements IdDirectory {
   final http.Client _http;
 
   @override
-  Future<bool> register({required String id, required String mailbox, required List<int> key, required String tokenHash, IdentityAttestation? attestation}) async {
+  Future<bool> register({required String id, required String mailbox, required List<int> key, required String tokenHash, IdentityAttestation? attestation, bool sample = false}) async {
     final r = await _http.post(baseUrl.resolve('/v1/ids'),
         headers: {'content-type': 'application/json'},
-        body: jsonEncode({'id': id, 'mailbox': mailbox, 'key': base64Encode(key), 'tokenHash': tokenHash, 'attestation': ?attestation?.toJson()}));
+        body: jsonEncode({'id': id, 'mailbox': mailbox, 'key': base64Encode(key), 'tokenHash': tokenHash, 'attestation': ?attestation?.toJson(), if (sample) 'sample': true}));
     if (r.statusCode == 409) {
       if ((jsonDecode(r.body) as Map)['reason'] == 'person_exists') throw const PersonExists();
       return false;

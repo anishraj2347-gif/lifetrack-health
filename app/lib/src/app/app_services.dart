@@ -254,6 +254,9 @@ class AppServices {
         directory: idDirectoryOverride?.call() ?? HttpIdDirectory(baseUrl: Uri.parse(share.relayUrl!)),
         replyIdentity: services._replyIdentity,
         attestationOf: (pid) => repository.patient(pid)?.verification,
+        // Only a demonstration build marks anyone as a sample, and only
+        // people without an identity check.
+        isSample: (pid) => (services.demoTools || services.isDemo) && repository.patient(pid)?.verification == null,
       );
       services.verifier = verifierOverride?.call() ?? HttpIdentityVerifier(baseUrl: Uri.parse(share.relayUrl!));
       await services.ids!.load();
@@ -698,6 +701,8 @@ class AppServices {
     await sealed.write(_vaccinesBlob, _vaccines);
     await refreshReminders();
     await _backUpQuietly();
+    // Their LifeTrack IDs, from a server that accepts samples (practice mode).
+    unawaited(assignLifeTrackIds().catchError((Object _) {}));
     return added;
   }
 

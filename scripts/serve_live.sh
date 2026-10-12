@@ -11,6 +11,7 @@ IP=$("$ROOT/scripts/lan_ip.sh")
 PORT="${LT_PORT:-8787}"
 cd "$ROOT/server"
 IDENTITY=(--require-identity)
-[ -f data/digilocker.json ] || IDENTITY+=(--practice-digilocker)
+# Practice mode: the stand-in DigiLocker, and IDs for the demo build's sample people.
+[ -f data/digilocker.json ] || IDENTITY+=(--practice-digilocker --allow-sample-ids)
 exec "$ROOT/server/build/lifetrack_server" --port "$PORT" --data data --lan \
   --public-base "http://$IP:$PORT" "${IDENTITY[@]}"

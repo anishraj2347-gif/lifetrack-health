@@ -24,6 +24,7 @@ class LifeTrackApi {
     required this.adminToken,
     this.identity,
     this.requireIdentity = false,
+    this.allowSampleIds = false,
     this.origins = const OriginPolicy(),
     this.publicBase,
     this.trustProxy = false,
@@ -43,6 +44,11 @@ class LifeTrackApi {
   /// When true, a LifeTrack ID is issued only with a signed identity
   /// attestation, and one person gets one ID.
   final bool requireIdentity;
+
+  /// Practice mode only: a demonstration build's made-up people get an ID
+  /// without an identity check, recorded as `sample` so they can be told
+  /// apart and cleared. Never on with real DigiLocker keys.
+  final bool allowSampleIds;
   final String adminToken;
   final DateTime Function() clock;
 
@@ -426,10 +432,11 @@ class LifeTrackApi {
       if (existing != null) {
         return _json({'error': 'This person already has a LifeTrack ID. Restore it from backup instead of making a new one.', 'reason': 'person_exists'}, status: 409);
       }
-    } else if (requireIdentity) {
+    } else if (requireIdentity && !(allowSampleIds && b['sample'] == true)) {
       return _error(400, 'A verified identity is needed for a LifeTrack ID.');
     }
-    await ids.put(id, {'mailbox': b['mailbox'], 'key': b['key'], 'tokenHash': tokenHash, 'subject': ?subject, 'createdAt': clock().toIso8601String()});
+    final sample = subject == null && b['sample'] == true && allowSampleIds;
+    await ids.put(id, {'mailbox': b['mailbox'], 'key': b['key'], 'tokenHash': tokenHash, 'subject': ?subject, if (sample) 'sample': true, 'createdAt': clock().toIso8601String()});
     return _json({'id': id}, status: 201);
   }
 
