@@ -18,8 +18,10 @@ CONFIG=../app/android/app/src/main/res/xml/network_security_config.xml
 if [ "$SERVER" = lan ]; then
   IP=$(./lan_ip.sh)
   RELAY="${LT_RELAY_URL:-http://$IP:$PORT}"
-  cp "$CONFIG" "$CONFIG.orig"
-  trap 'mv "$CONFIG.orig" "$CONFIG"' EXIT
+  # The copy goes outside res/: Android refuses any file there not ending in .xml.
+  SAVED=$(mktemp)
+  cp "$CONFIG" "$SAVED"
+  trap 'mv "$SAVED" "$CONFIG"' EXIT
   python3 - "$CONFIG" "$IP" <<'PY'
 import sys
 path, ip = sys.argv[1], sys.argv[2]
