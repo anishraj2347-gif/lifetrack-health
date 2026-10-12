@@ -216,6 +216,10 @@ copy predate the claim fixes; the app's wording is authoritative).
   the home-Wi-Fi server (`scripts/run_server_lan.sh`, which must be running; the laptop's address is
   built in, so rebuild if it changes) with demo tools off; `LT_SERVER=usb` / `LT_DEMO_TOOLS=true`
   for the old cable-and-demo build.
+- The laptop is the live server (12 Oct 2026): `scripts/install_laptop_server.sh` (login services
+  for server, doctor app on localhost:8080, nightly data copy). Real DigiLocker turns on when
+  `server/data/digilocker.json` has the partner keys (`server/lib/digilocker_api.dart`); never
+  commit that file (server/data is ignored).
 - `integration/` runs both apps' real code against the real server handler (`flutter test` there):
   scan, share, confirmed sender, prescription back, request by ID, decline, end access, revocation.
   Run it after any change to what one app sends the other.

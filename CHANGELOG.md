@@ -4,6 +4,21 @@ Patient app (`app/`) and doctor web app (`doctor/`). Bump the version with every
 a new feature raises the middle number, a fix raises the last; the build number (`+N`)
 always goes up (Android refuses to install a lower one).
 
+## Server and laptop
+
+### 12 Oct 2026
+- **The laptop is the live server** (user choice): `scripts/install_laptop_server.sh` installs three
+  login services — the compiled server on the Wi-Fi/hotspot address (restarted if it stops, Mac kept
+  awake), the doctor web app at http://localhost:8080 (localhost only: its key store needs a secure
+  page), and a nightly owner-only copy of `server/data` (last 14 kept). Logs in
+  `~/Library/Logs/LifeTrack/`; `scripts/uninstall_laptop_server.sh` removes them.
+- **Real DigiLocker, ready for partner keys**: `DigiLockerApi` follows the Requester API
+  Specification v1.12 — PKCE (S256) sign-in, account from the token response, eAadhaar flag, birth
+  certificates (BTCER) for newborns with DigiLocker's HMAC checked, token revoked after use. It
+  switches on by itself when `server/data/digilocker.json` holds the client ID, secret and
+  registered redirect URI; until then the practice stand-in runs. Not yet tried against the live
+  service; the birth-certificate XML fields must be checked with the first real certificate.
+
 ## Patient app
 
 ### 1.40.1 (12 Oct 2026)

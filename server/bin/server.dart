@@ -10,6 +10,7 @@ import 'package:lifetrack_server/registry.dart';
 import 'package:lifetrack_server/relay_store.dart';
 import 'package:lifetrack_server/vault_store.dart';
 import 'package:lifetrack_server/id_registry.dart';
+import 'package:lifetrack_server/digilocker_api.dart';
 import 'package:lifetrack_server/identity.dart';
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:shelf/shelf_io.dart' as io;
@@ -50,12 +51,15 @@ Future<void> main(List<String> args) async {
   final relay = RelayStore();
   Timer.periodic(const Duration(minutes: 1), (_) => relay.purgeExpired(DateTime.now()));
 
-  // Identity checks. Until LifeTrack is a DigiLocker partner, only the
-  // practice stand-in exists; real DigiLocker is configuration, not code.
+  // Identity checks: the real DigiLocker once its partner keys are in
+  // data/digilocker.json, else the practice stand-in when asked for.
   final practice = args.contains('--practice-digilocker');
-  final identity = practice
+  final keys = File('${dataDir.path}/digilocker.json');
+  final real = !practice && await keys.exists() ? DigiLockerCredentials.fromJson((jsonDecode(await keys.readAsString()) as Map).cast()) : null;
+  final DigiLockerProvider? provider = real != null ? DigiLockerApi(real) : practice ? PracticeDigiLocker() : null;
+  final identity = provider != null
       ? IdentityService(
-          provider: PracticeDigiLocker(),
+          provider: provider,
           registryKey: signingKey,
           hmacSecret: await _secret(File('${dataDir.path}/identity_secret')),
           trust: RegistryTrust([await signingKey.extractPublicKey()]),
@@ -93,7 +97,9 @@ Future<void> main(List<String> args) async {
         : publicBase != null
             ? 'Rate limits: per connection — behind a proxy every caller shares one budget; add --trust-proxy'
             : 'Rate limits: per connection')
-    ..writeln(identity == null ? 'Identity checks: off' : 'Identity checks: PRACTICE DigiLocker (not real)${args.contains('--require-identity') ? ', required for new IDs' : ''}');
+    ..writeln(identity == null
+        ? 'Identity checks: off'
+        : '${real != null ? 'Identity checks: DigiLocker (${real.baseUrl.host})' : 'Identity checks: PRACTICE DigiLocker (not real)'}${args.contains('--require-identity') ? ', required for new IDs' : ''}');
 }
 
 String? _arg(List<String> args, String name) {
