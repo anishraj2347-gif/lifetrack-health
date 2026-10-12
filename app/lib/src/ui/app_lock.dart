@@ -109,38 +109,32 @@ class _LockScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(24, 24, 24, 20),
-            child: Column(children: [
-              Spacer(),
-              IconTile(LucideIcons.lock, color: LT.onButton, background: LT.button),
-              SizedBox(height: 20),
-              Text(noScreenLock ? 'Set a screen lock first' : 'LifeTrack is locked',
-                  textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.body, fontSize: 24, fontWeight: FontWeight.w600, color: LT.ink)),
-              SizedBox(height: 8),
-              Text(
-                  noScreenLock
-                      ? "This phone has no PIN, pattern, fingerprint or face lock, so anyone holding it could read your records. Set one in the phone's settings, then come back."
-                      : 'Use your fingerprint, face or phone PIN.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: LT.ink3)),
-              Spacer(),
-              SlabButton(noScreenLock ? 'Check again' : 'Unlock', icon: LucideIcons.lockOpen, onPressed: asking ? null : onUnlock),
-              SizedBox(height: 12),
-              SlabButton('Emergency ID', icon: LucideIcons.heartPulse, variant: ButtonVariant.outline, onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => EmergencyScreen(fromLockScreen: true)));
-              }),
-              SizedBox(height: 8),
-              Text('Anyone who opens LifeTrack on this phone can see the Emergency ID without unlocking the app. Each time is written to your access log.',
-                  textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: LT.ink3)),
-            ]),
-          ),
-        ),
+        backgroundColor: LT.night,
+        body: PhotoHero(Photos.reading, children: [
+          Center(child: IconTile(LucideIcons.lock, color: LT.onButton, background: LT.button)),
+          SizedBox(height: 16),
+          Text(noScreenLock ? 'Set a screen lock first' : 'LifeTrack is locked',
+              textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.display, fontSize: 28, fontWeight: FontWeight.w600, letterSpacing: -0.5, color: Colors.white)),
+          SizedBox(height: 8),
+          Text(
+              noScreenLock
+                  ? "This phone has no PIN, pattern, fingerprint or face lock, so anyone holding it could read your records. Set one in the phone's settings, then come back."
+                  : 'Use your fingerprint, face or phone PIN.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, height: 1.5, color: LT.onNightMuted)),
+          SizedBox(height: 28),
+          SlabButton(noScreenLock ? 'Check again' : 'Unlock', icon: LucideIcons.lockOpen, onPressed: asking ? null : onUnlock, onNight: true),
+          SizedBox(height: 12),
+          SlabButton('Emergency ID', icon: LucideIcons.heartPulse, variant: ButtonVariant.outline, onNight: true, onPressed: () {
+            Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => EmergencyScreen(fromLockScreen: true)));
+          }),
+          SizedBox(height: 10),
+          Text('Anyone who opens LifeTrack on this phone can see the Emergency ID without unlocking the app. Each time is written to your access log.',
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 12, height: 1.45, color: LT.onNightMuted)),
+        ]),
       );
 }
 
-/// What the Me screen may do with the lock.
 class AppLockControl {
   AppLockControl._(this._gate);
   final _AppLockGateState _gate;

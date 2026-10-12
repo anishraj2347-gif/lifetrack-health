@@ -6,6 +6,13 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.39.0 (12 Oct 2026) — trial branch `try/coffee-template`
+- **Welcome and lock screens in the coffee template's opening style**: a full-bleed photo (the
+  family on welcome, the couple reading on the lock screen) fading into a black panel, a large
+  white headline, a caramel main button and dark secondary buttons. Wording is unchanged; the
+  three welcome feature cards became one line under the headline. New `PhotoHero` in parts.dart
+  (text only ever on the solid panel) and `SlabButton(onNight:)`.
+
 ### 1.38.0 (12 Oct 2026) — trial branch `try/coffee-template`
 - **Coffee-template restyle (trial)**, after the Nam Design "Coffee Shop Mobile App" Figma kit the
   user supplied: near-white page (#F9F9F9), white cards, near-black hero cards, a caramel accent in

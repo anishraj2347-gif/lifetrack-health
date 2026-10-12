@@ -58,7 +58,7 @@ enum ButtonVariant { primary, outline, destructive, ghost }
 /// shadcn Button. `outline: true` and `color` are kept for call sites that
 /// predate [variant].
 class SlabButton extends StatelessWidget {
-  const SlabButton(this.label, {super.key, required this.onPressed, this.outline = false, this.color, this.icon, this.variant, this.iconAfter = false});
+  const SlabButton(this.label, {super.key, required this.onPressed, this.outline = false, this.color, this.icon, this.variant, this.iconAfter = false, this.onNight = false});
   final String label;
   final VoidCallback? onPressed;
   final bool outline;
@@ -69,24 +69,27 @@ class SlabButton extends StatelessWidget {
   /// The icon follows the label — for a forward arrow ("Get started →").
   final bool iconAfter;
 
+  /// Drawn on the black [PhotoHero] panel: outline and ghost turn light.
+  final bool onNight;
+
   @override
   Widget build(BuildContext context) {
     final v = variant ?? (outline ? ButtonVariant.outline : (color == LT.signal || color == LT.signalFill ? ButtonVariant.destructive : ButtonVariant.primary));
     final enabled = onPressed != null;
     final (bg, fg, border) = !enabled
-        ? (v == ButtonVariant.ghost ? Colors.transparent : LT.raised, LT.ink3, null)
+        ? (v == ButtonVariant.ghost ? Colors.transparent : onNight ? Color(0xFF242424) : LT.raised, onNight ? LT.onNightMuted : LT.ink3, null)
         : switch (v) {
       ButtonVariant.primary => (LT.button, LT.onButton, null),
       ButtonVariant.destructive => (LT.signalFill, Colors.white, null),
-      ButtonVariant.outline => (LT.raised, LT.ink, null),
-      ButtonVariant.ghost => (Colors.transparent, LT.ink, null),
+      ButtonVariant.outline => onNight ? (Color(0xFF242424), Colors.white, null) : (LT.raised, LT.ink, null),
+      ButtonVariant.ghost => (Colors.transparent, onNight ? Colors.white : LT.ink, null),
     };
     return Opacity(
       opacity: 1, // disabled is drawn grey instead (readable, and plainly not the action)
       child: Pressable(
         enabled: enabled,
         shape: StadiumBorder(),
-        glow: v == ButtonVariant.outline || v == ButtonVariant.ghost ? (LT.dark ? Colors.white : LT.ink.withValues(alpha: 0.5)) : null,
+        glow: v == ButtonVariant.outline || v == ButtonVariant.ghost ? (LT.dark || onNight ? Colors.white : LT.ink.withValues(alpha: 0.5)) : null,
         child: DecoratedBox(
           decoration: ShapeDecoration(
             shape: StadiumBorder(),
@@ -101,8 +104,8 @@ class SlabButton extends StatelessWidget {
           decoration: v == ButtonVariant.ghost || !enabled
               ? BoxDecoration()
               : ShapeDecoration(
-                  shape: StadiumBorder(side: BorderSide(color: Colors.white.withValues(alpha: v == ButtonVariant.outline ? (LT.dark ? 0.08 : 0.8) : 0.14))),
-                  gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.center, colors: [Colors.white.withValues(alpha: v == ButtonVariant.outline ? 0.25 : 0.16), Colors.white.withValues(alpha: 0)]),
+                  shape: StadiumBorder(side: BorderSide(color: Colors.white.withValues(alpha: v == ButtonVariant.outline ? (LT.dark || onNight ? 0.08 : 0.8) : 0.14))),
+                  gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.center, colors: [Colors.white.withValues(alpha: v == ButtonVariant.outline ? (onNight ? 0.06 : 0.25) : 0.16), Colors.white.withValues(alpha: 0)]),
                 ),
           child: Material(
           color: bg,
@@ -806,6 +809,52 @@ abstract final class Photos {
   static const pills = 'assets/photos/pills.jpg';
   static const reading = 'assets/photos/reading.jpg';
   static const parent = 'assets/photos/parent.jpg';
+}
+
+/// The coffee-template opening screen: a full-bleed photo that fades into a
+/// black panel, under a light status bar. Text sits only on the solid panel,
+/// never on the photo (contrast_test reads text against solid colour).
+class PhotoHero extends StatelessWidget {
+  const PhotoHero(this.asset, {super.key, required this.children});
+  final String asset;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: ColoredBox(
+        color: LT.night,
+        child: LayoutBuilder(builder: (context, box) {
+          final photo = (box.maxHeight * 0.5).clamp(220.0, 480.0);
+          return ListView(padding: EdgeInsets.zero, children: [
+            SizedBox(
+              height: photo,
+              child: Stack(fit: StackFit.expand, children: [
+                Appear(child: Image.asset(asset, fit: BoxFit.cover, excludeFromSemantics: true, cacheWidth: (width * dpr).round(), filterQuality: FilterQuality.medium)),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [0, 0.22, 0.6, 1],
+                      colors: [Colors.black.withValues(alpha: 0.35), Colors.black.withValues(alpha: 0), LT.night.withValues(alpha: 0.35), LT.night],
+                    ),
+                  ),
+                ),
+              ]),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(padding: EdgeInsets.fromLTRB(24, 0, 24, 20), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children)),
+            ),
+          ]);
+        }),
+      ),
+    );
+  }
 }
 
 /// A rounded photo that drifts in slowly as it appears. Decorative: screen

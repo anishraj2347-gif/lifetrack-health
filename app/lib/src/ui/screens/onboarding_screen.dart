@@ -65,10 +65,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => _step == 0 && _welcome
+      // The welcome photo runs under the status bar; PhotoHero keeps the
+      // buttons clear of the system bar at the bottom.
+      ? Scaffold(backgroundColor: LT.night, body: _welcomeStep())
+      : Scaffold(
         body: SafeArea(
           child: switch (_step) {
-            0 when _welcome => _welcomeStep(),
             0 => _profile(),
             1 => _custody(),
             _ => EmergencyEditor(
@@ -81,44 +84,31 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
       );
 
-  Widget _restoreButton() => SlabButton('I\'ve used LifeTrack before — restore', variant: ButtonVariant.outline, icon: LucideIcons.cloudDownload, onPressed: _busy
+  Widget _restoreButton() => SlabButton('I\'ve used LifeTrack before — restore', variant: ButtonVariant.outline, onNight: true, icon: LucideIcons.cloudDownload, onPressed: _busy
       ? null
       : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RestoreScreen(onRestored: widget.onDone))));
 
-  Widget _sampleButton() => SlabButton('Look around with sample records', variant: ButtonVariant.ghost, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true));
+  Widget _sampleButton() => SlabButton('Look around with sample records', variant: ButtonVariant.ghost, onNight: true, icon: LucideIcons.sparkles, onPressed: _busy ? null : () => _createProfile(demo: true));
 
-  /// Mark, name, one line, three things it does, then the way in.
-  Widget _welcomeStep() => ListView(padding: EdgeInsets.fromLTRB(20, 36, 20, 28), children: [
-        Center(child: Appear(child: BrandMark(size: 120))),
-        SizedBox(height: 20),
-        Text('LifeTrack', textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.display, fontSize: 34, fontWeight: FontWeight.w600, letterSpacing: -1, color: LT.ink)),
-        SizedBox(height: 6),
-        Text('Your family\'s health records, on your phone.', textAlign: TextAlign.center, style: LT.lede),
+  /// After the coffee template's opening screen: a family photo fading into
+  /// black, the mark and name, one big line, what it does, then the way in.
+  Widget _welcomeStep() => PhotoHero(Photos.family, children: [
+        Center(child: Appear(child: BrandMark(size: 52))),
+        SizedBox(height: 10),
+        Text('LifeTrack', textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.display, fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 0.2, color: LT.onNightMuted)),
+        SizedBox(height: 14),
+        Stagger(
+          index: 1,
+          child: Text('Your family\'s health records, on your phone.',
+              textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.display, fontSize: 30, fontWeight: FontWeight.w600, height: 1.2, letterSpacing: -0.6, color: Colors.white)),
+        ),
+        SizedBox(height: 12),
+        Stagger(
+          index: 2,
+          child: Text('Photograph a paper report; LifeTrack reads it on this phone. Reminders for each medicine. Share what you choose, for as long as you choose.',
+              textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.body, fontSize: 14, height: 1.55, color: LT.onNightMuted)),
+        ),
         SizedBox(height: 28),
-        for (final (i, (icon, title, body)) in const [
-          (LucideIcons.fileText, 'Every report in one place', 'Photograph a paper report; LifeTrack reads it on this phone.'),
-          (LucideIcons.bellRing, 'Never miss a dose', 'Reminders for each medicine, for you and your family.'),
-          (LucideIcons.qrCode, 'Show a doctor in seconds', 'Share what you choose, for as long as you choose.'),
-        ].indexed)
-          Stagger(
-            index: i + 1,
-            child: ShadCard(
-              margin: EdgeInsets.only(bottom: 10),
-              padding: EdgeInsets.fromLTRB(14, 14, 16, 14),
-              child: Row(children: [
-                IconTile(icon),
-                SizedBox(width: 14),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(title, style: LT.label.copyWith(fontWeight: FontWeight.w600)),
-                    SizedBox(height: 2),
-                    Text(body, style: LT.small),
-                  ]),
-                ),
-              ]),
-            ),
-          ),
-        SizedBox(height: 18),
         SlabButton('Get started', icon: LucideIcons.arrowRight, iconAfter: true, onPressed: () => setState(() => _welcome = false)),
         if (AppScope.of(context).backupEnabled) ...[SizedBox(height: 10), _restoreButton()],
         SizedBox(height: 6),

@@ -71,6 +71,11 @@ abstract final class LT {
   /// Anything drawn on the caramel accent.
   static const onAccent = Color(0xFFFFFFFF);
 
+  /// The black panel under a photo hero (welcome, lock screen), the same in
+  /// both modes, and the muted text on it (9.6:1).
+  static const night = Color(0xFF0B0B0B);
+  static const onNightMuted = Color(0xFFA2A2A2);
+
   /// Text and icons on the page.
   static Color get trace => _p(0xFF065F46, 0xFF10B981);
   static Color get signal => _p(0xFFC2410C, 0xFFF97316);
