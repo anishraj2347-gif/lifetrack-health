@@ -80,7 +80,8 @@ void main() {
       await s.addChild(name: 'Aarav Verma', dob: DateTime(2020), sex: Sex.male, relation: 'son');
       await s.switchTo(s.selfPatientId!);
     });
-    tester.view.physicalSize = const Size(1080, 2400);
+    // Tall enough for the family tree and the list below it at once.
+    tester.view.physicalSize = const Size(1080, 5600);
     tester.view.devicePixelRatio = 2.6;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(LifeTrackApp(boot: () async => s));
@@ -107,6 +108,8 @@ void main() {
     expect(y('Head of family') < y('Spouse, brothers and sisters'), isTrue);
     expect(y('Spouse, brothers and sisters') < y('Children'), isTrue);
 
+    // The tree shows him too (first name); open him from the list.
+    expect(find.text('Suresh'), findsOneWidget);
     await tester.tap(find.text('Suresh Verma'));
     await tester.pumpAndSettle();
     expect(find.byType(FamilyOverviewScreen), findsNothing);

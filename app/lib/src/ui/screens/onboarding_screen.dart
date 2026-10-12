@@ -63,6 +63,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       return;
     }
     if (_photo != null && !demo && mounted) await AppScope.of(context).setPhoto(p.id, _photo);
+    // "Look around with sample records": the whole sample family, not just one person.
+    if (demo && mounted) await AppScope.of(context).addDemoFamily(photo: bundledPhoto);
     if (!mounted) return;
     setState(() {
       _patientId = p.id;

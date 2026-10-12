@@ -21,6 +21,21 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.41.0 (12 Oct 2026)
+- **Family tree**: the family overview now opens with a drawn tree — a row per generation, couples
+  joined, lines down to their children, faces or initials, the person open now ringed in caramel.
+  It is built from each person's role every time, so whoever is added appears in their place at
+  once. Tap anyone to open their records.
+- **Sample family (demo builds)**: "Look around with sample records", or Me → "Add the sample
+  family", makes a ten-person family over four generations — grandmother; Anjali's parents and her
+  husband's parents; Anjali, her husband and her brother; their son and daughter — each with their
+  own sample reports, medicines, conditions, home readings, Emergency IDs, children's vaccinations
+  and a face (cropped from the app's photos; two portraits generated in Canva). Every custody says
+  it is a sample. Never in a normal build.
+- **Reminders are editable where they are shown**: tap a dose time in Today's medicines to change
+  it; today's own reminders have a pencil; every Coming up row opens what it is about — your
+  reminder, the vaccination list, or a medicine time with "Change the time" and each medicine in it.
+
 ### 1.40.1 (12 Oct 2026)
 - **Out of range is no longer mistakable for "selected"**: measured for colour-blind viewers, the old
   orange (#C2410C) sat ΔE 12.3 from the caramel accent under protanopia. Out-of-range results,

@@ -244,6 +244,25 @@ class MeScreen extends StatelessWidget {
             ),
           ]),
         ),
+        ShadCard(
+          onTap: () async {
+            final n = await s.addDemoFamily(photo: bundledPhoto);
+            if (!context.mounted) return;
+            AppScope.changed(context);
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(n == 0 ? 'The sample family is already here.' : '$n sample family members added.')));
+          },
+          child: Row(children: [
+            IconTile(LucideIcons.users),
+            SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Add the sample family', style: LT.label),
+                SizedBox(height: 4),
+                Text('Demo builds only. Nine made-up relatives across four generations, with their own sample records — a ten-person family tree.', style: LT.small),
+              ]),
+            ),
+          ]),
+        ),
       ],
       Eyebrow('Where your records are'),
       Note(

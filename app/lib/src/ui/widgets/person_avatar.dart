@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -52,6 +53,15 @@ class PersonAvatar extends StatelessWidget {
         child: SizedBox(width: size - 8.4, height: size - 8.4, child: ClipOval(child: Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true))),
       ),
     );
+  }
+}
+
+/// A face bundled with the app (the sample family), or null if missing.
+Future<Uint8List?> bundledPhoto(String asset) async {
+  try {
+    return (await rootBundle.load(asset)).buffer.asUint8List();
+  } on Object {
+    return null;
   }
 }
 

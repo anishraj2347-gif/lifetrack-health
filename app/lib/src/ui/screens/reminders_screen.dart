@@ -122,6 +122,63 @@ class _RemindersScreenState extends State<RemindersScreen> {
   }
 }
 
+/// Changes the time of one dose slot (morning, afternoon or night) for every
+/// medicine in it, from the reminder itself rather than only from settings.
+Future<void> editSlotTime(BuildContext context, DoseSlot slot) async {
+  final s = AppScope.of(context);
+  final st = s.reminderSettings;
+  final (h, m) = st.times[slot]!;
+  final t = await showTimePicker(context: context, initialTime: TimeOfDay(hour: h, minute: m), helpText: '${slot.label} medicines at');
+  if (t == null || !context.mounted) return;
+  await s.setReminders(st.copyWith(times: {...st.times, slot: (t.hour, t.minute)}));
+  if (context.mounted) AppScope.changed(context);
+}
+
+/// Opens whatever a coming-up reminder is about, to change it.
+Future<void> editPlanned(BuildContext context, PlannedReminder r) async {
+  final s = AppScope.of(context);
+  if (r.custom case final c?) {
+    if (r.customFor != null && r.customFor!.id != s.currentPatientId) await s.switchTo(r.customFor!.id);
+    if (!context.mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CustomReminderScreen(existing: c)));
+  } else if (r.vaccine != null) {
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => VaccinationsScreen()));
+  } else {
+    final open = await showModalBottomSheet<Object>(
+      context: context,
+      builder: (sheet) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Padding(padding: EdgeInsets.fromLTRB(4, 0, 4, 4), child: Text('${r.slot.label} medicines', style: LT.title.copyWith(fontSize: 20))),
+            Padding(padding: EdgeInsets.fromLTRB(4, 0, 4, 12), child: Text('At ${hm(s.reminderSettings.times[r.slot]!)} every day', style: LT.small)),
+            SlabButton('Change the time', icon: LucideIcons.clock, onPressed: () => Navigator.pop(sheet, 'time')),
+            for (final i in r.items) ...[
+              SizedBox(height: 8),
+              SlabButton(
+                '${i.record.title}${i.patient.id == s.selfPatientId ? '' : ' · ${i.patient.name.split(' ').first}'}',
+                icon: LucideIcons.pencil,
+                variant: ButtonVariant.outline,
+                onPressed: () => Navigator.pop(sheet, i),
+              ),
+            ],
+          ]),
+        ),
+      ),
+    );
+    if (!context.mounted) return;
+    if (open == 'time') {
+      await editSlotTime(context, r.slot);
+    } else if (open is ReminderItem) {
+      // A medicine is edited on its own profile's record.
+      if (open.patient.id != s.currentPatientId) await s.switchTo(open.patient.id);
+      if (!context.mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RecordScreen(recordId: open.record.id)));
+    }
+  }
+  if (context.mounted) AppScope.changed(context);
+}
+
 /// Today's doses for the profile on screen, to tick off. The record of what
 /// was taken stays on this phone.
 class TodaysMedicines extends StatelessWidget {
@@ -152,7 +209,19 @@ class TodaysMedicines extends StatelessWidget {
           if (doses.where((d) => d.$1 == slot).toList() case final list when list.isNotEmpty) ...[
             SizedBox(height: 8),
             Wrap(crossAxisAlignment: WrapCrossAlignment.center, runSpacing: 4, children: [
-              Text('${slot.label} · ${hm(st.times[slot]!)}', style: LT.small.copyWith(fontWeight: FontWeight.w600)),
+              // Tap the time to change it for this slot.
+              InkWell(
+                onTap: () => editSlotTime(context, slot),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Flexible(child: Text('${slot.label} · ${hm(st.times[slot]!)}', style: LT.small.copyWith(fontWeight: FontWeight.w600))),
+                    SizedBox(width: 6),
+                    Icon(LucideIcons.pencil, size: 13, color: LT.ink3, semanticLabel: 'Change ${slot.label.toLowerCase()} time'),
+                  ]),
+                ),
+              ),
               if (slot == nowSlot(st.times, s.clock())) NowTag(),
             ]),
             for (final (_, r, n) in list)
@@ -274,6 +343,11 @@ class RemindersTab extends StatelessWidget {
                       value: s.customDoneToday(c, h, m),
                       title: _Struck(c.title, done: s.customDoneToday(c, h, m)),
                       subtitle: Text([hm((h, m)), ?c.note].join(' · '), style: LT.small),
+                      secondary: IconButton(
+                        tooltip: 'Edit ${c.title}',
+                        icon: Icon(LucideIcons.pencil, size: 17, color: LT.ink3),
+                        onPressed: () => _open(context, c),
+                      ),
                       onChanged: (v) {
                         HapticFeedback.lightImpact();
                         tickAndMaybeCelebrate(context, () => s.markCustomDone(c, h, m, v ?? false), v ?? false);
@@ -337,7 +411,9 @@ class RemindersTab extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Column(children: [
                 for (final (i, r) in coming.indexed)
-                  Container(
+                  InkWell(
+                    onTap: () => editPlanned(context, r),
+                    child: Container(
                     padding: EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(border: i == coming.length - 1 ? null : Border(bottom: BorderSide(color: LT.rule))),
                     child: Row(children: [
@@ -350,7 +426,9 @@ class RemindersTab extends StatelessWidget {
                           Text('${r.title} · ${dateTime(r.at)}', style: LT.meta),
                         ]),
                       ),
+                      Icon(LucideIcons.pencil, size: 15, color: LT.ink3),
                     ]),
+                  ),
                   ),
               ]),
             ),

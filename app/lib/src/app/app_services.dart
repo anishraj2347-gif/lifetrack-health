@@ -49,6 +49,7 @@ import '../storage/sealed_store.dart';
 import '../vault/backup_vault.dart';
 import 'cloud_escalation_adapter.dart';
 import 'demo_data.dart';
+import 'demo_family.dart';
 import 'demo_report_images.dart';
 
 /// Everything the screens use, assembled once. Screens call these methods
@@ -634,6 +635,70 @@ class AppServices {
     await refreshReminders();
     await audit.append(AuditEntry(at: clock(), actorId: 'patient:$id', patientId: id, action: AuditAction.edit, detail: 'Sample records added for a demonstration'));
     await _backUpQuietly();
+  }
+
+  /// Demo builds only: the sample ten-person family around the head of
+  /// family — nine relatives, each with records, conditions, home readings,
+  /// children's vaccinations and (where one fits) a face. Kept on this phone
+  /// like any family member; every custody says it is a sample. Anyone
+  /// already here by the same name is skipped, so it can be run again.
+  /// [photo] loads a bundled face (the UI passes the asset bundle).
+  Future<int> addDemoFamily({Future<Uint8List?> Function(String asset)? photo}) async {
+    if (!demoTools && !isDemo) throw const CustodyRefused('Sample family members are for demonstration builds only.');
+    await _settleOwner();
+    final head = selfPatient ?? (throw const CustodyRefused('Set up your own profile first.'));
+    final at = clock();
+    final here = {for (final p in familyOnPhone()) p.name.toLowerCase()};
+    var added = 0;
+    if (photo != null && _photos[head.id] == null) {
+      final face = await photo(DemoFamily.headPhoto);
+      if (face != null) {
+        await attachments.save(_photoBlob(head.id), [face]);
+        _photos[head.id] = face;
+      }
+    }
+    for (final m in DemoFamily.members) {
+      if (here.contains(m.name.toLowerCase())) continue;
+      final person = Patient(id: 'p-${_randomId()}', name: m.name, dateOfBirth: m.dob, sex: m.sex);
+      await repository.savePatient(person);
+      await repository.saveCustody(Custody(
+        patientId: person.id,
+        kind: m.isChild ? CustodyKind.childOfParent : CustodyKind.delegatedByAdult,
+        custodianId: head.id,
+        relation: m.role,
+        method: m.isChild ? ConsentMethod.parentDeclaration : ConsentMethod.inPersonOnCustodianPhone,
+        consentedAt: at,
+        statement: 'Sample family member for a demonstration — not a real person.',
+        signedName: m.isChild ? null : m.name,
+      ));
+      await repository.addAll(m.records(person.id));
+      await repository.saveProfile(person.id, ClinicalProfile(allergies: m.profile.allergies, conditions: m.profile.conditions, familyIllnesses: m.profile.familyIllnesses, updatedAt: at));
+      for (final v in m.vitals(person.id)) {
+        await repository.addVital(v);
+      }
+      if (m.emergency != null) await emergency.save(person.id, m.emergency!);
+      if (m.vaccinesUpTo != null) {
+        final upTo = uipSchedule.indexWhere((d) => d.code == m.vaccinesUpTo);
+        _vaccines[person.id] = {
+          for (final d in uipSchedule.take(upTo + 1))
+            d.code: VaccineGiven(on: DateTime(m.dob.year + d.dueAt.years, m.dob.month + d.dueAt.months, m.dob.day + d.dueAt.days), place: 'Government health centre (sample)').toJson(),
+        };
+      }
+      if (photo != null && m.photo != null) {
+        final face = await photo(m.photo!);
+        if (face != null) {
+          await attachments.save(_photoBlob(person.id), [face]);
+          _photos[person.id] = face;
+        }
+      }
+      await _saveDemoOriginals(person.id);
+      await audit.append(AuditEntry(at: at, actorId: Actors.patient(head.id), patientId: person.id, action: AuditAction.edit, detail: 'Sample family member added for a demonstration'));
+      added++;
+    }
+    await sealed.write(_vaccinesBlob, _vaccines);
+    await refreshReminders();
+    await _backUpQuietly();
+    return added;
   }
 
   Future<void> _saveDemoOriginals(String patientId) async {

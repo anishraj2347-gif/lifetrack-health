@@ -10,6 +10,7 @@ import '../../vaccines/uip_schedule.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
+import '../widgets/family_tree.dart';
 import '../widgets/person_avatar.dart';
 import 'add_family_screen.dart';
 
@@ -52,7 +53,12 @@ class FamilyOverviewScreen extends StatelessWidget {
           title: '${head.name.split(' ').first}\'s family',
           description: '${others.length + 1} ${others.isEmpty ? 'person' : 'people'} on this phone · ${head.name} is the head of family',
         ),
-        SizedBox(height: 8),
+        if (others.isNotEmpty) ...[
+          Eyebrow('Family tree'),
+          ShadCard(padding: EdgeInsets.fromLTRB(4, 18, 4, 16), child: FamilyTree(head: head, others: others, roleOf: roleOf)),
+          Eyebrow('Everyone'),
+        ] else
+          SizedBox(height: 8),
         section(-2, 'Grandparents'),
         section(-1, 'Parents and elders'),
         Eyebrow('Head of family'),
