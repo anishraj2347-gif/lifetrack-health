@@ -4,6 +4,8 @@
 # checks use the real DigiLocker as soon as server/data/digilocker.json holds
 # the partner keys; until then the practice stand-in (sample people only).
 set -euo pipefail
+# Every file the server writes (IDs, backups, doctor list) is owner-only.
+umask 077
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 IP=$("$ROOT/scripts/lan_ip.sh")
 PORT="${LT_PORT:-8787}"

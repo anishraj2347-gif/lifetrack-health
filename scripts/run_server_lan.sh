@@ -7,6 +7,8 @@
 # choose Allow. If the laptop's address changes, rebuild the APK
 # (scripts/build_apk.sh) so the phone knows the new one.
 set -euo pipefail
+# Every file the server writes (IDs, backups, doctor list) is owner-only.
+umask 077
 cd "$(dirname "$0")"
 IP=$(./lan_ip.sh)
 PORT="${LT_PORT:-8787}"
