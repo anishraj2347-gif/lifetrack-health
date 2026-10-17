@@ -155,7 +155,7 @@ const cover = [
   C('**AMITY INSTITUTE OF INFORMATION TECHNOLOGY**', { run: { size: 26 } }),
   C('**AMITY UNIVERSITY PATNA**', { run: { size: 26 } }),
   C('Patna – 801503', { run: { size: 24 } }),
-  C('Academic Session 2025–2028  ·  October 2026', { run: { size: 24 } }),
+  C('Academic Session 2025–2028  ·  November 2026', { run: { size: 24 } }),
 ];
 
 const declaration = [
