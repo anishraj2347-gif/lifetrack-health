@@ -137,7 +137,13 @@ class _MemberCard extends StatelessWidget {
               Text('${head ? 'Head of family · you' : role!.label} · $sexAge', style: LT.small.copyWith(color: muted)),
             ]),
           ),
-          if (viewing) Padding(padding: EdgeInsets.only(left: 6), child: _Pill('Open now', dark: head, lime: true)),
+          // At most 110 wide, shrinking only at large text: as a Flexible it
+          // would take half the row from the name beside it.
+          if (viewing)
+            Padding(
+              padding: EdgeInsets.only(left: 6),
+              child: ConstrainedBox(constraints: BoxConstraints(maxWidth: 110), child: FittedBox(fit: BoxFit.scaleDown, child: _Pill('Open now', dark: head, lime: true))),
+            ),
           if (!head)
             PopupMenuButton<String>(
               tooltip: 'More',
@@ -197,7 +203,7 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: ShapeDecoration(color: lime ? LT.accent : dark ? LT.onDarkChip : LT.raised, shape: StadiumBorder()),
+        decoration: BoxDecoration(color: lime ? LT.accent : dark ? LT.onDarkChip : LT.raised, borderRadius: BorderRadius.circular(999)),
         child: Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: lime ? LT.onAccent : dark ? LT.onDark : LT.ink2)),
       );
 }

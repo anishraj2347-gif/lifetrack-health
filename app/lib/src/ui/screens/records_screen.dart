@@ -333,11 +333,11 @@ class _DosePills extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
         label: 'Dose: ${dose.morning} morning, ${dose.afternoon} afternoon, ${dose.night} night',
         excludeSemantics: true,
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
+        // Wraps to a second line at large text instead of running off the card.
+        child: Wrap(spacing: 4, runSpacing: 4, children: [
           for (final (n, icon) in [(dose.morning, LucideIcons.sunrise), (dose.afternoon, LucideIcons.sun), (dose.night, LucideIcons.moon)]) ...[
             Container(
               padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              margin: EdgeInsets.only(right: 4),
               decoration: BoxDecoration(
                 color: n > 0 ? LT.button : LT.raised,
                 borderRadius: BorderRadius.circular(99),
@@ -364,7 +364,8 @@ class _MonthHeader extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: EdgeInsets.fromLTRB(16, 18, 16, 10),
         child: Row(children: [
-          Container(
+          Flexible(
+            child: Container(
             padding: EdgeInsets.fromLTRB(10, 6, 12, 6),
             decoration: BoxDecoration(
               color: LT.raised,
@@ -375,7 +376,7 @@ class _MonthHeader extends StatelessWidget {
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(LucideIcons.calendarDays, size: 14, color: LT.ink2),
               SizedBox(width: 6),
-              Text(month, style: TextStyle(fontFamily: LT.body, fontSize: 14, fontWeight: FontWeight.w600, color: LT.ink)),
+              Flexible(child: Text(month, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: LT.body, fontSize: 14, fontWeight: FontWeight.w600, color: LT.ink))),
               SizedBox(width: 8),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 7, vertical: 1),
@@ -383,6 +384,7 @@ class _MonthHeader extends StatelessWidget {
                 child: Text('$count', style: TextStyle(fontFamily: LT.body, fontSize: 12, fontWeight: FontWeight.w700, color: LT.onButton)),
               ),
             ]),
+          ),
           ),
           SizedBox(width: 10),
           Expanded(child: Container(height: 1, color: LT.rule.withValues(alpha: 0.7))),

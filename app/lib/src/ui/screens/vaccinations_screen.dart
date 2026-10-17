@@ -58,14 +58,16 @@ class VaccinationsScreen extends StatelessWidget {
                           Text(d.name, style: LT.label),
                           SizedBox(height: 4),
                           Text(d.protects, style: LT.small),
+                          SizedBox(height: 8),
+                          // Under the name, not beside it: a full date beside a
+                          // vaccine name runs off a narrow screen.
+                          switch (st) {
+                            VaccineStatus.given => Badge2('Given ${fullDate(g!.on)}', tone: BadgeTone.trace),
+                            VaccineStatus.due => Badge2('Due since ${fullDate(d.dueDate(p.dateOfBirth))}', tone: BadgeTone.caution),
+                            VaccineStatus.upcoming => Badge2(fullDate(d.dueDate(p.dateOfBirth)), tone: BadgeTone.outline),
+                          },
                         ]),
                       ),
-                      SizedBox(width: 8),
-                      switch (st) {
-                        VaccineStatus.given => Badge2('Given ${fullDate(g!.on)}', tone: BadgeTone.trace),
-                        VaccineStatus.due => Badge2('Due since ${fullDate(d.dueDate(p.dateOfBirth))}', tone: BadgeTone.caution),
-                        VaccineStatus.upcoming => Badge2(fullDate(d.dueDate(p.dateOfBirth)), tone: BadgeTone.outline),
-                      },
                     ]),
                   ),
                 ),

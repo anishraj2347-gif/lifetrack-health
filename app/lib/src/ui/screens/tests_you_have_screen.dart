@@ -61,7 +61,7 @@ class TestsYouHaveScreen extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(child: Text(analyteName(t.analyte), style: LT.label.copyWith(fontWeight: FontWeight.w600))),
-                Badge2(ageOf(days(t.latest.$1)), tone: BadgeTone.outline),
+                ConstrainedBox(constraints: BoxConstraints(maxWidth: 120), child: Badge2(ageOf(days(t.latest.$1)), tone: BadgeTone.outline)),
                 Padding(padding: EdgeInsets.only(left: 4), child: Icon(LucideIcons.chevronRight, size: 18, color: LT.inactive)),
               ]),
               SizedBox(height: 6),
@@ -94,7 +94,7 @@ class TestsYouHaveScreen extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
                   Expanded(child: Text(r.title, style: LT.label.copyWith(fontWeight: FontWeight.w600))),
-                  Badge2(ageOf(days(r)), tone: BadgeTone.outline),
+                  ConstrainedBox(constraints: BoxConstraints(maxWidth: 120), child: Badge2(ageOf(days(r)), tone: BadgeTone.outline)),
                 ]),
                 SizedBox(height: 4),
                 Text([fullDate(r.effectiveDate), ?(r.labName ?? r.facility), _source(r)].join(' · '), style: LT.small),

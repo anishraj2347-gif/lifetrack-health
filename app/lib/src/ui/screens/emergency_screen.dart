@@ -269,10 +269,16 @@ class _IdCardState extends State<_IdCard> {
               ]),
             ),
             SizedBox(width: 12),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text('Blood type', style: muted),
-              Text(c.bloodType.isEmpty ? '—' : c.bloodType, style: TextStyle(fontFamily: LT.display, fontSize: 34, fontWeight: FontWeight.w700, height: 1.1, letterSpacing: -0.5, color: LT.onDark)),
-            ]),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.bottomRight,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Text('Blood type', style: muted),
+                  Text(c.bloodType.isEmpty ? '—' : c.bloodType, style: TextStyle(fontFamily: LT.display, fontSize: 34, fontWeight: FontWeight.w700, height: 1.1, letterSpacing: -0.5, color: LT.onDark)),
+                ]),
+              ),
+            ),
           ]),
           SizedBox(height: 12),
           Text('Allergies', style: muted),

@@ -31,6 +31,9 @@ class PersonAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bytes = photo ?? (patientId == null ? null : AppScope.of(context).photoOf(patientId!));
+    // Decoded at the size it is drawn, not the photo's own (a face is
+    // shown at 32–56 points; the photo may be ten times that).
+    final image = bytes == null ? null : ResizeImage(MemoryImage(bytes), width: (size * MediaQuery.devicePixelRatioOf(context)).ceil(), policy: ResizeImagePolicy.fit);
     final face = Container(
       width: size,
       height: size,
@@ -38,7 +41,7 @@ class PersonAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: selected ? LT.accent : LT.raised,
-        image: bytes == null ? null : DecorationImage(image: MemoryImage(bytes), fit: BoxFit.cover),
+        image: image == null ? null : DecorationImage(image: image, fit: BoxFit.cover),
       ),
       child: bytes != null
           ? null
@@ -50,7 +53,7 @@ class PersonAvatar extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.all(2),
         decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: LT.accent, width: 2.2)),
-        child: SizedBox(width: size - 8.4, height: size - 8.4, child: ClipOval(child: Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true))),
+        child: SizedBox(width: size - 8.4, height: size - 8.4, child: DecoratedBox(decoration: BoxDecoration(shape: BoxShape.circle, image: DecorationImage(image: image!, fit: BoxFit.cover)))),
       ),
     );
   }

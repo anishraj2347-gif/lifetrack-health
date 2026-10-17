@@ -70,8 +70,8 @@ class PrescriptionCard extends StatelessWidget {
             Row(children: [
               Icon(LucideIcons.utensils, size: 16, color: LT.ink3),
               SizedBox(width: 8),
-              Text(timingLabel(r.timing), style: LT.label.copyWith(fontSize: 14)),
-              Spacer(),
+              Expanded(child: Text(timingLabel(r.timing), style: LT.label.copyWith(fontSize: 14))),
+              SizedBox(width: 8),
               Text('${d.perDay} a day', style: LT.small),
             ]),
           ]),
@@ -155,9 +155,9 @@ class PrescriptionCard extends StatelessWidget {
         child: Row(children: [
           Icon(icon, size: 16, color: LT.ink3),
           SizedBox(width: 12),
-          Text(label, style: LT.small),
+          Flexible(child: Text(label, style: LT.small)),
           SizedBox(width: 12),
-          Expanded(child: Text(value, style: LT.label.copyWith(fontSize: 14), textAlign: TextAlign.right)),
+          Expanded(flex: 2, child: Text(value, style: LT.label.copyWith(fontSize: 14), textAlign: TextAlign.right)),
         ]),
       );
 }

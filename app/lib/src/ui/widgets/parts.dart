@@ -57,6 +57,8 @@ enum ButtonVariant { primary, outline, destructive, ghost }
 
 /// shadcn Button. `outline: true` and `color` are kept for call sites that
 /// predate [variant].
+final _pill = BorderRadius.circular(999);
+
 class SlabButton extends StatelessWidget {
   const SlabButton(this.label, {super.key, required this.onPressed, this.outline = false, this.color, this.icon, this.variant, this.iconAfter = false, this.onNight = false});
   final String label;
@@ -76,13 +78,13 @@ class SlabButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final v = variant ?? (outline ? ButtonVariant.outline : (color == LT.signal || color == LT.signalFill ? ButtonVariant.destructive : ButtonVariant.primary));
     final enabled = onPressed != null;
-    final (bg, fg, border) = !enabled
-        ? (v == ButtonVariant.ghost ? Colors.transparent : onNight ? Color(0xFF242424) : LT.raised, onNight ? LT.onNightMuted : LT.ink3, null)
+    final (bg, fg) = !enabled
+        ? (v == ButtonVariant.ghost ? Colors.transparent : onNight ? Color(0xFF242424) : LT.raised, onNight ? LT.onNightMuted : LT.ink3)
         : switch (v) {
-      ButtonVariant.primary => (LT.button, LT.onButton, null),
-      ButtonVariant.destructive => (LT.signalFill, Colors.white, null),
-      ButtonVariant.outline => onNight ? (Color(0xFF242424), Colors.white, null) : (LT.raised, LT.ink, null),
-      ButtonVariant.ghost => (Colors.transparent, onNight ? Colors.white : LT.ink, null),
+      ButtonVariant.primary => (LT.button, LT.onButton),
+      ButtonVariant.destructive => (LT.signalFill, Colors.white),
+      ButtonVariant.outline => onNight ? (Color(0xFF242424), Colors.white) : (LT.raised, LT.ink),
+      ButtonVariant.ghost => (Colors.transparent, onNight ? Colors.white : LT.ink),
     };
     return Opacity(
       opacity: 1, // disabled is drawn grey instead (readable, and plainly not the action)
@@ -90,10 +92,14 @@ class SlabButton extends StatelessWidget {
         enabled: enabled,
         shape: StadiumBorder(),
         glow: v == ButtonVariant.outline || v == ButtonVariant.ghost ? (LT.dark || onNight ? Colors.white : LT.ink.withValues(alpha: 0.5)) : null,
+        // Rounded-rect decorations and clip (a pill is a rounded rect with a
+        // huge radius): the engine draws those on its fast path, where a
+        // StadiumBorder shape is a general path with a blurred shadow.
         child: DecoratedBox(
-          decoration: ShapeDecoration(
-            shape: StadiumBorder(),
-            shadows: v == ButtonVariant.ghost || !enabled
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: _pill,
+            boxShadow: v == ButtonVariant.ghost || !enabled
                 ? null
                 : [BoxShadow(color: Colors.black.withValues(alpha: v == ButtonVariant.outline ? (LT.dark ? 0.25 : 0.06) : (LT.dark ? 0.35 : 0.22)), blurRadius: 16, offset: Offset(0, 6))],
           ),
@@ -103,13 +109,15 @@ class SlabButton extends StatelessWidget {
           position: DecorationPosition.foreground,
           decoration: v == ButtonVariant.ghost || !enabled
               ? BoxDecoration()
-              : ShapeDecoration(
-                  shape: StadiumBorder(side: BorderSide(color: Colors.white.withValues(alpha: v == ButtonVariant.outline ? (LT.dark || onNight ? 0.08 : 0.8) : 0.14))),
+              : BoxDecoration(
+                  borderRadius: _pill,
+                  border: Border.all(color: Colors.white.withValues(alpha: v == ButtonVariant.outline ? (LT.dark || onNight ? 0.08 : 0.8) : 0.14)),
                   gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.center, colors: [Colors.white.withValues(alpha: v == ButtonVariant.outline ? (onNight ? 0.06 : 0.25) : 0.16), Colors.white.withValues(alpha: 0)]),
                 ),
+          child: ClipRRect(
+          borderRadius: _pill,
           child: Material(
-          color: bg,
-          shape: StadiumBorder(side: border == null ? BorderSide.none : BorderSide(color: border)),
+          type: MaterialType.transparency,
           child: InkWell(
             onTap: onPressed == null
                 ? null
@@ -117,7 +125,6 @@ class SlabButton extends StatelessWidget {
                     v == ButtonVariant.primary || v == ButtonVariant.destructive ? HapticFeedback.mediumImpact() : HapticFeedback.selectionClick();
                     onPressed!();
                   },
-            customBorder: StadiumBorder(),
             splashColor: inkOn(bg).splash,
             highlightColor: inkOn(bg).highlight,
             // Grows for large system text instead of cutting the label off.
@@ -133,6 +140,7 @@ class SlabButton extends StatelessWidget {
               ]),
             ),
           ),
+        ),
         ),
         ),
         ),
@@ -170,11 +178,11 @@ class Chip2 extends StatelessWidget {
         child: DecoratedBox(
         // Selected: part of the glossy black button family — soft drop
         // shadow below, light catching the top half.
-        decoration: ShapeDecoration(shape: StadiumBorder(), shadows: selected ? [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 10, offset: Offset(0, 4))] : null),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), boxShadow: selected ? [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 10, offset: Offset(0, 4))] : null),
         child: DecoratedBox(
           position: DecorationPosition.foreground,
           decoration: selected
-              ? ShapeDecoration(shape: StadiumBorder(), gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.center, colors: [Colors.white.withValues(alpha: 0.16), Colors.white.withValues(alpha: 0)]))
+              ? BoxDecoration(borderRadius: BorderRadius.circular(999), gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.center, colors: [Colors.white.withValues(alpha: 0.16), Colors.white.withValues(alpha: 0)]))
               : BoxDecoration(),
           child: Material(
             color: selected ? LT.button : LT.raised,
@@ -220,9 +228,10 @@ class Segmented<T> extends StatelessWidget {
     final i = options.indexWhere((o) => o.$1 == value).clamp(0, options.length - 1);
     return Container(
       padding: EdgeInsets.all(4),
-      decoration: ShapeDecoration(
+      decoration: BoxDecoration(
         color: LT.raised,
-        shape: StadiumBorder(side: BorderSide(color: Colors.white.withValues(alpha: LT.dark ? 0.06 : 0.9))),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: LT.dark ? 0.06 : 0.9)),
       ),
       child: Stack(children: [
         Positioned.fill(
@@ -234,10 +243,10 @@ class Segmented<T> extends StatelessWidget {
               widthFactor: 1 / options.length,
               heightFactor: 1,
               child: DecoratedBox(
-                decoration: ShapeDecoration(
-                  shape: StadiumBorder(),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
                   gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color.alphaBlend(Colors.white.withValues(alpha: 0.12), LT.button), LT.button]),
-                  shadows: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 10, offset: Offset(0, 3))],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 10, offset: Offset(0, 3))],
                 ),
               ),
             ),
@@ -343,14 +352,17 @@ class ShadCard extends StatelessWidget {
   /// a sheen across the top and a soft shadow.
   Widget _glassCard() {
     final tone = Color.alphaBlend(LT.surface.withValues(alpha: 0.64), LT.washExtreme);
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(LT.radiusLg),
-      side: BorderSide(color: borderColor ?? Colors.white.withValues(alpha: LT.dark ? 0.09 : 0.75), width: borderColor == null ? 1 : 1.5),
-    );
+    final radius = BorderRadius.circular(LT.radiusLg);
+    // A BoxDecoration with a border radius, not a ShapeDecoration: the
+    // engine draws a rounded-rect shadow on its fast path, while a shape's
+    // shadow is a blurred general path — on every card, every frame.
     return DecoratedBox(
-      decoration: ShapeDecoration(
-        shape: shape,
-        shadows: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.30 : 0.07), blurRadius: 24, offset: Offset(0, 10))],
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        // The rim was once painted twice (decoration and Material both); one
+        // pass at the combined strength, 1 − (1 − a)², keeps its look.
+        border: Border.all(color: borderColor ?? Colors.white.withValues(alpha: LT.dark ? 0.17 : 0.94), width: borderColor == null ? 1 : 1.5),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.30 : 0.07), blurRadius: 24, offset: Offset(0, 10))],
         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [
           Color.alphaBlend(Colors.white.withValues(alpha: LT.dark ? 0.05 : 0.35), LT.surface.withValues(alpha: 0.64)),
           LT.surface.withValues(alpha: 0.64),
@@ -359,21 +371,12 @@ class ShadCard extends StatelessWidget {
       ),
       child: GlassTone(
         tone: tone,
-        child: Material(
-          type: MaterialType.transparency,
-          shape: shape,
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            splashColor: inkOn(LT.surface).splash,
-            highlightColor: inkOn(LT.surface).highlight,
-            child: Padding(
-              padding: padding,
-              child: LT.surface.computeLuminance() < 0.2
-                  ? OnDark(child: DefaultTextStyle.merge(style: TextStyle(color: LT.onDark), child: IconTheme.merge(data: IconThemeData(color: LT.onDarkMuted), child: child)))
-                  : child,
-            ),
-          ),
+        child: _inked(
+          radius,
+          LT.surface,
+          LT.surface.computeLuminance() < 0.2
+              ? OnDark(child: DefaultTextStyle.merge(style: TextStyle(color: LT.onDark), child: IconTheme.merge(data: IconThemeData(color: LT.onDarkMuted), child: child)))
+              : child,
         ),
       ),
     );
@@ -383,32 +386,46 @@ class ShadCard extends StatelessWidget {
         // Black hero cards get a glossy sheen; pale tinted cards stay flat.
         position: DecorationPosition.foreground,
         decoration: color.computeLuminance() < 0.2
-            ? ShapeDecoration(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(LT.radiusLg), side: BorderSide(color: Colors.white.withValues(alpha: 0.10))),
+            ? BoxDecoration(
+                borderRadius: BorderRadius.circular(LT.radiusLg),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
                 gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.center, colors: [Colors.white.withValues(alpha: 0.10), Colors.white.withValues(alpha: 0)]),
               )
             : BoxDecoration(),
         child: _solidMaterial(),
       );
 
-  Widget _solidMaterial() => Material(
+  Widget _solidMaterial() => DecoratedBox(
+        decoration: BoxDecoration(
           color: color,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(LT.radiusLg), side: borderColor == null ? BorderSide.none : BorderSide(color: borderColor!)),
-          clipBehavior: Clip.antiAlias,
+          borderRadius: BorderRadius.circular(LT.radiusLg),
+          border: borderColor == null ? null : Border.all(color: borderColor!),
+        ),
+        // On a black card, anything that does not set its own colour is
+        // light, and badges switch to their light form.
+        child: _inked(
+          BorderRadius.circular(LT.radiusLg),
+          color,
+          color.computeLuminance() < 0.2
+              ? OnDark(child: DefaultTextStyle.merge(style: TextStyle(color: LT.onDark), child: IconTheme.merge(data: IconThemeData(color: LT.onDarkMuted), child: child)))
+              : child,
+        ),
+      );
+
+  /// The tap ripple, kept inside the card's corners by a rounded-rect clip
+  /// (a Material's own clip is a general path).
+  Widget _inked(BorderRadius radius, Color on, Widget content) => ClipRRect(
+        borderRadius: radius,
+        child: Material(
+          type: MaterialType.transparency,
           child: InkWell(
             onTap: onTap,
-            splashColor: inkOn(color).splash,
-            highlightColor: inkOn(color).highlight,
-            child: Padding(
-              padding: padding,
-              // On a black card, anything that does not set its own colour is
-              // light, and badges switch to their light form.
-              child: color.computeLuminance() < 0.2
-                  ? OnDark(child: DefaultTextStyle.merge(style: TextStyle(color: LT.onDark), child: IconTheme.merge(data: IconThemeData(color: LT.onDarkMuted), child: child)))
-                  : child,
-            ),
+            splashColor: inkOn(on).splash,
+            highlightColor: inkOn(on).highlight,
+            child: Padding(padding: padding, child: content),
           ),
-        );
+        ),
+      );
 }
 
 /// Sinks a little under the finger, so a tap is felt before anything opens.
@@ -445,17 +462,27 @@ class _PressableState extends State<Pressable> {
       child = Stack(fit: StackFit.passthrough, alignment: Alignment.center, children: [
         child,
         Positioned.fill(
-          child: IgnorePointer(
-            child: ClipPath(
-              clipper: ShapeBorderClipper(shape: shape),
-              child: AnimatedOpacity(
-                opacity: _down && _at != null ? 1 : 0,
-                duration: Duration(milliseconds: _down ? 90 : 260),
-                curve: Curves.easeOut,
-                child: _at == null ? SizedBox.shrink() : CustomPaint(painter: _TouchGlow(_at!, widget.glow ?? Colors.white)),
-              ),
-            ),
-          ),
+          // The clip and glow exist only while a finger is down and for the
+          // fade after: idle, every card and button would pay for a clip
+          // each frame for nothing.
+          child: _at == null
+              ? SizedBox.shrink()
+              : IgnorePointer(
+                  child: _clip(
+                    shape,
+                    // Begins at 0 when the layer first appears, so a press still fades in.
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: _down ? 1 : 0),
+                      duration: Duration(milliseconds: _down ? 90 : 260),
+                      curve: Curves.easeOut,
+                      onEnd: () {
+                        if (!_down && mounted) setState(() => _at = null);
+                      },
+                      child: CustomPaint(painter: _TouchGlow(_at!, widget.glow ?? Colors.white)),
+                      builder: (context, o, glow) => Opacity(opacity: o, child: glow),
+                    ),
+                  ),
+                ),
         ),
       ]);
     }
@@ -475,6 +502,14 @@ class _PressableState extends State<Pressable> {
     );
   }
 }
+
+/// Rounded rectangles and stadiums clip as a rounded rect, which is far
+/// cheaper to draw than a general path; anything else falls back to a path.
+Widget _clip(ShapeBorder shape, Widget child) => switch (shape) {
+      RoundedRectangleBorder(:final BorderRadius borderRadius) => ClipRRect(borderRadius: borderRadius, child: child),
+      StadiumBorder() => ClipRRect(borderRadius: BorderRadius.circular(999), child: child),
+      _ => ClipPath(clipper: ShapeBorderClipper(shape: shape), child: child),
+    };
 
 class _TouchGlow extends CustomPainter {
   _TouchGlow(this.at, this.color);
@@ -515,6 +550,10 @@ class Appear extends StatelessWidget {
     if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return child;
     // Inside a [Stagger] the list item already rises in; once is enough.
     if (delay == Duration.zero && context.dependOnInheritedWidgetOfExactType<_Staggered>() != null) return child;
+    // Built because the list scrolled it into view, not because the page
+    // opened: show it at once (a fade here is a layer mid-scroll).
+    final scroll = Scrollable.maybeOf(context)?.position;
+    if (scroll != null && scroll.hasPixels && scroll.pixels > 0) return child;
     final total = delay + Duration(milliseconds: 280);
     final start = delay.inMilliseconds / total.inMilliseconds;
     return TweenAnimationBuilder<double>(
@@ -530,14 +569,17 @@ class Appear extends StatelessWidget {
   }
 }
 
-/// A list item that rises in a beat after the one above it (30 ms apart,
-/// the first six only), so a page arrives as a cascade rather than at once.
+/// A list item that rises in a beat after the one above it (30 ms apart),
+/// so a page arrives as a cascade rather than at once. Only the first six —
+/// the ones on screen when the page opens: a lazy list builds the rest as
+/// they scroll in, and a fade there costs frames mid-scroll for nothing.
 class Stagger extends StatelessWidget {
   const Stagger({super.key, required this.index, required this.child});
   final int index;
   final Widget child;
   @override
-  Widget build(BuildContext context) => Appear(delay: Duration(milliseconds: 30 * (index < 6 ? index : 6)), child: _Staggered(child: child));
+  Widget build(BuildContext context) =>
+      index < 6 ? Appear(delay: Duration(milliseconds: 30 * index), child: _Staggered(child: child)) : _Staggered(child: child);
 }
 
 /// The shape of a page while it loads: a title and a few cards drawn as
@@ -1059,15 +1101,17 @@ class Glass extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ShapeBorder shape = radius == null ? StadiumBorder() : RoundedRectangleBorder(borderRadius: radius!);
     final rim = lightText ? Colors.white.withValues(alpha: 0.16) : Colors.white.withValues(alpha: LT.dark ? 0.10 : 0.55);
-    return ClipPath(
-      clipper: ShapeBorderClipper(shape: shape),
-      child: BackdropFilter(
+    // A rounded-rect clip (a stadium is one with a huge radius), not a path:
+    // the glass is redrawn every frame anything scrolls beneath it.
+    return ClipRRect(
+      borderRadius: radius ?? BorderRadius.circular(999),
+      child: BackdropFilter.grouped(
         filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
         child: DecoratedBox(
-          decoration: ShapeDecoration(
-            shape: radius == null ? StadiumBorder(side: BorderSide(color: rim)) : RoundedRectangleBorder(borderRadius: radius!, side: BorderSide(color: rim)),
+          decoration: BoxDecoration(
+            borderRadius: radius ?? BorderRadius.circular(999),
+            border: Border.all(color: rim),
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -1112,7 +1156,7 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   static Widget _pill(Widget child, {bool circle = false, EdgeInsets padding = EdgeInsets.zero}) => DecoratedBox(
-        decoration: ShapeDecoration(shape: StadiumBorder(), shadows: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.35 : 0.10), blurRadius: 18, offset: Offset(0, 6))]),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.35 : 0.10), blurRadius: 18, offset: Offset(0, 6))]),
         child: Glass(tint: LT.ground, opacity: 0.72, padding: padding, child: circle ? SizedBox.square(dimension: 44, child: Center(child: child)) : child),
       );
 
@@ -1377,7 +1421,7 @@ class Viewfinder extends StatelessWidget {
                 tone: Color.alphaBlend(Colors.black.withValues(alpha: 0.65), Colors.white),
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                  decoration: ShapeDecoration(shape: StadiumBorder(), color: Colors.black.withValues(alpha: 0.65)),
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: Colors.black.withValues(alpha: 0.65)),
                   child: Text(caption, textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.body, fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white)),
                 ),
               ),

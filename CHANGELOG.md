@@ -21,6 +21,27 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.42.2 (14 Oct 2026)
+- **Smoother scrolling and tab switches.** The phone's renderer redraws every card each frame, so the
+  per-frame cost of the shared widgets came down, with the look unchanged (screens compared pixel by
+  pixel): the glass bars share one background blur and clip as rounded rectangles; cards and buttons
+  draw their shadows, borders and tap ripple as rounded rectangles (the engine's fast path) instead
+  of general shapes; the touch glow's clip exists only while a finger is down; list items fade in only
+  when a page opens, not as they scroll into view; a tab switch draws only the incoming tab; profile
+  photos are decoded at the size they are shown.
+- Fixed more text overflow the narrow-screen test now catches (it could not see rows that were still
+  fading in): dose pills, month headers, test results, the family overview's "Open now".
+- Frame timing on a real phone: `integration_test/scroll_perf_test.dart` with
+  `test_driver/perf_driver.dart` (`flutter drive --profile`); profile builds now carry the release
+  key so they install over the demo copy without wiping it.
+
+### 1.42.1 (14 Oct 2026)
+- **Fixed: text running out of its box on narrow screens** (phones at a large Display size, or at
+  large Font size): the tab names now stay inside the caramel pill; a vaccine's date sits under its
+  name instead of beside it; prescription rows and the Emergency ID's blood type shrink or wrap to
+  fit. A new test (`narrow_screen_test.dart`) lays out every main tab and 18 screens at 320, 360 and
+  411 wide, each at 1×, 1.3× and 2× text, and fails on any overflow or tab name outside its pill.
+
 ### 1.42.0 (12 Oct 2026)
 - **LifeTrack IDs for the sample family**: in a demonstration build the sample people ask for their
   IDs marked as samples; the server accepts that only in practice mode (`--allow-sample-ids`, passed

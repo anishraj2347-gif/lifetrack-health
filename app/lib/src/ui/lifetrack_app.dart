@@ -98,7 +98,9 @@ class _LifeTrackAppState extends State<LifeTrackApp> with WidgetsBindingObserver
         theme: LT.theme(),
         home: home,
         // Captured by crossfadeTheme when light/dark changes.
-        builder: (context, child) => RepaintBoundary(key: themeSnapshotKey, child: child),
+        // Every glass bar on screen shares one backdrop read instead of each
+        // copying and blurring what is behind it on every frame.
+        builder: (context, child) => RepaintBoundary(key: themeSnapshotKey, child: BackdropGroup(child: child!)),
       );
 }
 
@@ -205,6 +207,9 @@ class _HomeShellState extends State<HomeShell> {
           child: AnimatedSwitcher(
             duration: Duration(milliseconds: 220),
             switchInCurve: Curves.easeOutCubic,
+            // Only the incoming tab is drawn: fading the outgoing one out
+            // under it painted two whole pages off-screen for the switch.
+            layoutBuilder: (current, previous) => current ?? SizedBox.shrink(),
             transitionBuilder: (child, a) => FadeTransition(
               opacity: a,
               child: SlideTransition(position: Tween(begin: Offset(0, 0.02), end: Offset.zero).animate(a), child: child),
@@ -263,7 +268,9 @@ class _HomeShellState extends State<HomeShell> {
                 shape: StadiumBorder(),
                 child: Container(
                   constraints: BoxConstraints(minHeight: 56),
-                  padding: EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+                  // The pill is inset 3 from the tab's edges; 4 more of air keeps
+                  // the shrunk label inside it on a narrow screen or at large text.
+                  padding: EdgeInsets.symmetric(horizontal: 7, vertical: 6),
                   child: Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
                     Transform.scale(
                       scale: 1 + 0.12 * on,
@@ -287,7 +294,7 @@ class _HomeShellState extends State<HomeShell> {
       );
 
   Widget _tabBar() => DecoratedBox(
-        decoration: ShapeDecoration(shape: StadiumBorder(), shadows: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 24, offset: Offset(0, 8))]),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 24, offset: Offset(0, 8))]),
         child: Glass(
           tint: LT.primary,
           opacity: 0.80,
@@ -313,10 +320,10 @@ class _HomeShellState extends State<HomeShell> {
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                       child: DecoratedBox(
-                      decoration: ShapeDecoration(
-                        shape: StadiumBorder(),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(999),
                         gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [LT.accent, Color.alphaBlend(Colors.black.withValues(alpha: 0.14), LT.accent)]),
-                        shadows: [BoxShadow(color: LT.accent.withValues(alpha: 0.30), blurRadius: 10)],
+                        boxShadow: [BoxShadow(color: LT.accent.withValues(alpha: 0.30), blurRadius: 10)],
                       ),
                     ),
                     ),
@@ -341,7 +348,7 @@ class _TopBar extends StatelessWidget {
   const _TopBar();
 
   static Widget pill(Widget child, {EdgeInsets padding = EdgeInsets.zero}) => DecoratedBox(
-        decoration: ShapeDecoration(shape: StadiumBorder(), shadows: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.35 : 0.10), blurRadius: 20, offset: Offset(0, 6))]),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: LT.dark ? 0.35 : 0.10), blurRadius: 20, offset: Offset(0, 6))]),
         child: Glass(tint: LT.ground, opacity: 0.72, padding: padding, child: child),
       );
 

@@ -59,6 +59,11 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
+        // Profile builds (frame timing on the phone) carry the same key, so they
+        // install over the release copy without wiping its records.
+        getByName("profile") {
+            signingConfig = signingConfigs.findByName("release")
+        }
     }
 }
 

@@ -144,10 +144,14 @@ class _RecordScreenState extends State<RecordScreen> {
                       decoration: BoxDecoration(
                         border: i == r.results.length - 1 ? null : Border(bottom: BorderSide(color: LT.rule)),
                       ),
+                      // Both natural width when they fit; each wraps within half
+                      // the row only when together they do not.
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(child: Text(analyteName(res.analyte), style: LT.label.copyWith(fontSize: 15))),
-                          Text('${_fmt(res.value)} ${res.unit}', style: LT.data),
+                          Flexible(child: Text(analyteName(res.analyte), style: LT.label.copyWith(fontSize: 15))),
+                          SizedBox(width: 8),
+                          Flexible(child: Text('${_fmt(res.value)} ${res.unit}', style: LT.data, textAlign: TextAlign.right)),
                         ],
                       ),
                     ),
