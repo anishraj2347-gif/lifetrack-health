@@ -216,8 +216,13 @@ copy predate the claim fixes; the app's wording is authoritative).
   the home-Wi-Fi server (`scripts/run_server_lan.sh`, which must be running; the laptop's address is
   built in, so rebuild if it changes) with demo tools off; `LT_SERVER=usb` / `LT_DEMO_TOOLS=true`
   for the old cable-and-demo build.
-- The laptop is the live server (12 Oct 2026): `scripts/install_laptop_server.sh` (login services
-  for server, doctor app on localhost:8080, nightly data copy). Real DigiLocker turns on when
+- The server runs on the laptop, **started by hand** (17 Oct 2026): the always-on login services
+  (server, doctor app on localhost:8080, nightly data copy) were removed with
+  `scripts/uninstall_laptop_server.sh`; server/data and ~/LifeTrack-server-backups were kept. Start
+  `scripts/run_server_lan.sh` when the phone needs Share, Backup, LifeTrack IDs or a new profile;
+  `scripts/install_laptop_server.sh` puts the services back. The phone's hotspot gives the laptop a
+  new address from time to time, so check `scripts/lan_ip.sh` before a demo and rebuild the APK if
+  it changed. Real DigiLocker turns on when
   `server/data/digilocker.json` has the partner keys (`server/lib/digilocker_api.dart`); never
   commit that file (server/data is ignored).
 - `integration/` runs both apps' real code against the real server handler (`flutter test` there):
@@ -233,7 +238,8 @@ copy predate the claim fixes; the app's wording is authoritative).
   fills and pale badges. QR codes are always black on white. `contrast_test.dart` (both apps,
   both modes) must pass — it walks every visible text to the solid colour behind it (WCAG AA).
 
-### Project state (29 Sep 2026)
+### Project state (17 Oct 2026)
 
-`flutter analyze` clean; `flutter test` 94 passing, 0 failing; release APK builds unsigned
-(51 MB fat APK = 3 ABIs × ~17 MB). Not yet through the review chain.
+Patient 1.42.2, doctor 1.8.0. Patient app: `flutter analyze` clean; `flutter test` 318 passing,
+2 skipped, 0 failing; signed release APK 111.6 MB (fat, 3 ABIs), installed on the phone.
+Not yet through the review chain.
