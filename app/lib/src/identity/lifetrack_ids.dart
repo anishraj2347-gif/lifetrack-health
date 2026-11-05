@@ -209,6 +209,12 @@ class LifeTrackIds {
           if ((e.value as Map)['erasing'] != true) e.key: {'id': (e.value as Map)['id'], 'token': (e.value as Map)['token']},
       };
 
+  /// Drops IDs that came from a backup and were never pointed at this phone.
+  Future<void> forgetImported() async {
+    _ids.removeWhere((_, e) => (e as Map)['registered'] != true);
+    await _save();
+  }
+
   /// From a backup: kept unregistered until [ensure] points them at this
   /// phone's mailboxes.
   Future<void> import(Map<String, Object?> m) async {

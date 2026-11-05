@@ -169,7 +169,9 @@ class AppServices {
   String? lifeTrackIdOf(String patientId) => ids?.idOf(patientId);
 
   /// Registers an ID for every profile that has none. Best effort.
-  Future<void> assignLifeTrackIds() async => ids?.ensureAll([for (final p in familyOnPhone()) p.id]);
+  Future<void> assignLifeTrackIds() async {
+    if (!restoreInterrupted) await ids?.ensureAll([for (final p in familyOnPhone()) p.id]);
+  }
 
   Future<List<PendingRequest>> pendingRequests() async =>
       requests == null || currentPatientId == null ? const [] : requests!.pending(currentPatientId!, clock());
@@ -251,8 +253,12 @@ class AppServices {
     services.backupProblem.value = services.lastBackupError;
     services._backgroundDelay = backgroundDelay;
     consent.evictFinished(now());
-    await services._settleOwner();
-    await services._adoptCardAllergies();
+    // A restore that did not finish holds part of a family: nothing may read
+    // it as a real one until the retry or a new profile clears it.
+    if (!services.restoreInterrupted) {
+      await services._settleOwner();
+      await services._adoptCardAllergies();
+    }
     await services._loadPhotos();
     unawaited(services.refreshReminders());
     if (share != null && share.isComplete) {
@@ -927,6 +933,10 @@ class AppServices {
   Future<Patient> createProfile({required String name, required DateTime dob, required Sex sex, bool demo = false, IdentityAttestation? verification, bool moveExistingId = false}) async {
     if (identityRequired && !demo && verification == null) throw const CustodyRefused('Verify with DigiLocker (Aadhaar) to create a profile.');
     if (verification != null && verification.method != IdentityMethod.aadhaarDigiLocker) throw const CustodyRefused('Your own profile is verified with your Aadhaar.');
+    if (restoreInterrupted) {
+      await _clearPartialRestore();
+      await _saveSettings();
+    }
     final id = 'p-${_randomId()}';
     final base = demo ? DemoData.patient(id) : Patient(id: id, name: name, dateOfBirth: dob, sex: sex);
     final patient = verification == null ? base : base.withVerification(verification);
@@ -1715,11 +1725,51 @@ class AppServices {
     await audit.append(AuditEntry(at: clock(), actorId: 'patient:$selfPatientId', patientId: selfPatientId ?? '', action: AuditAction.erasure, detail: 'backup deleted from the server'));
   }
 
+  /// True when a restore started and did not finish: the app was killed or
+  /// the phone ran out of room partway. Records are on the phone but no
+  /// profile is, so the welcome screen shows and a retry must be allowed.
+  /// (The second half catches a phone left that way by an older version,
+  /// which wrote no marker.)
+  bool get restoreInterrupted => settings['restoring'] != null || (repository.patients.isNotEmpty && currentPatientId == null);
+
+  /// The account code of the restore that did not finish, to offer it again.
+  String? get interruptedRestoreAccount => settings['restoring'] as String?;
+
+  /// Removes everything a restore that did not finish left behind. Nothing
+  /// else can be here: a restore only ever starts on an empty phone.
+  Future<void> _clearPartialRestore() async {
+    for (final p in [...repository.patients]) {
+      await repository.eraseFor(p.id);
+      await emergency.erase(p.id);
+    }
+    await attachments.eraseAll();
+    _photos.clear();
+    _custom = {};
+    await sealed.write(_customBlob, _custom);
+    _vaccines = {};
+    await sealed.write(_vaccinesBlob, _vaccines);
+    await ids?.forgetImported();
+    _backup = {};
+    await _saveBackup();
+    settings
+      ..remove('selfPatientId')
+      ..remove('currentPatientId')
+      ..remove('restoring');
+  }
+
   /// On a phone with no profile yet: brings back every profile, record,
   /// original and Emergency ID, and keeps backing up to the same account.
   /// Give either [password] or two [codes].
+  ///
+  /// Safe to run again after any interruption. The marker goes on disk before
+  /// the first record, and the one write that names the owner and clears it
+  /// comes last: that write is atomic, so the phone holds either a finished
+  /// restore or one that says it did not finish. A retry clears what is there
+  /// and starts over, and only once the backup has opened, so a mistyped
+  /// password loses nothing.
   Future<int> restoreFromBackup({required String account, String? password, List<String>? codes}) async {
-    if (repository.patients.isNotEmpty) throw const CustodyRefused('Restore works only on a phone with no profile yet.');
+    if (repository.patients.isNotEmpty && !restoreInterrupted) throw const CustodyRefused('Restore works only on a phone with no profile yet.');
+    await _quiesce();
     final acct = normaliseAccount(account);
     final at = clock();
     final VaultRestore got;
@@ -1729,6 +1779,9 @@ class AppServices {
       got = await vault.restoreWithShares(account: acct, shares: [for (final c in codes!) Share.decode(c)], auditPatientId: 'restore', at: at);
     }
     final b = got.body;
+    if (restoreInterrupted) await _clearPartialRestore();
+    settings['restoring'] = acct;
+    await _saveSettings();
     for (final p in (b['patients']! as List).cast<Map>()) {
       await repository.savePatient(Patient.fromJson(p.cast()));
     }
@@ -1766,9 +1819,6 @@ class AppServices {
       await ids!.import((b['lifetrackIds']! as Map).cast());
     }
     final self = b['selfPatientId'] as String? ?? repository.patients.first.id;
-    settings['selfPatientId'] = self;
-    settings['currentPatientId'] = self;
-    await _saveSettings();
     _backup = {
       'account': acct,
       'keys': got.keys.toJson(),
@@ -1776,8 +1826,6 @@ class AppServices {
       'at': at.toIso8601String(),
     };
     await _saveBackup();
-    await assignLifeTrackIds(); // the same IDs now point at this phone
-    await refreshReminders();
     await audit.append(AuditEntry(
       at: at,
       actorId: Actors.patient(self),
@@ -1785,6 +1833,13 @@ class AppServices {
       action: AuditAction.vaultRestore,
       detail: '${records.length} records restored to this phone from backup $acct via ${password != null ? 'password' : 'recovery codes'}',
     ));
+    // The completion mark: from this write on, the phone is a finished restore.
+    settings['selfPatientId'] = self;
+    settings['currentPatientId'] = self;
+    settings.remove('restoring');
+    await _saveSettings();
+    await assignLifeTrackIds(); // the same IDs now point at this phone
+    await refreshReminders();
     return records.length;
   }
 

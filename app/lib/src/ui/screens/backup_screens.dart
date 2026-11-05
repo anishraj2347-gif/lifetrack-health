@@ -278,6 +278,13 @@ class _RestoreScreenState extends State<RestoreScreen> {
   bool _busy = false;
   String? _error;
 
+  /// A restore that did not finish offers its own account code again.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_account.text.isEmpty) _account.text = AppScope.of(context).interruptedRestoreAccount ?? '';
+  }
+
   Future<void> _restore() async {
     setState(() {
       _busy = true;
@@ -318,6 +325,7 @@ class _RestoreScreenState extends State<RestoreScreen> {
       body: ListView(children: [
         Masthead(eyebrow: 'Restore', title: 'Bring back your records', description: 'Use the recovery sheet you saved when you turned on backup.'),
         SizedBox(height: 14),
+        if (AppScope.of(context).restoreInterrupted) Note('The last restore did not finish. Nothing is lost: your backup is unchanged. Enter your details to run it again.', icon: LucideIcons.refreshCw),
         LabeledField(
           label: 'Account code',
           child: TextField(controller: _account, textCapitalization: TextCapitalization.characters, autocorrect: false, decoration: InputDecoration(hintText: 'e.g. LT-7KQM2-XPA9D'), onChanged: (_) => setState(() {})),

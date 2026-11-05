@@ -54,6 +54,14 @@ class AttachmentStore {
     return Uint8List.fromList(plain);
   }
 
+  /// Every page on this phone. Only for clearing a restore that did not
+  /// finish, when pages may exist that no record names yet.
+  Future<void> eraseAll() async {
+    for (final n in await bytes.names()) {
+      if (n.startsWith('att_')) await bytes.delete(n);
+    }
+  }
+
   Future<void> delete(String id) async {
     final n = await pageCount(id);
     for (var i = 0; i < n; i++) {

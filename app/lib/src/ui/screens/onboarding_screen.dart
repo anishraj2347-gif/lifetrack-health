@@ -137,6 +137,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         SizedBox(height: 28),
         SlabButton('Get started', icon: LucideIcons.arrowRight, iconAfter: true, onPressed: () => setState(() => _welcome = false)),
         if (AppScope.of(context).backupEnabled) ...[SizedBox(height: 10), _restoreButton()],
+        if (AppScope.of(context).restoreInterrupted) ...[
+          SizedBox(height: 10),
+          Text('Your last restore did not finish. Tap restore to run it again.', textAlign: TextAlign.center, style: TextStyle(fontFamily: LT.body, fontSize: 14, height: 1.4, color: LT.onNightMuted)),
+        ],
         if (AppScope.of(context).demoTools) ...[SizedBox(height: 6), _sampleButton()],
       ]);
 

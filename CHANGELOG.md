@@ -53,6 +53,12 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.47.1 (6 Nov 2026)
+- **Fixed: a restore killed partway left the phone stuck.** The welcome screen came back and restore was refused for
+  ever. A marker now goes on disk before the first record and the owner is written last, so a retry clears what is
+  there and starts over; a wrong password loses nothing, and starting a new profile instead leaves nothing behind.
+  The welcome screen offers the retry with the account code filled in. Phones already stuck this way can retry too.
+
 ### 1.47.0 (6 Nov 2026)
 - **No more dead end with a LifeTrack ID.** Someone who reinstalled without a backup, or erased offline, used to get
   "already has a profile" for ever. After a fresh DigiLocker check the app now offers to move their ID to this phone.
