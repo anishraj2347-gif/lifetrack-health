@@ -14,6 +14,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 # The first Python that runs ("python3" on Windows can be the Microsoft Store stub).
 PYTHON=$(for p in python3 python; do "$p" -c 'import sys' >/dev/null 2>&1 && { echo "$p"; break; }; done)
+# Nothing goes on a phone that does not pass. Runs first: the build below
+# changes a file these tests read.
+(cd ../app && flutter analyze && flutter test)
 SERVER="${LT_SERVER:-lan}"
 PORT="${LT_PORT:-8787}"
 CONFIG=../app/android/app/src/main/res/xml/network_security_config.xml

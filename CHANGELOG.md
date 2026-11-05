@@ -6,6 +6,11 @@ always goes up (Android refuses to install a lower one).
 
 ## Server and laptop
 
+### 6 Nov 2026 (build checks)
+- **`scripts/check_all.sh`** runs analyze and tests across all five packages, carries on past a failure so one run
+  shows everything, and exits non-zero if anything failed. No server, no network.
+- **`scripts/build_apk.sh` runs the app's analyze and tests first**, and stops if they fail.
+
 ### 6 Nov 2026 (LifeTrack ID recovery)
 - **`POST /v1/ids/reclaim`**: a registry-signed identity check moves that person's own ID to a new mailbox, key and
   token. The ID is found from the check, never from the request. The check must be at most 15 minutes old and newer
@@ -52,6 +57,9 @@ always goes up (Android refuses to install a lower one).
   service; the birth-certificate XML fields must be checked with the first real certificate.
 
 ## Patient app
+
+### 1.48.1 (6 Nov 2026)
+- No change in the app: the release build now runs the app's analysis and tests first (see Server and laptop).
 
 ### 1.48.0 (6 Nov 2026)
 - **A typed medicine can be weekly.** The form has "Something else · weekly or other", as the scan form does: the dose
