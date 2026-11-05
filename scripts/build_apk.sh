@@ -12,6 +12,8 @@
 #   opens on a phone with no screen lock). Off by default.
 set -euo pipefail
 cd "$(dirname "$0")"
+# The first Python that runs ("python3" on Windows can be the Microsoft Store stub).
+PYTHON=$(for p in python3 python; do "$p" -c 'import sys' >/dev/null 2>&1 && { echo "$p"; break; }; done)
 SERVER="${LT_SERVER:-lan}"
 PORT="${LT_PORT:-8787}"
 CONFIG=../app/android/app/src/main/res/xml/network_security_config.xml
@@ -22,7 +24,7 @@ if [ "$SERVER" = lan ]; then
   SAVED=$(mktemp)
   cp "$CONFIG" "$SAVED"
   trap 'mv "$SAVED" "$CONFIG"' EXIT
-  python3 - "$CONFIG" "$IP" <<'PY'
+  "$PYTHON" - "$CONFIG" "$IP" <<'PY'
 import sys
 path, ip = sys.argv[1], sys.argv[2]
 s = open(path).read()
@@ -39,6 +41,6 @@ cd ../app
 flutter build apk --release \
   --obfuscate --split-debug-info=build/symbols \
   --dart-define=LT_RELAY_URL="$RELAY" \
-  --dart-define=LT_REGISTRY_KEY="${LT_REGISTRY_KEY:-88IHsgHh2NSLizhkZN8Zh6SuPax8oyRJmogFFJTu5LA=}" \
+  --dart-define=LT_REGISTRY_KEY="${LT_REGISTRY_KEY:-7alggUwtz2EV9lTXuDg/Ba7PkXfd9lBNivwFe0gW4/s=}" \
   --dart-define=LT_IDENTITY="${LT_IDENTITY:-required}" \
   --dart-define=LT_DEMO_TOOLS="${LT_DEMO_TOOLS:-false}"

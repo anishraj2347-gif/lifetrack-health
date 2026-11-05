@@ -238,8 +238,24 @@ copy predate the claim fixes; the app's wording is authoritative).
   fills and pale badges. QR codes are always black on white. `contrast_test.dart` (both apps,
   both modes) must pass — it walks every visible text to the solid colour behind it (WCAG AA).
 
-### Project state (17 Oct 2026)
+### Server machine (2 Nov 2026)
 
-Patient 1.42.2, doctor 1.8.0. Patient app: `flutter analyze` clean; `flutter test` 318 passing,
-2 skipped, 0 failing; signed release APK 111.6 MB (fat, 3 ABIs), installed on the phone.
-Not yet through the review chain.
+The **Windows PC** (Git Bash) is the server now, not the Mac: `scripts/run_server_lan.sh`, Wi-Fi
+address from `scripts/lan_ip.sh`. Its `server/data` was created fresh, so the registry key the
+apps pin is `7alggUwtz2EV9lTXuDg/Ba7PkXfd9lBNivwFe0gW4/s=` (the default in `build_apk.sh`). The
+release keystore is `app/android/lifetrack-release.jks` with `key.properties` (gitignored, ACL'd to
+the owner) — back it up off this PC; losing it means no update can install over a build signed
+with it. Windows ignores `chmod`: restrict new secret files with `icacls`.
+
+### Project state (2 Nov 2026)
+
+Patient 1.42.3, doctor 1.8.1. All five packages: analysis clean; 400 tests passing (app 319,
+doctor 20, server 47, protocol 8, integration 6), 1 skipped. Third security review done (server,
+consent, sharing, vault) and its fixes landed. Frame timing measured on the Galaxy S25
+(`docs/testing/results/`); the frame-timing test runs unattended with `flutter drive --profile
+--no-dds` (it sets up the sample family and taps Unlock; answer the fingerprint prompt by hand).
+When either app's version changes, bump `pubspec.yaml` **and** `app_version.dart` (a test checks
+they match). The LifeTrack Clinic app on the phone (1.8.0, debug-signed from the Mac) reaches the
+server over USB: run `adb reverse tcp:8787 tcp:8787` after every reconnect. Still to do: timing on
+more phones, the remaining manual checks, the usability check, OCR on real reports
+(`docs/testing/Field_Test_Kit.md`).

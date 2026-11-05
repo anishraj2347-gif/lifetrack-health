@@ -316,6 +316,7 @@ class _EnrolScreenState extends State<EnrolScreen> {
             'Your registration is checked with your medical council before you can see any patient record. This browser makes its own keys; only their public halves are sent.',
             style: DT.muted,
           ),
+          if (widget.session.note case final note?) ...[SizedBox(height: 12), Text(note, style: DT.body)],
           SizedBox(height: 20),
           Field('Full name', _name, hint: 'Dr. R. Mehta'),
           Field('Speciality', _spec, hint: 'Cardiology'),

@@ -108,6 +108,26 @@ void main() {
     expect((await reg({...a, 'name': 'Someone Else'})).statusCode, 400, reason: 'altered attestation');
   });
 
+  test('one person, one LifeTrack ID, even when two registrations arrive at once', () async {
+    final a = ((await verify('ramesh'))['attestation']! as Map).cast<String, Object?>();
+    final key = base64Encode(List.filled(32, 5));
+    final id = LifeTrackId.generate();
+    Future<Response> reg(String id, String mailbox) => call('POST', '/v1/ids', body: {'id': id, 'mailbox': mailbox, 'key': key, 'tokenHash': 'f' * 64, 'attestation': a});
+    // Both pass the "already has an ID?" check before either is stored.
+    final same = await Future.wait([reg(LifeTrackId.generate(), 'p-${'a' * 64}'), reg(LifeTrackId.generate(), 'p-${'b' * 64}')]);
+    expect([for (final r in same) r.statusCode]..sort(), [201, 409]);
+    // Nor can a second registration of the same number replace the first.
+    final b = ((await verify('vikram'))['attestation']! as Map).cast<String, Object?>();
+    final c = ((await verify('anjali'))['attestation']! as Map).cast<String, Object?>();
+    final race = await Future.wait([
+      call('POST', '/v1/ids', body: {'id': id, 'mailbox': 'p-${'c' * 64}', 'key': key, 'tokenHash': 'f' * 64, 'attestation': b}),
+      call('POST', '/v1/ids', body: {'id': id, 'mailbox': 'p-${'d' * 64}', 'key': key, 'tokenHash': 'f' * 64, 'attestation': c}),
+    ]);
+    expect([for (final r in race) r.statusCode]..sort(), [201, 409]);
+    final winner = race.indexWhere((r) => r.statusCode == 201);
+    expect((await json(await call('GET', '/v1/ids/$id')))['mailbox'], 'p-${(winner == 0 ? 'c' : 'd') * 64}');
+  });
+
   test('the result goes only to whoever has the code from the browser that signed in', () async {
     // Someone starts a check and sends its link to another person…
     final start = await json(await call('POST', '/v1/verify/start', body: {'purpose': 'self'}));

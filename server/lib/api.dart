@@ -201,7 +201,12 @@ class LifeTrackApi {
   Future<Response> _adminReject(Request req, String reg) async {
     if (!_isAdmin(req)) return _error(401, 'Admin token required.');
     final b = await _readJson(req) ?? const {};
-    final reason = b['reason'] is String ? _bounded(b['reason'], max: 500) : 'Licence could not be verified.';
+    final String reason;
+    try {
+      reason = b['reason'] is String ? _bounded(b['reason'], max: 500) : 'Licence could not be verified.';
+    } on ArgumentError catch (e) {
+      return _error(400, '${e.message}');
+    }
     try {
       await registry.reject(reg.toUpperCase(), reason);
     } on StateError catch (e) {
@@ -235,7 +240,16 @@ class LifeTrackApi {
     final raw = await readCapped(req, maxShare);
     if (raw == null || raw.isEmpty) return _error(413, 'Share too large.');
     try {
-      relay.put(mailbox, grantId, RelayItem(envelope: Uint8List.fromList(raw), expiresAt: exp, withdrawHash: req.headers[RelayApi.hWithdrawHash]));
+      relay.put(
+        mailbox,
+        grantId,
+        RelayItem(
+          envelope: Uint8List.fromList(raw),
+          expiresAt: exp,
+          withdrawHash: req.headers[RelayApi.hWithdrawHash],
+          sender: clientOf(req, trustProxy: trustProxy),
+        ),
+      );
     } on RelayFull catch (e) {
       return _error(507, e.message);
     }
@@ -436,6 +450,13 @@ class LifeTrackApi {
       return _error(400, 'A verified identity is needed for a LifeTrack ID.');
     }
     final sample = subject == null && b['sample'] == true && allowSampleIds;
+    // Checked again after the awaits above: another registration may have
+    // taken this number, or this person, meanwhile. Nothing awaits between
+    // here and `put` storing the entry.
+    if (ids.contains(id)) return _error(409, 'That ID is taken.');
+    if (subject != null && ids.bySubject(subject) != null) {
+      return _json({'error': 'This person already has a LifeTrack ID. Restore it from backup instead of making a new one.', 'reason': 'person_exists'}, status: 409);
+    }
     await ids.put(id, {'mailbox': b['mailbox'], 'key': b['key'], 'tokenHash': tokenHash, 'subject': ?subject, if (sample) 'sample': true, 'createdAt': clock().toIso8601String()});
     return _json({'id': id}, status: 201);
   }

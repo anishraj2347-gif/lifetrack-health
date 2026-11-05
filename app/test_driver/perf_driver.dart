@@ -1,12 +1,15 @@
-import 'package:flutter_driver/flutter_driver.dart' as driver;
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:integration_test/integration_test_driver.dart';
 
-/// Writes each traced action's frame summary to `build/<name>.timeline_summary.json`.
+/// Writes each measured action's frame summary to
+/// `build/<name>.frame_summary.json` (from `watchPerformance`).
 Future<void> main() => integrationDriver(
       responseDataCallback: (data) async {
+        await Directory('build').create(recursive: true);
         for (final e in (data ?? {}).entries) {
-          final timeline = driver.Timeline.fromJson(e.value as Map<String, dynamic>);
-          await driver.TimelineSummary.summarize(timeline).writeTimelineToFile(e.key, pretty: true, includeSummary: true);
+          await File('build/${e.key}.frame_summary.json').writeAsString(const JsonEncoder.withIndent('  ').convert(e.value));
         }
       },
     );

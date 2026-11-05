@@ -325,6 +325,26 @@ void main() {
       expect([await put('a'), await put('b'), await put('c')], [201, 201, 507]);
     });
 
+    test('one sender cannot fill a mailbox or the relay for everyone else', () async {
+      final store = RelayStore(maxItemsPerSenderPerMailbox: 2, maxBytesPerSender: 10);
+      final api = await fresh(relayStore: store, trustProxy: true);
+      Future<int> put(String from, String mailbox, String g, int size) async => (await api(Request('PUT', Uri.parse('http://localhost/v1/relay/$mailbox/$g'),
+              body: Uint8List(size), headers: {...expires(), 'x-forwarded-for': from})))
+          .statusCode;
+      final box = 'd-${'a' * 16}';
+      // One mailbox: a sender's own items are capped; others still get in.
+      expect([await put('10.0.0.9', box, 'a', 1), await put('10.0.0.9', box, 'b', 1), await put('10.0.0.9', box, 'c', 1)], [201, 201, 507]);
+      expect(await put('10.0.0.2', box, 'd', 1), 201);
+      // The whole relay: a sender's bytes are capped across every mailbox.
+      // 10.0.0.9 has 2 bytes waiting: 9 more would pass the 10-byte cap, 8 fits it.
+      expect(await put('10.0.0.9', 'd-${'b' * 16}', 'e', 9), 507);
+      expect(await put('10.0.0.9', 'd-${'b' * 16}', 'e', 8), 201);
+      expect(await put('10.0.0.2', 'd-${'b' * 16}', 'f', 9), 201);
+      // Delivery frees the sender's budget.
+      store.takeAll(box, now);
+      expect(await put('10.0.0.9', box, 'g', 1), 201);
+    });
+
     test('wrong proofs on replace and delete count towards the lockout, and the server keeps only a hash', () async {
       const acct = 'LT-7KQM2-XPA9D';
       final verifier = base64Encode(List.filled(32, 2));
@@ -368,6 +388,9 @@ void main() {
       expect((await call('POST', '/v1/admin/doctors/DMC-12345/reject', body: {'reason': 'x'}, headers: {RelayApi.hAdmin: 'admin-secreT'})).statusCode, 401);
       final r = await h(Request('POST', Uri.parse('http://localhost/v1/admin/doctors/DMC-12345/reject'), body: 'not json', headers: {RelayApi.hAdmin: admin}));
       expect(r.statusCode, 200);
+      for (final reason in ['', '   ', 'x' * 501]) {
+        expect((await call('POST', '/v1/admin/doctors/DMC-12345/reject', body: {'reason': reason}, headers: {RelayApi.hAdmin: admin})).statusCode, 400);
+      }
       expect((await call('POST', '/v1/admin/doctors/NOPE-1/revoke', headers: {RelayApi.hAdmin: admin})).statusCode, 404);
     });
 

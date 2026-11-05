@@ -250,6 +250,32 @@ void main() {
     expect(again.note, 'Licence suspended.');
   });
 
+  test('an enrolment the server has never heard of goes back to the form instead of waiting forever', () async {
+    // Saved in the browser against another server (or one whose data was
+    // reset): this server answers "Not enrolled", which no approval follows.
+    final prefs = await legacyPrefs()..remove('flutter.lt.doctor.cert');
+    SharedPreferences.setMockInitialValues(prefs);
+    final registry = MockClient((r) async => http.Response(jsonEncode({'error': 'Not enrolled.'}), 404));
+    final cipher = MemoryCipher();
+    final s = await DoctorSession.load(base, cipher: cipher, client: registry);
+    expect(s.state, EnrolmentState.pending);
+    await s.refreshStatus();
+    expect(s.state, EnrolmentState.none);
+    expect(s.note, contains('enrol again'));
+
+    final again = await DoctorSession.load(base, cipher: cipher);
+    expect(again.state, EnrolmentState.none, reason: 'the stale keys are gone after a restart too');
+  });
+
+  test('a server that cannot be reached leaves a waiting enrolment as it is', () async {
+    final prefs = await legacyPrefs()..remove('flutter.lt.doctor.cert');
+    SharedPreferences.setMockInitialValues(prefs);
+    final down = MockClient((r) async => http.Response('Bad gateway', 502));
+    final s = await DoctorSession.load(base, cipher: MemoryCipher(), client: down);
+    await s.refreshStatus();
+    expect(s.state, EnrolmentState.pending);
+  });
+
   testWidgets('demo builds can fill the app with sample patients, which survive a reload and replace themselves', (tester) async {
     late DoctorSession s;
     final cipher = MemoryCipher();

@@ -2,20 +2,30 @@
 # Builds the Word file, then a PDF whose contents page has real page numbers.
 # Needs node, LibreOffice (soffice) and poppler (pdftotext).
 set -e
+# LibreOffice on Windows is not on PATH by default.
+[ -d "/c/Program Files/LibreOffice/program" ] && PATH="$PATH:/c/Program Files/LibreOffice/program"
 cd "$(dirname "$0")"
+# The first Python that runs ("python3" on Windows can be the Microsoft Store stub).
+PYTHON=$(for p in python3 python; do "$p" -c 'import sys' >/dev/null 2>&1 && { echo "$p"; break; }; done)
 T=$(mktemp -d)
+# Git Bash: give Windows programs (node, python, soffice) a path they understand.
+command -v cygpath >/dev/null && T=$(cygpath -m "$T")
 HEADINGS_OUT="$T/headings.json" node build.js
 cp LifeTrack_Health_NTCC_Report.docx "$T/draft.docx"
 soffice --headless --convert-to pdf --outdir "$T" "$T/draft.docx" >/dev/null 2>&1
-python3 - "$T" <<'PY'
+"$PYTHON" - "$T" <<'PY'
 import json, subprocess, sys
 t = sys.argv[1]
 heads = json.load(open(f'{t}/headings.json'))
-n = int([l for l in subprocess.run(['pdfinfo', f'{t}/draft.pdf'], capture_output=True, text=True).stdout.splitlines() if l.startswith('Pages:')][0].split()[1])
+import shutil
+if shutil.which('pdfinfo'):
+    n = int([l for l in subprocess.run(['pdfinfo', f'{t}/draft.pdf'], capture_output=True, text=True).stdout.splitlines() if l.startswith('Pages:')][0].split()[1])
+else:  # no pdfinfo (e.g. Git Bash on Windows): pdftotext ends every page with a form feed
+    n = subprocess.run(['pdftotext', '-enc', 'UTF-8', '-layout', f'{t}/draft.pdf', '-'], capture_output=True, encoding='utf-8', errors='replace').stdout.count(chr(12))
 pages = {}
 norm = lambda s: ' '.join(s.split())
 for i in range(1, n + 1):
-    lines = [l.strip() for l in subprocess.run(['pdftotext', '-layout', '-f', str(i), '-l', str(i), f'{t}/draft.pdf', '-'], capture_output=True, text=True).stdout.splitlines() if l.strip()]
+    lines = [l.strip() for l in subprocess.run(['pdftotext', '-enc', 'UTF-8', '-layout', '-f', str(i), '-l', str(i), f'{t}/draft.pdf', '-'], capture_output=True, encoding='utf-8', errors='replace').stdout.splitlines() if l.strip()]
     if not lines or not lines[-1].isdigit():
         continue  # front matter (roman numerals) or no footer
     folio = lines[-1]

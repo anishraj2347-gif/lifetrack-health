@@ -5,15 +5,17 @@ pat[label="Patient /\nhead of family",fillcolor="#E8F5B8"]; fam[label="Linked fa
 doc[label="Doctor",fillcolor="#E8F5B8"]; adm[label="Registry\nadministrator"];
 subgraph cluster_s { label="LifeTrack Health"; fontsize=14; style=rounded; color="#999999";
 node[shape=ellipse,style=filled,fillcolor="#FFFFFF",color="#777777",height=0.42,margin="0.08,0.02"];
-u1[label="Add / scan records"]; u2[label="View insights"]; u3[label="Medicine reminders"]; u4[label="Manage family"];
-u5[label="Share with a doctor"]; u6[label="Approve / decline request"]; u7[label="Back up / restore"]; u8[label="Export data"];
-u10[label="Share Emergency ID / medicines"]; u9[label="Read Emergency ID"];
-u11[label="Enrol and get verified"]; u12[label="Request access by ID"]; u13[label="View shared records"]; u14[label="Sign prescription"];
-u15[label="Approve / revoke doctors"];
-{rank=same; u1 u2 u3 u4 u5 u6 u7 u8 u10 u9}
-{rank=same; u12 u13 u14 u11 u15}
-u5 -> u12 [style=invis]; u6 -> u13 [style=invis]; u7 -> u14 [style=invis]; u8 -> u11 [style=invis]; u10 -> u15 [style=invis];
+// IDs and names are exactly those of Table 3.6 in the report.
+u1[label="UC-1  Add or scan a record"]; u10[label="UC-10  View insights"]; u11[label="UC-11  Medicine reminders"]; u12[label="UC-12  Manage family"];
+u2[label="UC-2  Share with a doctor"]; u3[label="UC-3  Respond to an access request"]; u4[label="UC-4  End or change access"];
+u5[label="UC-5  Back up and restore"]; u13[label="UC-13  Export data"];
+u14[label="UC-14  Share Emergency ID or medicines"]; u6[label="UC-6  Read the Emergency ID"];
+u7[label="UC-7  Enrol and get verified"]; u15[label="UC-15  Request access by ID"]; u8[label="UC-8  View records and prescribe"];
+u9[label="UC-9  Approve or revoke a doctor"];
+{rank=same; u1 u10 u11 u12 u2 u3 u4 u5 u13 u14 u6}
+{rank=same; u7 u15 u8 u9}
+u2 -> u7 [style=invis]; u3 -> u15 [style=invis]; u4 -> u8 [style=invis]; u14 -> u9 [style=invis];
 }
-pat -> {u1 u2 u3 u4 u5 u6 u7 u8 u10}; fam -> u10; para -> u9;
-{u11 u12 u13 u14} -> doc; u15 -> adm;
+pat -> {u1 u10 u11 u12 u2 u3 u4 u5 u13 u14}; fam -> u14; para -> u6;
+{u7 u15 u8} -> doc; u9 -> adm;
 }

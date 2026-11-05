@@ -93,7 +93,9 @@ function table(header, rows, widths, caption) {
   ];
 }
 // A Gantt chart as a table: one row per activity, one column per week. Weeks up
-// to `doneThrough` are shaded dark (completed), later ones light (planned).
+// to `doneThrough` are shaded dark (completed), later ones light (planned). A
+// row's optional third entry names weeks that differ: { done: [...] } shaded
+// dark, { progress: [...] } shaded mid-green (in progress).
 function gantt(rows, doneThrough, caption, weeks = 12) {
   const first = 2826, col = Math.floor((W - first) / weeks);
   const widths = [first, ...Array(weeks).fill(col)];
@@ -107,9 +109,12 @@ function gantt(rows, doneThrough, caption, weeks = 12) {
     cell(0, [new TextRun({ text: 'Activity', bold: true, size: 18 })], 'D9E2B6'),
     ...Array.from({ length: weeks }, (_, w) => cell(w + 1, [new TextRun({ text: `W${w + 1}`, bold: true, size: 16 })], 'D9E2B6')),
   ] });
-  const body = rows.map(([name, on]) => new TableRow({ cantSplit: true, children: [
+  const shade = (w, on, s = {}) => !on.includes(w) ? undefined
+    : (s.progress ?? []).includes(w) ? '8EAA4E'
+    : (s.done ?? []).includes(w) || w <= doneThrough ? '4F6228' : 'C4D79B';
+  const body = rows.map(([name, on, s]) => new TableRow({ cantSplit: true, children: [
     cell(0, [new TextRun({ text: name, size: 18 })]),
-    ...Array.from({ length: weeks }, (_, w) => cell(w + 1, [], on.includes(w + 1) ? (w + 1 <= doneThrough ? '4F6228' : 'C4D79B') : undefined)),
+    ...Array.from({ length: weeks }, (_, w) => cell(w + 1, [], shade(w + 1, on, s))),
   ] }));
   tabNo++; tables.push(`Table ${chap}.${tabNo}  ${caption}`);
   return [
@@ -197,7 +202,7 @@ const abstract = [
   P('In India a patient’s medical history is usually spread across the clinics, hospitals and laboratories they have visited, with the patient carrying paper reports between them. When the history is not available, investigations are repeated, medicines are duplicated and family patterns are missed. The cause is usually scattered data, not poor clinical judgement. The patient is the only person present at every encounter, yet rarely holds a complete record.', AB),
   P('LifeTrack Health is a working prototype of a health record that the patient owns and keeps on their own phone. It has four parts: an Android patient app built in Flutter; LifeTrack Clinic, a doctor app; a small Dart server that acts as a doctor registry, an encrypted relay and a backup store; and a shared protocol package. Records live on the patient’s phone, sealed with AES-256-GCM under a hardware-backed device key. A doctor sees records only after the patient scans the doctor’s registry-verified code and approves a level of access (Summary, All reports, Family illnesses or Home readings) for a chosen time between one hour and two days. The share is encrypted on the phone to that doctor’s device key alone (X25519 with AES-GCM); the server carries it but can never open it. Prescriptions return to the patient signed with the doctor’s Ed25519 key.', AB),
   P('The patient app also reads photographed or PDF lab reports on the device with Tesseract OCR, compares results with published reference ranges without ever stating a diagnosis, tracks medicines with reminders, keeps a child vaccination schedule, manages a family under a head-of-family model, offers an Emergency ID readable from the lock screen, and makes an end-to-end encrypted backup protected by an app-generated password and Shamir 2-of-3 recovery codes. Every read, share, refusal and export is written to an append-only audit log before it happens.', AB),
-  P('The system is written in Dart and Flutter (about 25,800 lines of application code). It has 395 automated tests at unit, widget, invariant, layout and end-to-end integration level, and all of them pass with a clean static analysis. The patient app’s interface was reviewed screen by screen twice and then restyled, and tests lay out every main screen at three phone widths and three text sizes and keep the health-status colours distinguishable for colour-blind users. The invariant tests turn the project’s privacy promises into checks that fail the build: no screen may claim the server “cannot read” the data, for example, and no agent may issue itself a grant. The principal open items are ABDM/ABHA integration and a legal review before any pilot with real patients.', AB),
+  P('The system is written in Dart and Flutter (about 25,900 lines of application code). It has 400 automated tests at unit, widget, invariant, layout and end-to-end integration level, and all of them pass with a clean static analysis. The patient app’s interface was reviewed screen by screen twice and then restyled, and tests lay out every main screen at three phone widths and three text sizes and keep the health-status colours distinguishable for colour-blind users. The invariant tests turn the project’s privacy promises into checks that fail the build: no screen may claim the server “cannot read” the data, for example, and no agent may issue itself a grant. The principal open items are ABDM/ABHA integration and a legal review before any pilot with real patients.', AB),
   P('**Keywords:** personal health record, patient consent, end-to-end encryption, local-first software, Flutter, digital health India, DPDP Act 2023.', AB),
 ];
 
@@ -245,12 +250,12 @@ const ch1 = [
   N('Requirements and threat analysis: the patient, doctor and family needs listed in Chapter 3, together with the ways health data can leak (a readable server copy, an over-broad grant, a misleading claim on screen).', 'num3'),
   N('Architecture and invariants: the three-plane structure, the single consent authority and eighteen written invariants (rules the code must never break), each tied to a test.', 'num3'),
   N('Incremental feature releases: each feature (records, insights, sharing, reminders, family, backup, OCR and so on) was built as a separate version with its own tests and a changelog line.', 'num3'),
-  N('Security review rounds: two dedicated hardening releases fixed issues found by reviewing the code against the invariants.', 'num3'),
+  N('Security review rounds: two dedicated hardening releases, and a full review of the server, consent, sharing and backup code on 2 November 2026, fixed issues found by reviewing the code against the invariants.', 'num3'),
   N('Interface design and review: two screen-by-screen reviews of the patient app, each followed by a series of small releases, then a visual restyle. Layout, contrast and colour-vision tests keep the result from regressing.', 'num3'),
   N('Integration and device testing: both apps were run against the real server handler in automated integration tests, and the release build was tested by hand on an Android phone.', 'num3'),
   P('The guiding rule across all stages, taken from the project proposal, was that a claim about the system is accepted only when a test can prove it.'),
   H2('1.7 Project schedule'),
-  P('The project is planned over twelve weeks, from 1 September to 23 November 2026. Table 1.1 lists the work for each week and its status on 17 October 2026, when this report was last updated. Weeks 1 to 7 are complete. Weeks 8 to 12 are still ahead and are set aside for testing on more phones, a usability check, documentation and the final review. Table 1.2 shows the same plan as a Gantt chart.'),
+  P('The project is planned over twelve weeks, from 1 September to 23 November 2026. Table 1.1 lists the work for each week and its status on 2 November 2026, when this report was last updated. Weeks 1 to 7 are complete. On 2 November the server moved to a Windows PC, a third security review was done, frame timing was measured on the first phone (two bugs it found were fixed in patient 1.42.3 and doctor 1.8.1), and the user guide planned for week 10 was written. Timing on more phones, the remaining manual checks and the usability check of week 9 have not yet been carried out. Weeks 10 to 12 remain for the field tests, the OCR check on real reports, the final review and submission. Table 1.2 shows the same plan as a Gantt chart.'),
   ...table(['Week', 'Dates', 'Work', 'Status'], [
     ['1', '1–7 Sep', 'Problem study; review of existing systems, standards and Indian law (DPDP Act, ABDM, Aadhaar Act)', 'Completed'],
     ['2', '8–14 Sep', 'Requirements: stakeholders, functional and non-functional requirements, use cases, threat analysis', 'Completed'],
@@ -259,10 +264,10 @@ const ch1 = [
     ['5', '29 Sep – 5 Oct', 'Patient app 1.0.0–1.19.0, LifeTrack Clinic 1.0.0–1.8.0 and the server; two security review rounds; integration tests; first draft of this report', 'Completed'],
     ['6', '6–12 Oct', 'Two interface reviews and their fixes; visual restyle; colour-vision check; family tree; server over the home Wi-Fi (patient 1.19.1–1.42.0)', 'Completed'],
     ['7', '13–19 Oct', 'Layout tests at three widths and three text sizes; faster drawing; full test run; report update (patient 1.42.1–1.42.2)', 'Completed'],
-    ['8', '20–26 Oct', 'Frame timing and manual tests on more Android phones; fixes', 'Planned'],
+    ['8', '20–26 Oct', 'Frame timing and manual tests on more Android phones; fixes', 'In progress'],
     ['9', '27 Oct – 2 Nov', 'Usability check with family members and classmates, including older users; fixes', 'Planned'],
-    ['10', '3–9 Nov', 'OCR check on real photographed lab reports; user guide', 'Planned'],
-    ['11', '10–16 Nov', 'Final review with the guide; report revisions; presentation slides', 'Planned'],
+    ['10', '3–9 Nov', 'OCR check on real photographed lab reports; user guide', 'In progress'],
+    ['11', '10–16 Nov', 'Final review with the guide; report revisions; presentation slides', 'In progress'],
     ['12', '17–23 Nov', 'Final build, report submission and presentation', 'Planned'],
   ], [700, 1500, 5626, 1200], 'Twelve-week project schedule'),
   ...gantt([
@@ -271,14 +276,14 @@ const ch1 = [
     ['System and security design', [3, 4]],
     ['Screen prototype', [4]],
     ['Implementation (apps and server)', [5, 6, 7]],
-    ['Security reviews', [5]],
+    ['Security reviews', [5, 9], { done: [9] }],
     ['Interface design and review', [6, 7]],
-    ['Automated and device testing', [5, 6, 7, 8]],
+    ['Automated and device testing', [5, 6, 7, 8], { progress: [8] }],
     ['Usability check', [9]],
-    ['OCR check and user guide', [10]],
-    ['Report writing', [5, 7, 11]],
-    ['Final review, presentation, submission', [11, 12]],
-  ], 7, 'Gantt chart of the twelve-week schedule (dark: completed; light: planned)'),
+    ['OCR check and user guide', [10], { progress: [10] }],
+    ['Report writing', [5, 7, 11], { progress: [11] }],
+    ['Final review, presentation, submission', [11, 12], { progress: [11] }],
+  ], 7, 'Gantt chart of the twelve-week schedule (dark: completed; mid: in progress; light: planned)'),
   H2('1.8 Organisation of the report'),
   P('Chapter 2 reviews existing systems, standards and laws. Chapter 3 sets out the requirements and feasibility. Chapter 4 describes the architecture, data design and security design. Chapter 5 explains the implementation, module by module, with screenshots. Chapter 6 covers testing and results. Chapter 7 discusses outcomes against the objectives, and Chapter 8 concludes with limitations and future work. Appendices give the version history and instructions to run the system.'),
 ];
@@ -362,7 +367,7 @@ const ch3 = [
     ['Accessibility', 'All visible text meets WCAG AA contrast in light and dark mode (tested); secondary text at least 14 sp; every main screen laid out at 320, 360 and 411 dp wide with text at up to twice the normal size (tested); health-status colours kept at least 25 ΔE apart from the accent under every simulated colour-vision deficiency (tested)'],
     ['Performance', 'Shared widgets use the renderer’s fast paths (rounded-rectangle clips and shadows, one shared background blur); photos decoded at the size shown; a frame-timing test runs on the phone in a profile build'],
     ['Safety', 'Insights never diagnose or forecast; banned phrases are dropped, not rephrased; adult ranges never applied to children or in pregnancy'],
-    ['Maintainability', 'Strict static analysis; 395 automated tests; every update raises the version and adds a changelog line'],
+    ['Maintainability', 'Strict static analysis; 400 automated tests; every update raises the version and adds a changelog line'],
     ['Portability', 'Flutter: one code base for the patient app (Android) and the doctor app (web or mobile)'],
   ], [1900, 7126], 'Non-functional requirements'),
   H2('3.4 Hardware and software requirements'),
@@ -375,9 +380,9 @@ const ch3 = [
     ['Key libraries', 'cryptography, flutter_secure_storage, local_auth, flutter_zxing, qr_flutter, Tesseract4Android, flutter_local_notifications, archive, printing', 'Bundled in the apps'],
   ], [1800, 3800, 3426], 'Hardware and software requirements'),
   H2('3.5 Use cases'),
-  P('Figure 3.1 shows the actors and the main use cases. The patient (as head of the family) has the most; a doctor reaches the system only through verified enrolment and patient-approved shares.'),
+  P('Figure 3.1 shows the actors and the use cases, numbered as in Table 3.6. The patient (as head of the family) has the most; a doctor reaches the system only through verified enrolment and patient-approved shares.'),
   ...figure(path.join(FIG, 'usecase.png'), 'Use-case diagram', 600, 520),
-  ...table(['ID', 'Use case', 'Actor', 'Main flow'], [["UC-1", "Add or scan a record", "Patient", "Types a record, or photographs/imports a report; OCR fills a draft; the patient ticks uncertain fields and confirms."], ["UC-2", "Share with a doctor", "Patient", "Scans the doctor’s code; the phone verifies the certificate; the patient picks a level and time; the encrypted bundle is sent."], ["UC-3", "Respond to an access request", "Patient", "A signed request from a verified doctor appears; the patient approves (possibly at a lower level or shorter time) or declines."], ["UC-4", "End or change access", "Patient", "From “Who has access now”, shortens, extends or ends a share; the doctor’s copy is replaced or closed."], ["UC-5", "Back up and restore", "Patient", "Turns on backup and receives the generated password and recovery codes; on a new, empty phone restores with them."], ["UC-6", "Read the Emergency ID", "Paramedic", "Opens the card from the lock screen without unlocking; the read is logged."], ["UC-7", "Enrol and get verified", "Doctor", "Enters registration details; the administrator approves; the device receives a signed 30-day certificate."], ["UC-8", "View records and prescribe", "Doctor", "Opens an arrived share, reviews the summary, writes and signs a prescription that returns to the patient."], ["UC-9", "Approve or revoke a doctor", "Administrator", "Reviews pending enrolments and approves, rejects or revokes them with the admin token."]], [800, 1900, 1550, 4776], 'Main use cases'),
+  ...table(['ID', 'Use case', 'Actor', 'Main flow'], [["UC-1", "Add or scan a record", "Patient", "Types a record, or photographs/imports a report; OCR fills a draft; the patient ticks uncertain fields and confirms."], ["UC-2", "Share with a doctor", "Patient", "Scans the doctor’s code; the phone verifies the certificate; the patient picks a level and time; the encrypted bundle is sent."], ["UC-3", "Respond to an access request", "Patient", "A signed request from a verified doctor appears; the patient approves (possibly at a lower level or shorter time) or declines."], ["UC-4", "End or change access", "Patient", "From “Who has access now”, shortens, extends or ends a share; the doctor’s copy is replaced or closed."], ["UC-5", "Back up and restore", "Patient", "Turns on backup and receives the generated password and recovery codes; on a new, empty phone restores with them."], ["UC-6", "Read the Emergency ID", "Paramedic", "Opens the card from the lock screen without unlocking; the read is logged."], ["UC-7", "Enrol and get verified", "Doctor", "Enters registration details; the administrator approves; the device receives a signed 30-day certificate."], ["UC-8", "View records and prescribe", "Doctor", "Opens an arrived share, reviews the summary, writes and signs a prescription that returns to the patient."], ["UC-9", "Approve or revoke a doctor", "Administrator", "Reviews pending enrolments and approves, rejects or revokes them with the admin token."], ["UC-10", "View insights", "Patient", "Turns insights on for 24 hours; reads each finding with its severity and the lab’s printed range; every read is logged."], ["UC-11", "Medicine reminders", "Patient", "Gets reminders from current prescriptions by morning, afternoon and night, ticks a dose by swiping, and adds own reminders; names stay off the lock screen unless turned on."], ["UC-12", "Manage family", "Patient", "Adds a child as son or daughter (consent declared), an adult who delegates in person, or invites an adult with their own phone; sees the family tree."], ["UC-13", "Export data", "Patient", "Exports a zip (readable pages, data, originals, access log), password-protected by default, to the app the patient picks; logged before it is built."], ["UC-14", "Share Emergency ID or medicines", "Patient, linked family member", "Two adults link phones and compare a safety code; each ticks the Emergency ID and/or medicine list to share; unlinking deletes the other phone’s copy."], ["UC-15", "Request access by ID", "Doctor", "Sends a signed request to a LifeTrack ID; the phone shows it only after the certificate and signature verify; nothing is shared until the patient approves."]], [800, 1900, 1550, 4776], 'Use cases (the same IDs and names as Figure 3.1)'),
   H2('3.6 Feasibility study'),
   B('**Technical.** Flutter and Dart [20] provide mature cryptography, camera, QR and notification support; Tesseract runs fully on-device. Every required flow works end to end in the prototype.'),
   B('**Economic.** All tools and libraries are free and open source. The server is a single small Dart process; hosting costs would be minimal because it stores only ciphertext and short-lived messages.'),
@@ -468,10 +473,10 @@ const ch5 = [
   ], [1700, 3900, 3426], 'Technology stack'),
   H2('5.2 Code organisation and size'),
   ...table(['Part', 'Folder', 'Source files', 'Lines of code'], [
-    ['Patient app', 'app/lib', '104', '19,965'], ['Doctor app (LifeTrack Clinic)', 'doctor/lib', '16', '3,292'],
-    ['Server', 'server/lib, server/bin', '9', '1,856'], ['Shared protocol', 'packages/lifetrack_protocol/lib', '8', '713'],
-    ['**Total application code**', '', '**137**', '**25,826**'], ['Tests (all parts)', '*/test', '72', '8,184'],
-  ], [2900, 3000, 1400, 1726], 'Code size by part (17 October 2026)'),
+    ['Patient app', 'app/lib', '104', '19,968'], ['Doctor app (LifeTrack Clinic)', 'doctor/lib', '16', '3,309'],
+    ['Server', 'server/lib, server/bin', '9', '1,908'], ['Shared protocol', 'packages/lifetrack_protocol/lib', '8', '713'],
+    ['**Total application code**', '', '**137**', '**25,898**'], ['Tests (all parts)', '*/test', '73', '8,282'],
+  ], [2900, 3000, 1400, 1726], 'Code size by part (2 November 2026)'),
   P('The patient app is divided into modules under `app/lib/src/`: ai (planes A, B, C and the Insight contract), app (AppServices and wiring), audit, capture (OCR and image handling), consent, crypto, emergency, export, family, identity, model, reminders, security, share, storage, ui, vaccines and vault.'),
   H2('5.3 Patient app'),
   P('The app has five tabs (Reminders, Records, Insights, Share and Me) on a floating bar at the bottom, and a person button at the top right for switching between the people on the phone (Figures 5.1 and 5.2). The screenshots in this chapter show the synthetic sample family that demonstration builds can load.'),
@@ -527,9 +532,9 @@ const ch5 = [
   P('By default the server binds only to 127.0.0.1, and the phone reaches it over USB with `adb reverse tcp:8787 tcp:8787`. Since week 6 it can also listen on the laptop’s Wi-Fi address (`scripts/run_server_lan.sh`), so the phone works without a cable. The release build then has that address built in and allows plain HTTP to that one address only; records and backups cross the connection only as ciphertext. Data is kept in an owner-only folder: the registry signing key, the admin token, doctor enrolments, the ID map and the backup files.'),
   H2('5.7 Development practices'),
   B('**Version control.** Git with a private GitHub repository; every change is a reviewed commit.'),
-  B('**Versioning rule.** Every update raises the version (a feature raises the middle number, a fix the last) and adds a line to the changelog in the same commit. At the time of writing the patient app is at 1.42.2 and the doctor app at 1.8.0 (Appendix A).'),
+  B('**Versioning rule.** Every update raises the version (a feature raises the middle number, a fix the last) and adds a line to the changelog in the same commit. At the time of writing the patient app is at 1.42.3 and the doctor app at 1.8.1 (Appendix A).'),
   B('**Interface reviews.** Two screen-by-screen reviews of the patient app, each followed by small releases that fixed what it found, then a restyle (Section 5.4).'),
-  B('**Security reviews.** Two dedicated hardening releases (patient 1.13.0 and 1.18.1/1.18.2, doctor 1.4.1/1.4.2) fixed issues found in review, such as binding the identity result to a hand-back code and proving the sender of a share.'),
+  B('**Security reviews.** Two dedicated hardening releases (patient 1.13.0 and 1.18.1/1.18.2, doctor 1.4.1/1.4.2) fixed issues found in review, such as binding the identity result to a hand-back code and proving the sender of a share. A third, full review of the server, the consent and sharing code and the backup vault on 2 November 2026 fixed a race in which two registrations arriving at once could give one person two LifeTrack IDs, and capped what a single sender may leave waiting on the relay, so that one device cannot fill it for everyone else.'),
   B('**Release build.** A script builds an obfuscated APK; the symbol map is kept on the development machine.'),
   H2('5.8 Selected implementation details'),
   P('This section shows four short excerpts from the patient app’s source code. They are the places where the main rules of Chapter 4 are enforced. Listings are shortened only where marked with “...”.'),
@@ -562,13 +567,13 @@ const ch6 = [
   B('**Colour-vision tests** that simulate protan, deutan and tritan vision [22] and fail if the accent colour comes within 25 ΔE of any health-status colour, in light or dark mode.'),
   B('**Integration tests** that run the real code of both apps against the real server handler: scan, share, confirmed sender, prescription back, request by ID, decline, time change and revocation.'),
   H2('6.2 Results'),
-  P('All tests were run on 17 October 2026 against the current version (patient app 1.42.2, doctor app 1.8.0). Static analysis (`flutter analyze` / `dart analyze`) reported no issues in any package.'),
+  P('All tests were run on 2 November 2026 against the current version (patient app 1.42.3, doctor app 1.8.1). Static analysis (`flutter analyze` / `dart analyze`) reported no issues in any package.'),
   ...table(['Part', 'Static analysis', 'Tests passed', 'Failed'], [
-    ['Patient app (app/)', 'No issues', '318', '0'], ['Doctor app (doctor/)', 'No issues', '18', '0'],
-    ['Server (server/)', 'No issues', '45', '0'], ['Shared protocol', 'No issues', '8', '0'],
-    ['Both apps + server (integration/)', 'No issues', '6', '0'], ['**Total**', '', '**395**', '**0**'],
+    ['Patient app (app/)', 'No issues', '319', '0'], ['Doctor app (doctor/)', 'No issues', '20', '0'],
+    ['Server (server/)', 'No issues', '47', '0'], ['Shared protocol', 'No issues', '8', '0'],
+    ['Both apps + server (integration/)', 'No issues', '6', '0'], ['**Total**', '', '**400**', '**0**'],
   ], [3600, 2000, 1800, 1626], 'Test results by part'),
-  P('The patient app also has tools that render screens to images for visual review; they run only when asked to save screenshots and are not counted. The patient app’s total rose from 285 on 5 October to 318 as the interface work of weeks 6 and 7 added features and tests.'),
+  P('The patient app also has tools that render screens to images for visual review; they run only when asked to save screenshots and are not counted. The patient app’s total rose from 285 on 5 October to 318 by 17 October, as the interface work of weeks 6 and 7 added features and tests, and to 319 on 2 November with the test for the bug the frame-timing run found (Section 6.4).'),
   H2('6.3 Selected test cases'),
   ...table(['#', 'Test case', 'Expected result', 'Result'], [
     ['1', 'A pending (unapproved) doctor tries to show a code', 'No scannable code is produced', 'Pass'],
@@ -591,6 +596,12 @@ const ch6 = [
   ], [500, 3300, 4000, 1226], 'Selected test cases'),
   H2('6.4 Manual testing on a device'),
   P('The release APK was installed on an Android phone (Samsung Galaxy S25) connected to the local server, over USB at first and over the home Wi-Fi from week 6, and the share, request-by-ID, prescription and backup flows were tested manually. On 17 October 2026 version 1.42.2 was installed over the previous version, keeping the records already on the phone. A medicine reminder fired on the device with medicine names hidden on the lock screen, as designed. OCR has so far been tested mainly on synthetic report images; evaluation on a wider set of real photographed reports is future work.'),
+  P('On 2 November 2026 the server moved from the Mac to a Windows PC, started with a fresh registry key and a new release signing key, so both apps were rebuilt and the doctor enrolled and was approved again. Frame timing was then measured on the same phone with an integration test that sets up the ten-person sample family by itself, scrolls each of the five tabs and switches between them while the phone records how long every frame takes to build and to draw (Table 6.3). At 60 frames a second each frame has 16.7 ms.'),
+  ...table(['Action', 'Frames', 'Build: average / 90th percentile (ms)', 'Draw: average / 90th percentile (ms)', 'Frames over budget'], [
+    ['Scrolling all five tabs', '1,265', '1.2 / 2.1', '3.3 / 5.8', '19 (1.5%)'],
+    ['Switching tabs, two rounds', '82', '3.7 / 7.3', '10.7 / 21.8', '14 (17%)'],
+  ], [2300, 900, 2100, 2100, 1626], 'Frame timing on a Samsung Galaxy S25 (patient 1.42.3, profile build)'),
+  P('Scrolling stays within the frame budget for 98.5% of frames. Switching tabs is slower to draw: about one frame in six is late, on the drawing (GPU) side rather than in building the widgets, most likely when a tab’s blurred bars and photos are drawn for the first time. This is a polish item rather than a defect. The run also found two real bugs, both fixed with a test that failed before the fix: in the patient app, a finger lifted after its card had left the screen raised an error (1.42.3); in the doctor app, an enrolment saved in the browser against a server that no longer knew it waited for approval forever instead of returning to the form (1.8.1). Screenshots were confirmed blocked on a normal build, and a share from the patient app reached the doctor app on the new server. Timing on further phones and the remaining manual checks follow the field test kit in docs/testing/.'),
   H2('6.5 Example of an invariant test'),
   P('Listing 6.1 is taken from the invariant test that guards the AI planes. It loads the source of every file under lib/src/ai, strips the comments (codeOf), and fails if any of them calls ConsentStore.issue, imports the grant code, or reads the wall-clock time. If a future change gave an agent a way to grant itself access, the build would fail before the change could be released.'),
   ...listing(["group('agents (lib/src/ai) never', () {", "  final ai = [for (final f in lib) if (rel(f).startsWith('lib/src/ai/')) f];", "", "  test('issue a grant (CLAUDE.md #5)', () {", "    for (final f in ai) {", "      final code = codeOf(f);", "      expect(code.contains('.issue('), isFalse, reason: rel(f));", "      expect(code.contains('grants.dart'), isFalse, reason: rel(f));", "    }", "  });", "", "  test('read wall-clock time - the clock is always a parameter', () {", "    for (final f in ai) {", "      expect(codeOf(f).contains('DateTime.now()'), isFalse, reason: rel(f));", "    }", "  });", "});"], 'Part of plane_boundary_test.dart (app/test/invariants)'),
@@ -607,7 +618,7 @@ const ch7 = [
     ['4. Safe on-device insights', 'Achieved for ranges, movement and duplicate medicines; non-diagnostic wording enforced by tests'],
     ['5. On-device reading of reports', 'Achieved on Android with Tesseract; English only; accuracy on real photos still to be measured'],
     ['6. Verified doctor app with signed prescriptions', 'Achieved: registry certificates, status checks, signed and printable prescriptions'],
-    ['7. Verifiable privacy promises', 'Achieved: invariant tests in the build; 395 tests passing'],
+    ['7. Verifiable privacy promises', 'Achieved: invariant tests in the build; 400 tests passing'],
     ['8. Usable, accessible interface', 'Achieved as far as tests can show: WCAG AA contrast in both modes, every main screen tested at three widths and three text sizes, status colours checked for colour-blind viewers. A usability check with older users is planned for week 9'],
   ], [3800, 5226], 'Objectives and outcomes'),
   H2('7.2 Changes from the original proposal'),
@@ -630,7 +641,7 @@ const ch7 = [
 const ch8 = [
   chapter(8, 'Conclusion and Future Scope'),
   H2('8.1 Conclusion'),
-  P('LifeTrack Health shows that a patient can hold a complete, useful health record on their own phone and share exactly the right part of it with a verified doctor for a limited time, while the server that carries the data can never read it. The prototype covers the full loop (capture, understanding, sharing, prescribing back, reminders, emergencies, family, backup and export) across a patient app, a doctor app and a server, and every privacy and safety promise it makes is checked by an automated test. The interface was reviewed, restyled and tested for contrast, colour vision and fit on small screens with large text. All 395 tests pass and static analysis is clean.'),
+  P('LifeTrack Health shows that a patient can hold a complete, useful health record on their own phone and share exactly the right part of it with a verified doctor for a limited time, while the server that carries the data can never read it. The prototype covers the full loop (capture, understanding, sharing, prescribing back, reminders, emergencies, family, backup and export) across a patient app, a doctor app and a server, and every privacy and safety promise it makes is checked by an automated test. The interface was reviewed, restyled and tested for contrast, colour vision and fit on small screens with large text. All 400 tests pass and static analysis is clean.'),
   H2('8.2 Limitations'),
   B('Only synthetic patients and doctors have been used; no real patient data has been processed.'),
   B('The identity check uses a practice stand-in for DigiLocker until partner registration; the optional mode that requires Aadhaar-based verification for every profile must be reviewed by legal counsel in light of *Puttaswamy* (2018) and the 2019 Aadhaar amendment before any pilot.'),
@@ -705,10 +716,12 @@ const appA = [
     ['Patient 1.38.0–1.40.1', '12 Oct', 'Restyle: Sora typeface, caramel accent, white cards, photo welcome and lock screens, new add pages, profile photos; server over the home Wi-Fi; purple and teal status colours'],
     ['Patient 1.41.0–1.42.0', '12 Oct', 'Family tree; ten-person sample family; reminders editable where shown; LifeTrack IDs for sample people (practice server only)'],
     ['Patient 1.42.1–1.42.2', '14 Oct', 'No text overflow on narrow screens or at large text sizes; smoother scrolling and tab switches'],
+    ['Patient 1.42.3', '2 Nov', 'Fix: a finger lifted after its card left the screen; frame-timing test runs unattended'],
     ['Doctor 1.0.0', '30 Sep', 'Enrolment, verified code, view shares'],
     ['Doctor 1.1–1.4', '1 Oct', 'Prescriptions, printable PDF, request by ID, dark mode'],
     ['Doctor 1.4.1–1.6.1', '3 Oct', 'Security fixes, patient register, notes, “LifeTrack Clinic” branding, back button'],
     ['Doctor 1.7.0–1.8.0', '3 Oct', 'Ask for a time; Profile tab and screenshot setting'],
+    ['Doctor 1.8.1', '2 Nov', 'Fix: an enrolment the server has no record of returns to the form instead of waiting forever'],
   ], [2200, 1700, 5126], 'Version history'),
 ];
 const appB = [

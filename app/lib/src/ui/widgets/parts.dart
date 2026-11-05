@@ -447,6 +447,9 @@ class _PressableState extends State<Pressable> {
   bool _down = false;
   Offset? _at;
   void _set(bool v) {
+    // A finger can lift after this card has left the screen (a drag that
+    // outlived it): the gesture still reports here, and there is no state to set.
+    if (!mounted) return;
     if (widget.enabled && _down != v) setState(() => _down = v);
   }
 

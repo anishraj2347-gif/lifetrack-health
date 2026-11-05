@@ -6,6 +6,32 @@ always goes up (Android refuses to install a lower one).
 
 ## Server and laptop
 
+### 2 Nov 2026 (server moved to the Windows PC)
+- **The Windows PC is the server now**, started by hand with `scripts/run_server_lan.sh` (Git
+  Bash). The Mac's server data could not be copied, so this server started fresh: a **new registry
+  key** (`7alggUwt…gW4/s=`, now the default in `scripts/build_apk.sh`), no LifeTrack IDs, doctor
+  enrolments or backups from before. Doctors enrol again; phones need a build that pins the new key.
+- **New release signing key** (`app/android/lifetrack-release.jks`, never committed). Builds signed
+  with it cannot install over ones signed with the Mac's key: the old app must be removed first,
+  which deletes what it holds on that phone.
+- The scripts run on Windows: `lan_ip.sh` finds the Windows Wi-Fi address, `build_apk.sh` and
+  `docs/report/make_pdf.sh` use whichever of `python3`/`python` works, and `.gitattributes` keeps
+  shell scripts LF-only; `kotlin.incremental=false` in `app/android/gradle.properties` because the
+  project (D:) and the pub cache (C:) on different drives break Kotlin's incremental caches.
+  Windows ignores the server's `chmod`, so `server/data` and the signing
+  files are restricted to the owner's account with `icacls` instead.
+
+### 2 Nov 2026 (code review)
+- **Fixed: one person could get two LifeTrack IDs** when two registrations with the same identity
+  check arrived at once — both passed the "already has an ID?" check while the signature was being
+  verified. The check now runs again just before the ID is stored, and so does the "number taken"
+  check, so a second registration of the same number cannot replace the first.
+- **The relay is shared fairly**: one sender (by address) may have at most 50 messages waiting in
+  any one mailbox and 64 MB waiting in all, so a single device on the Wi-Fi can no longer fill a
+  doctor's mailbox or the whole relay and block everyone else's shares for up to 48 hours.
+- Fixed: rejecting a doctor with an empty or over-long reason answered with a server error; it is
+  now refused with a message.
+
 ### 12 Oct 2026
 - **The laptop is the live server** (user choice): `scripts/install_laptop_server.sh` installs three
   login services — the compiled server on the Wi-Fi/hotspot address (restarted if it stops, Mac kept
@@ -20,6 +46,15 @@ always goes up (Android refuses to install a lower one).
   service; the birth-certificate XML fields must be checked with the first real certificate.
 
 ## Patient app
+
+### 1.42.3 (2 Nov 2026)
+- **Fixed: an error when a finger lifted after its card had left the screen** — a drag that
+  started on a card and outlived it (the list rebuilt, a tab closed) made the card set its pressed
+  look after it was gone. Found by the frame-timing run on the phone; `pressable_test.dart` covers it.
+- Frame timing on the phone (`integration_test/scroll_perf_test.dart`) now sets up the sample family
+  and taps Unlock by itself on a fresh install (real touches do not reach the app during a test, but
+  the fingerprint prompt does), and measures with the phone's own frame timings
+  (`build/<action>.frame_summary.json`); run it with `--no-dds`.
 
 ### 1.42.2 (14 Oct 2026)
 - **Smoother scrolling and tab switches.** The phone's renderer redraws every card each frame, so the
@@ -519,6 +554,12 @@ always goes up (Android refuses to install a lower one).
 - Rebuilt phase-2 app: records, insights, consent, clinical sharing with verified doctors.
 
 ## Doctor web app
+
+### 1.8.1 (2 Nov 2026)
+- **Fixed: "Waiting for your licence check" forever** when the enrolment saved in the browser was
+  made against another server (or this one was reset): the server answers "Not enrolled", which
+  the app ignored. Now it goes back to the enrolment form and says why; an approved device and its
+  patients are never touched by this.
 
 ### 1.8.0 (3 Oct 2026)
 - **Profile tab** (like Me in the patient app): who you are as the registry approved you

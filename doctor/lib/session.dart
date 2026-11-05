@@ -368,6 +368,11 @@ class DoctorSession {
   /// Asks the registry whether the licence check is done.
   Future<void> refreshStatus() async {
     final r = await _http.get(base.resolve('/v1/doctors/$registrationNo'));
+    // Waiting for a server that has no record of this enrolment (it was made
+    // against another server, or this one was reset): no approval can come,
+    // so go back to the form. Only a waiting enrolment — never an approved
+    // device's patients — and only on the server's own "Not enrolled".
+    if (r.statusCode == 404 && state == EnrolmentState.pending) return _forgetEnrolment();
     if (r.statusCode != 200) return;
     final j = (jsonDecode(r.body) as Map).cast<String, Object?>();
     note = j['note'] as String?;
@@ -388,6 +393,17 @@ class DoctorSession {
     }
     if (next == EnrolmentState.revoked) return _revoked(note);
     state = next;
+  }
+
+  Future<void> _forgetEnrolment() async {
+    for (final k in [_kEnc, _kSign, _kProfile, _kCert, _kRevoked]) {
+      await prefs.remove(k);
+    }
+    enc = null;
+    sign = null;
+    certificateQr = null;
+    state = EnrolmentState.none;
+    note = 'This LifeTrack server has no record of your earlier enrolment. Please enrol again.';
   }
 
   /// Drops the certificate and remembers why, so the app stops picking up
