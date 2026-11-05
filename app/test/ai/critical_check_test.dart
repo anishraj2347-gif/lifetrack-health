@@ -135,6 +135,58 @@ void main() {
     });
   });
 
+  group('a unit that brings a banned phrase in with it', () {
+    for (final (analyte, value, unit, name) in const [
+      ('potassium', 6.8, 'mmol/L risk of', 'Potassium'),
+      ('glucose_fasting', 650.0, 'mg/dL is normal', 'Fasting glucose'),
+      ('sodium', 110.0, 'you have', 'Sodium'),
+      ('platelets', 8000.0, 'kidney failure', 'Platelets'),
+      ('haemoglobin', 4.5, 'likely gm%', 'Haemoglobin'),
+    ]) {
+      test('$analyte $value "$unit" still raises the urgent alert, without the raw text', () {
+        final run = check(analyte, value, unit);
+        final i = run.insights.single;
+        expect(i.severity, Severity.urgentCare, reason: 'it used to vanish');
+        expect(run.dropped, 0);
+        expect(run.needsPrompt, isTrue);
+        expect(firstBannedPhrase('${i.finding} ${i.action}'), isNull);
+        expect(i.finding, isNot(contains(unit)));
+        expect(i.finding.toLowerCase(), contains(name.toLowerCase().split(' ').last));
+        expect(i.finding, contains('urgent attention'));
+        expect(i.action, contains('108'));
+      });
+    }
+
+    test('an old result stays a same-day alert and still says it is old', () {
+      final run = CriticalCheck.record(patient: woman, record: report([const LabResult(analyte: 'potassium', value: 6.8, unit: 'risk of')], date: DateTime(2026, 9, 1)), at: at);
+      final i = run.insights.single;
+      expect(i.severity, Severity.contactDoctorToday);
+      expect(i.finding, contains('attention today'));
+      expect(i.finding, contains('more than a week old'));
+    });
+
+    test('several at once: each keeps its test, the worst first, and evidence stays', () {
+      final run = CriticalCheck.record(
+        patient: woman,
+        record: report(const [LabResult(analyte: 'potassium', value: 6.8, unit: 'risk of'), LabResult(analyte: 'sodium', value: 110, unit: 'mmol/L')]),
+        at: at,
+      );
+      expect(run.insights, hasLength(2));
+      expect(run.insights.every((i) => i.evidence.single == 'r1'), isTrue);
+    });
+
+    test('text that cannot be made safe is still dropped and counted', () {
+      const bad = Insight(kind: InsightKind.critical, severity: Severity.note, finding: 'You have it.', action: 'Stop taking it.', evidence: [], analyte: 'skip');
+      final run = CriticalCheck.finish([bad], const []);
+      expect((run.insights.length, run.dropped), (0, 1), reason: 'the test name itself fails the rule, so the fixed wording does too');
+    });
+
+    test('a clean alert is left exactly as written', () {
+      final run = check('potassium', 6.8, 'mmol/L');
+      expect(run.insights.single.finding, contains('6.8 mmol/L'));
+    });
+  });
+
   test('wording: every limit, both sides, passes the banned-phrase rule and says nothing is normal', () {
     for (final l in criticalLimits) {
       final canonical = l.forms.first.spellings.first;

@@ -217,7 +217,8 @@ class _RecordCard extends StatelessWidget {
     final r = record;
     final chips = <Widget>[
       if (r.kind == RecordKind.prescription && r.dose != null) _DosePills(r.dose!),
-      if (r.kind == RecordKind.prescription && r.dose == null && r.source == RecordSource.typedByPatient) _MiniChip('Only when needed', icon: LucideIcons.clock),
+      if (r.kind == RecordKind.prescription && r.dose == null && r.source == RecordSource.typedByPatient)
+        _MiniChip((r.instructions ?? '').trim().isEmpty ? 'Only when needed' : 'As prescribed', icon: LucideIcons.clock),
       if (r.kind == RecordKind.report && r.results.isNotEmpty)
         _MiniChip('${analyteName(r.results.first.analyte)} ${r.results.first.comparator ?? ''}${TestTrendScreen.fmt(r.results.first.value)} ${r.results.first.unit}${r.results.length > 1 ? '  +${r.results.length - 1}' : ''}'),
       if (r.kind == RecordKind.note) _MiniChip('This phone only', icon: LucideIcons.lock),

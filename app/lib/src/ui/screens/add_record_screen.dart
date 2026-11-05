@@ -43,6 +43,12 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
 
   /// "Only when needed" (SOS): saved with no dose, so no reminders.
   bool _asNeeded = false;
+
+  /// "Something else": weekly, alternate days, part tablets, insulin units.
+  /// The schedule is kept in the patient's words, as on the scan form. No
+  /// dose is saved, so nothing can read a weekly medicine as a daily one.
+  bool _asWritten = false;
+  final _written = TextEditingController();
   final _results = <_ResultRow>[];
   String? _error;
 
@@ -64,7 +70,12 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     _facility.text = r.facility ?? '';
     _ingredient.text = r.ingredient ?? '';
     _date = r.date;
-    if (r.kind == RecordKind.prescription && r.dose == null) _asNeeded = true;
+    if (r.kind == RecordKind.prescription && r.dose == null) {
+      final words = r.instructions?.trim() ?? '';
+      _asWritten = words.isNotEmpty;
+      _asNeeded = words.isEmpty;
+      _written.text = words;
+    }
     if (r.dose case final d?) {
       _dose
         ..[0] = d.morning
@@ -88,8 +99,12 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
       setState(() => _error = 'Say what the document is.');
       return;
     }
-    if (_kind == RecordKind.prescription && !_asNeeded && _dose.every((n) => n == 0)) {
-      setState(() => _error = 'Set how many to take in the morning, afternoon or night — or choose "Only when needed".');
+    if (_kind == RecordKind.prescription && _asWritten && _written.text.trim().isEmpty) {
+      setState(() => _error = 'Write the dose exactly as prescribed.');
+      return;
+    }
+    if (_kind == RecordKind.prescription && !_asNeeded && !_asWritten && _dose.every((n) => n == 0)) {
+      setState(() => _error = 'Set how many to take in the morning, afternoon or night — or choose "Only when needed" or "Something else".');
       return;
     }
     final results = <LabResult>[];
@@ -114,12 +129,18 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
       sampleDate: old?.sampleDate,
       endDate: old?.endDate,
       patientConfirmedAt: old?.patientConfirmedAt,
-      instructions: old?.instructions,
+      // With no dose, the words are this form's own: a doctor's note on a dosed
+      // prescription is kept, but a schedule the patient moved away from goes.
+      instructions: _kind == RecordKind.prescription && _asWritten
+          ? _written.text.trim()
+          : _kind == RecordKind.prescription && old?.dose == null
+              ? null
+              : old?.instructions,
       timing: old?.timing,
       prescriberRegistration: old?.prescriberRegistration,
       doctor: _doctor.text.trim().isEmpty ? null : _doctor.text.trim(),
       facility: _facility.text.trim().isEmpty ? null : _facility.text.trim(),
-      dose: _kind == RecordKind.prescription && !_asNeeded ? Dose(morning: _dose[0], afternoon: _dose[1], night: _dose[2]) : null,
+      dose: _kind == RecordKind.prescription && !_asNeeded && !_asWritten ? Dose(morning: _dose[0], afternoon: _dose[1], night: _dose[2]) : null,
       ingredient: _kind == RecordKind.prescription && _ingredient.text.trim().isNotEmpty ? _ingredient.text.trim().toLowerCase() : null,
       results: _kind == RecordKind.report ? results : [],
     );
@@ -237,12 +258,12 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
             ),
             LabeledField(
               label: 'Dose',
-              hint: 'How many to take at each time of day.',
+              hint: 'How many to take at each time of day. For a weekly medicine, choose "Something else".',
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Opacity(
-                  opacity: _asNeeded ? 0.45 : 1,
+                  opacity: _asNeeded || _asWritten ? 0.45 : 1,
                   child: IgnorePointer(
-                    ignoring: _asNeeded,
+                    ignoring: _asNeeded || _asWritten,
                     child: Row(children: [
                       for (final (i, name, icon) in [(0, 'Morning', LucideIcons.sunrise), (1, 'Afternoon', LucideIcons.sun), (2, 'Night', LucideIcons.moon)]) ...[
                         Expanded(child: _DoseStepper(name: name, icon: icon, value: _dose[i], onChanged: (v) => setState(() => _dose[i] = v))),
@@ -252,7 +273,22 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                   ),
                 ),
                 SizedBox(height: 10),
-                Chip2('Only when needed · no reminders', exclusive: false, selected: _asNeeded, onTap: () => setState(() => _asNeeded = !_asNeeded)),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  Chip2('Only when needed · no reminders', exclusive: false, selected: _asNeeded, onTap: () => setState(() {
+                        _asNeeded = !_asNeeded;
+                        _asWritten = false;
+                      })),
+                  Chip2('Something else · weekly or other', exclusive: false, selected: _asWritten, onTap: () => setState(() {
+                        _asWritten = !_asWritten;
+                        _asNeeded = false;
+                      })),
+                ]),
+                if (_asWritten) ...[
+                  SizedBox(height: 10),
+                  TextField(controller: _written, decoration: InputDecoration(hintText: 'As prescribed, e.g. 15 mg once a week on Sunday')),
+                  SizedBox(height: 6),
+                  Text('Weekly doses, part tablets and insulin units get no automatic reminder. You can add your own in Reminders.', style: LT.small),
+                ],
               ]),
             ),
           ],

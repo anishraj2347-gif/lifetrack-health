@@ -115,7 +115,7 @@ abstract final class CriticalCheck {
         kind: InsightKind.critical,
         severity: severity,
         analyte: res.analyte,
-        finding: stale ? '${v.finding} This result is more than a week old.' : v.finding!,
+        finding: stale ? '${v.finding} $_oldResult' : v.finding!,
         action: actionFor(severity),
         evidence: [record.id],
       ));
@@ -171,10 +171,39 @@ abstract final class CriticalCheck {
   }
 
   /// Applies the banned-phrase rule (#9) and puts the worst first.
+  ///
+  /// All the words here are fixed but one thing: a finding quotes the unit as
+  /// printed, so a scan can bring a banned phrase in. Dropping that alert would
+  /// lose a danger value to an odd unit string, so the finding is replaced by
+  /// [_fixedWording], which quotes nothing from the report. The rule still
+  /// holds for what reaches the screen, and anything that fails even that is
+  /// dropped and counted.
   static InsightRun finish(List<Insight> out, List<NotChecked> unresolved) {
-    final kept = [for (final i in out) if (firstBannedPhrase('${i.finding} ${i.action}') == null) i];
+    final kept = <Insight>[];
+    for (final i in out) {
+      final safe = _passes(i) ? i : _fixedWording(i);
+      if (_passes(safe)) kept.add(safe);
+    }
     kept.sort((a, b) => b.severity.index.compareTo(a.severity.index));
     return InsightRun(insights: kept, unresolved: unresolved, dropped: out.length - kept.length);
+  }
+
+  static bool _passes(Insight i) => firstBannedPhrase('${i.finding} ${i.action}') == null;
+
+  static const _oldResult = 'This result is more than a week old.';
+
+  /// Says which test and what it needs, with no value or unit from the report.
+  static Insight _fixedWording(Insight i) {
+    final need = i.severity == Severity.urgentCare ? 'urgent attention' : 'attention today';
+    final old = i.finding.endsWith(_oldResult) ? ' $_oldResult' : '';
+    return Insight(
+      kind: i.kind,
+      severity: i.severity,
+      analyte: i.analyte,
+      finding: '${analyteName(i.analyte ?? '')} on this record is past a level LifeTrack treats as needing $need. Check the value and unit on the original report.$old',
+      action: actionFor(i.severity),
+      evidence: i.evidence,
+    );
   }
 
   static String _limitSentence(CriticalLimit limit, double v, Severity s) {

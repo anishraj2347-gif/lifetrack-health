@@ -53,6 +53,13 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.48.0 (6 Nov 2026)
+- **A typed medicine can be weekly.** The form has "Something else · weekly or other", as the scan form does: the dose
+  is written as prescribed, nothing is defaulted, no daily dose is stored, and no automatic reminder is set.
+- **Fixed: an urgent alert could vanish because of an odd unit.** A danger-level finding quotes the unit as printed,
+  and a banned phrase in it used to drop the whole alert. The alert now stays, in fixed wording with nothing from the
+  report; the banned-phrase rule still holds for what is shown (#9).
+
 ### 1.47.1 (6 Nov 2026)
 - **Fixed: a restore killed partway left the phone stuck.** The welcome screen came back and restore was refused for
   ever. A marker now goes on disk before the first record and the owner is written last, so a retry clears what is
