@@ -47,6 +47,20 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.46.4 (6 Nov 2026)
+- **A save no longer waits for the network.** The backup and any update to linked family now follow in the background,
+  a few seconds after the last change and again as the app leaves the screen. What is waiting is marked on disk, so
+  it still goes if the app is killed first. The Save button shows "Saving…", and a second tap adds nothing.
+- **A failed background backup tells the patient** on whatever screen they are on, and Me and the Backup page keep
+  showing it until a backup goes. LifeTrack keeps trying, with longer gaps while the server is away.
+- **Every network call has a time limit** (20 seconds, 60 for a share, 5 minutes for a whole backup).
+- **Backups are built off the screen:** JSON, AES and base64 for the backup itself run on another isolate. Reading
+  the original pages for a backup still happens one page at a time on the main one.
+- Fixed: a backup over the limit (about 33 MB of report photos) said "Could not reach the backup service". It now
+  says it is too large, and a refusal for any other reason gives its code.
+- A backup is logged before it leaves (#13), not after, and a failed one says so. An erasure or turning backup off
+  waits for one already on its way, so it cannot land afterwards. Log writes now run strictly in order.
+
 ### 1.46.3 (6 Nov 2026)
 - **Fixed: erasing a profile left doctors with access until it ran out.** Live shares end first, offline too: the
   message waits in the queue and outlives the profile. The erasure entry says how many doctors, and how many are not

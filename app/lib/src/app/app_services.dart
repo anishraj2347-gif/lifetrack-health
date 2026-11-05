@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 
 import '../ai/cloud_escalation.dart';
@@ -49,6 +50,7 @@ import '../share/relay.dart';
 import '../share/share_bundle.dart';
 import '../share/reply_identity.dart';
 import '../storage/sealed_store.dart';
+import '../storage/serial.dart';
 import '../vault/backup_vault.dart';
 import 'cloud_escalation_adapter.dart';
 import 'demo_data.dart';
@@ -176,7 +178,7 @@ class AppServices {
   final CloudEscalation cloud;
   final Map<String, Object?> settings;
 
-  Future<void> _pendingWrite = Future.value();
+  final _grantWrites = Serial();
 
   static Future<AppServices> open({
     required ByteStore bytes,
@@ -197,6 +199,7 @@ class AppServices {
     ScreenPrivacy? screenPrivacy,
     PageReader? pageReader,
     Duration? retryAfter = defaultRetryAfter,
+    Duration backgroundDelay = defaultBackgroundDelay,
   }) async {
     final now = clock ?? DateTime.now;
     final sealed = SealedStore(bytes, deviceKey);
@@ -232,6 +235,8 @@ class AppServices {
     services._vaccines = ((await sealed.read(_vaccinesBlob) as Map?) ?? {}).cast<String, Object?>();
     services._custom = ((await sealed.read(_customBlob) as Map?) ?? {}).cast<String, Object?>();
     services._backup = ((await sealed.read(_backupBlob) as Map?) ?? {}).cast<String, Object?>();
+    services.backupProblem.value = services.lastBackupError;
+    services._backgroundDelay = backgroundDelay;
     consent.evictFinished(now());
     await services._settleOwner();
     await services._adoptCardAllergies();
@@ -299,6 +304,10 @@ class AppServices {
     } on Object {
       waiting++;
     }
+    // Not awaited: "Check inbox" must not wait for a whole backup. Each one
+    // asks for another retry itself if it fails.
+    if (settings['familyBehind'] == true) unawaited(_sendFamily());
+    if (backupBehind && _backups.isIdle) unawaited(_tryBackup());
     if (waiting == 0) {
       _retryGap = _retryAfter;
     } else {
@@ -335,8 +344,8 @@ class AppServices {
   /// Waits for background grant persistence, trying once more if the last
   /// write failed. True when what is on disk is up to date.
   Future<bool> flush() async {
-    await _pendingWrite;
-    if (_grantsUnsaved) await (_pendingWrite = _writeGrants());
+    await _grantWrites.idle;
+    if (_grantsUnsaved) await _grantWrites.run(_writeGrants);
     return !_grantsUnsaved;
   }
 
@@ -347,7 +356,7 @@ class AppServices {
   /// everything including whatever failed.
   void _persistGrants() {
     _grantsUnsaved = true;
-    _pendingWrite = _pendingWrite.then((_) => _writeGrants());
+    unawaited(_grantWrites.run(_writeGrants));
   }
 
   /// Never throws.
@@ -362,7 +371,8 @@ class AppServices {
     }
   }
 
-  Future<void> _saveSettings() => sealed.write(_settingsBlob, settings);
+  final _settingsWrites = Serial();
+  Future<void> _saveSettings() => _settingsWrites.run(() => sealed.write(_settingsBlob, settings));
 
   /// 'system' (follow the phone), 'light' or 'dark'.
   String get themeChoice => (settings['theme'] as String?) ?? 'system';
@@ -540,7 +550,7 @@ class AppServices {
       detail: given == null ? '$dose marked not given' : '$dose given on ${given.on.toIso8601String().substring(0, 10)}${given.place == null ? '' : ' at ${given.place}'}',
     ));
     await refreshReminders();
-    await _backUpQuietly();
+    await _backUpSoon();
   }
 
   /// Re-plans after anything that could change a dose. Never throws.
@@ -581,7 +591,7 @@ class AppServices {
     _custom[r.patientId] = [for (final x in list) x.toJson()];
     await sealed.write(_customBlob, _custom);
     await audit.append(AuditEntry(at: clock(), actorId: actingGrantor(), patientId: r.patientId, action: AuditAction.edit, detail: '${i < 0 ? 'reminder added' : 'reminder changed'}: ${r.title}'));
-    await _backUpQuietly();
+    await _backUpSoon();
     if (!reminderSettings.on) return setReminders(reminderSettings.copyWith(on: true));
     await refreshReminders();
     return true;
@@ -593,7 +603,7 @@ class AppServices {
     await sealed.write(_customBlob, _custom);
     await audit.append(AuditEntry(at: clock(), actorId: actingGrantor(), patientId: r.patientId, action: AuditAction.edit, detail: 'reminder deleted: ${r.title}'));
     await refreshReminders();
-    await _backUpQuietly();
+    await _backUpSoon();
   }
 
   /// Today's times of the patient's own reminders, for the profile on screen.
@@ -661,13 +671,13 @@ class AppServices {
   Future<void> addVital(VitalReading v) async {
     await repository.addVital(v);
     await audit.append(AuditEntry(at: clock(), actorId: actingGrantor(), patientId: v.patientId, action: AuditAction.edit, dataClass: DataClass.vitals, detail: 'home reading added: ${v.display}${criticalCheckVital(v).insights.isEmpty ? '' : ' · danger-level prompt'}'));
-    await _backUpQuietly();
+    await _backUpSoon();
   }
 
   Future<void> deleteVital(VitalReading v) async {
     await repository.removeVital(v.id);
     await audit.append(AuditEntry(at: clock(), actorId: actingGrantor(), patientId: v.patientId, action: AuditAction.edit, dataClass: DataClass.vitals, detail: 'home reading deleted: ${v.display}'));
-    await _backUpQuietly();
+    await _backUpSoon();
   }
 
   /// Corrects a record the patient entered. Signed records are refused:
@@ -688,7 +698,7 @@ class AppServices {
       await _tellLinkedFamily(r.patientId);
       await refreshReminders();
     }
-    await _backUpQuietly();
+    await _backUpSoon();
   }
 
   /// Removes a record and its original pages from this phone (and from the
@@ -710,7 +720,7 @@ class AppServices {
       await _tellLinkedFamily(r.patientId);
       await refreshReminders();
     }
-    await _backUpQuietly();
+    await _backUpSoon();
   }
 
   /// Demo builds only (`LT_DEMO_TOOLS=true`): shows the add-sample button.
@@ -725,7 +735,7 @@ class AppServices {
     await _saveDemoOriginals(id);
     await refreshReminders();
     await audit.append(AuditEntry(at: clock(), actorId: 'patient:$id', patientId: id, action: AuditAction.edit, detail: 'Sample records added for a demonstration'));
-    await _backUpQuietly();
+    await _backUpSoon();
   }
 
   /// Demo builds only: the sample ten-person family around the head of
@@ -788,7 +798,7 @@ class AppServices {
     }
     await sealed.write(_vaccinesBlob, _vaccines);
     await refreshReminders();
-    await _backUpQuietly();
+    await _backUpSoon();
     // Their LifeTrack IDs, from a server that accepts samples (practice mode).
     unawaited(assignLifeTrackIds().catchError((Object _) {}));
     return added;
@@ -875,7 +885,7 @@ class AppServices {
       await emergency.save(id, card.withAllergies(line, at));
       await _tellLinkedFamily(id);
     }
-    await _backUpQuietly();
+    await _backUpSoon();
   }
 
   /// Cards filled in before the list existed: the card's allergies become the
@@ -953,7 +963,7 @@ class AppServices {
     }
     await audit.append(AuditEntry(
         at: clock(), actorId: Actors.patient(selfPatientId ?? patientId), patientId: patientId, action: AuditAction.edit, detail: jpeg == null ? 'Profile photo removed' : 'Profile photo changed'));
-    await _backUpQuietly();
+    await _backUpSoon();
   }
 
   bool get isDemo => settings['demo'] == true;
@@ -1006,7 +1016,7 @@ class AppServices {
     final old = c.relation;
     await repository.saveCustody(c.withRelation(role.name));
     await audit.append(AuditEntry(at: clock(), actorId: Actors.patient(selfPatientId!), patientId: patientId, action: AuditAction.edit, detail: 'Role changed: ${FamilyRole.describe(old)} → ${role.label.toLowerCase()}'));
-    await _backUpQuietly();
+    await _backUpSoon();
   }
 
   Future<void> switchTo(String patientId) async {
@@ -1176,7 +1186,7 @@ class AppServices {
       await _tellLinkedFamily(r.patientId);
       await refreshReminders();
     }
-    await _backUpQuietly();
+    await _backUpSoon();
   }
 
   /// Saves the Emergency ID, and sends the new card to linked family who
@@ -1196,19 +1206,43 @@ class AppServices {
       await audit.append(AuditEntry(at: clock(), actorId: actor, patientId: patientId, action: AuditAction.edit, dataClass: DataClass.allergies, detail: 'allergy list changed from the Emergency ID'));
     }
     await _tellLinkedFamily(patientId);
-    await _backUpQuietly();
+    await _backUpSoon();
   }
 
-  /// Best effort: a save never fails because the relay is unreachable. The
-  /// next change, or "Check for prescriptions and updates", tries again.
+  /// Linked family hear in the background, a few seconds after the last
+  /// change: a save never waits for the relay and never fails because of it.
   Future<void> _tellLinkedFamily(String patientId) async {
-    if (patientId != selfPatientId) return;
+    final service = links;
+    if (patientId != selfPatientId || service == null) return;
+    if (!(await service.links()).any((l) => l.secured && (l.iShareEmergency || l.iShareMedicines))) return;
+    _familyChanges++;
+    _armBackground();
+    if (settings['familyBehind'] == true) return;
+    settings['familyBehind'] = true;
     try {
-      await refreshFamilyLinks();
+      await _saveSettings();
     } on Object {
-      // Offline. The linked copy stays as it was until the next send.
+      // Still marked in memory.
     }
   }
+
+  int _familyChanges = 0;
+  final _familySends = Serial();
+
+  /// Never throws. A failed send stays marked and is tried again.
+  Future<void> _sendFamily() => _familySends.run(() async {
+        if (settings['familyBehind'] != true) return;
+        final changes = _familyChanges;
+        try {
+          await refreshFamilyLinks();
+        } on Object {
+          _retryLater();
+          return;
+        }
+        if (changes != _familyChanges) return;
+        settings.remove('familyBehind');
+        await _saveSettings().then((_) {}, onError: (_) {});
+      });
 
   // ---- the danger-level check ---------------------------------------------
 
@@ -1377,7 +1411,7 @@ class AppServices {
       if (a.isNotEmpty && p.id == selfPatientId) await _tellLinkedFamily(p.id);
     }
     if (added > 0) {
-      await _backUpQuietly();
+      await _backUpSoon();
       await refreshReminders();
     }
     return (added, handled, refused);
@@ -1462,7 +1496,8 @@ class AppServices {
   String? get phoneRecoveryCode => _backup['phoneShare'] as String?;
 
   VaultKeys get _keys => VaultKeys.fromJson((_backup['keys']! as Map).cast());
-  Future<void> _saveBackup() => sealed.write(_backupBlob, _backup);
+  final _backupWrites = Serial();
+  Future<void> _saveBackup() => _backupWrites.run(() => sealed.write(_backupBlob, _backup));
 
   static const _alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford: no I, L, O, U
 
@@ -1524,6 +1559,7 @@ class AppServices {
   /// neither the password nor the two codes it hands out.
   Future<RecoveryKit> setUpBackup({bool includeNotes = false}) async {
     final self = selfPatient ?? (throw const CustodyRefused('Set up your own profile first.'));
+    await _quiesce();
     final account = 'LT-${_code(5)}-${_code(5)}';
     final password = newBackupPassword();
     _backup = {'notes': includeNotes};
@@ -1540,45 +1576,122 @@ class AppServices {
     return RecoveryKit(account: account, password: password, printCode: setup.shares[1].encode(), contactCode: setup.shares[2].encode());
   }
 
-  /// Sends the current records to the backup. Throws when the service is
-  /// unreachable; [_backUpQuietly] is the no-throw form used after changes.
-  Future<void> backUpNow() async {
+  /// Why the last backup failed, for the shell to tell the patient, whatever
+  /// screen they are on. Null when the last one went.
+  final backupProblem = ValueNotifier<String?>(null);
+
+  /// Changes made since the last backup that reached the service. On disk, so
+  /// they still go if the app is killed first.
+  bool get backupBehind => _backup['dirty'] == true;
+
+  int _backupChanges = 0;
+  final _backups = Serial();
+
+  /// Sends the current records to the backup now, one run at a time. Throws
+  /// when the service is unreachable. Screens never wait for this after a
+  /// save: [_backUpSoon] is what a change calls.
+  Future<void> backUpNow() => _backups.run(_runBackup);
+
+  Future<void> _runBackup() async {
     final account = backupAccount;
     if (account == null) return;
+    final changes = _backupChanges;
     final snap = await _snapshot();
     try {
       await vault.update(account: account, keys: _keys, body: snap, auditPatientId: selfPatientId!, detail: _describe(snap), at: clock());
-      _backup['at'] = clock().toIso8601String();
-      _backup.remove('error');
     } on Object catch (e) {
-      _backup['error'] = e is VaultError ? e.patientMessage : 'Could not reach the backup service.';
-      await _saveBackup();
+      final problem = e is VaultError ? e.patientMessage : e is RelayUnavailable ? e.message : 'Could not reach the backup service.';
+      if (backupAccount == account) {
+        _backup['error'] = problem;
+        await _saveBackup();
+        backupProblem.value = problem;
+      }
       rethrow;
     }
+    if (backupAccount != account) return;
+    _backup['at'] = clock().toIso8601String();
+    _backup.remove('error');
+    if (changes == _backupChanges) _backup.remove('dirty');
     await _saveBackup();
+    backupProblem.value = null;
   }
 
-  Future<void> _backUpQuietly() async {
-    if (backupAccount == null) return;
+  /// Never throws. What it could not send stays marked and is tried again;
+  /// the failure is already on screen through [backupProblem]. A backup that
+  /// is refused rather than unreachable would only fail again.
+  Future<void> _tryBackup() async {
     try {
       await backUpNow();
+    } on VaultError {
+      // Waits for the next change or "Back up now".
     } on Object {
-      // Recorded in lastBackupError; the next change or "Back up now" retries.
+      _retryLater();
     }
+  }
+
+  /// A change was saved. The backup follows in the background a few seconds
+  /// after the last one; nothing here waits for a network or can fail a save.
+  Future<void> _backUpSoon() async {
+    if (backupAccount == null) return;
+    _backupChanges++;
+    _armBackground();
+    if (backupBehind) return;
+    _backup['dirty'] = true;
+    try {
+      await _saveBackup();
+    } on Object {
+      // Still marked in memory; the record itself is already saved.
+    }
+  }
+
+  // ---- what follows a save, in the background ------------------------------
+
+  static const defaultBackgroundDelay = Duration(seconds: 5);
+  Duration _backgroundDelay = defaultBackgroundDelay;
+  Timer? _backgroundTimer;
+
+  void _armBackground() {
+    _backgroundTimer?.cancel();
+    _backgroundTimer = Timer(_backgroundDelay, () => unawaited(settle()));
+  }
+
+  /// Sends now whatever a change left waiting, and returns when it has been
+  /// tried. Also runs as the app leaves the screen, which may be its last
+  /// chance. Never throws.
+  Future<void> settle() async {
+    _backgroundTimer?.cancel();
+    _backgroundTimer = null;
+    await _familySends.idle;
+    if (settings['familyBehind'] == true) await _sendFamily();
+    await _backups.idle;
+    if (backupBehind && _backups.isIdle) await _tryBackup();
+    await _backups.idle;
+  }
+
+  /// Nothing more goes out: for erasure, turning backup off and restore. A
+  /// backup already on its way finishes first, so it cannot land afterwards
+  /// and put back what is about to be deleted.
+  Future<void> _quiesce() async {
+    _backgroundTimer?.cancel();
+    _backgroundTimer = null;
+    await _backups.idle;
+    await _familySends.idle;
   }
 
   Future<void> setBackupIncludesNotes(bool on) async {
     _backup['notes'] = on;
     await _saveBackup();
-    await _backUpQuietly();
+    await _backUpSoon();
   }
 
   /// Deletes the backup from the server (DPDP §12) and stops backing up.
   Future<void> turnOffBackup() async {
     final account = backupAccount;
     if (account == null) return;
+    await _quiesce();
     await vault.erase(account, _keys);
     _backup = {};
+    backupProblem.value = null;
     await _saveBackup();
     await audit.append(AuditEntry(at: clock(), actorId: 'patient:$selfPatientId', patientId: selfPatientId ?? '', action: AuditAction.erasure, detail: 'backup deleted from the server'));
   }
@@ -1670,6 +1783,7 @@ class AppServices {
       throw const CustodyRefused('Remove the other family profiles on this phone first.');
     }
     final at = clock();
+    await _quiesce();
     var ended = 0, notTold = 0;
     for (final g in consent.activeGrantsFor(id, at)) {
       if (sharing == null || g.granteeKeyId == null) continue;
@@ -1724,7 +1838,7 @@ class AppServices {
       settings['currentPatientId'] = selfPatientId;
       await _saveSettings();
       await flush();
-      await _backUpQuietly();
+      await _backUpSoon();
       await refreshReminders();
       return notTold;
     }
@@ -1775,28 +1889,22 @@ class _SealedTokens implements WithdrawTokenStore {
 
   /// One read-change-write at a time: a retry and a share can overlap, and
   /// the slower one would otherwise put back what the other removed.
-  Future<void> _queue = Future.value();
-
-  Future<T> _serial<T>(Future<T> Function() op) {
-    final result = _queue.then((_) => op());
-    _queue = result.then((_) {}, onError: (_) {});
-    return result;
-  }
+  final _serial = Serial();
 
   Future<Map<String, Object?>> _all() async => ((await sealed.read(_blob) as Map?) ?? {}).cast<String, Object?>();
 
   @override
-  Future<void> put(String grantId, String token) => _serial(() async {
+  Future<void> put(String grantId, String token) => _serial.run(() async {
         final m = await _all();
         m[grantId] = token;
         await sealed.write(_blob, m);
       });
 
   @override
-  Future<String?> peek(String grantId) => _serial(() async => (await _all())[grantId] as String?);
+  Future<String?> peek(String grantId) => _serial.run(() async => (await _all())[grantId] as String?);
 
   @override
-  Future<String?> take(String grantId) => _serial(() async {
+  Future<String?> take(String grantId) => _serial.run(() async {
         final m = await _all();
         final t = m.remove(grantId) as String?;
         if (t != null) await sealed.write(_blob, m);

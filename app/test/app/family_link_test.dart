@@ -209,6 +209,7 @@ void main() {
       source: RecordSource.smartCapture,
     ));
     await vikram.saveEmergencyCard(vikram.selfPatientId!, const EmergencyCard(bloodType: 'O+'));
+    await vikram.settle();
     await anjali.checkInbox();
     final l = (await anjali.links!.links()).single;
     expect((l.theirMedicines!.single as Map)['title'], 'Telmisartan 40 mg');
@@ -235,6 +236,7 @@ void main() {
     expect((await vikram.links!.links()).first.secured, isFalse, reason: 'the old link comes first, so it used to stop the loop');
 
     await vikram.saveEmergencyCard(vikram.selfPatientId!, const EmergencyCard(bloodType: 'A+'));
+    await vikram.settle();
     await ravi.checkInbox();
     expect((await ravi.links!.links()).single.theirEmergency!['blood'], 'A+');
   });

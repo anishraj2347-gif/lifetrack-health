@@ -319,6 +319,7 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
   }
 
   Future<void> _save() async {
+    if (_saving) return;
     final s = AppScope.of(context);
     final problem = _problem();
     if (problem != null) {

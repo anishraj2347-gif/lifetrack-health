@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
@@ -42,6 +43,19 @@ abstract final class VaultCodec {
       ...box.mac.bytes,
       ...box.cipherText,
     ]);
+  }
+
+  /// [seal] for a whole backup: the JSON and the AES run on another isolate,
+  /// so the screen keeps moving.
+  static Future<Uint8List> sealOffScreen(Object? body, SecretKey key) async {
+    final bytes = await key.extractBytes();
+    return Isolate.run(() => seal(body, SecretKey(bytes)));
+  }
+
+  /// [open] for a whole backup.
+  static Future<Object?> openOffScreen(Uint8List frame, SecretKey key) async {
+    final bytes = await key.extractBytes();
+    return Isolate.run(() => open(frame, SecretKey(bytes)));
   }
 
   /// The frame's version, or null when it is not a LifeTrack frame.
@@ -98,6 +112,15 @@ class VaultAuthenticationFailed extends VaultError {
   const VaultAuthenticationFailed();
   @override
   String get patientMessage => 'The key does not match these records, or the file was altered.';
+}
+
+/// The backup is over the service's limit (about 33 MB of report photos: the
+/// 60 MB cap counts them after two rounds of base64).
+class VaultTooLarge extends VaultError {
+  const VaultTooLarge();
+  @override
+  String get patientMessage =>
+      'This backup is too large for the backup service, which takes about 33 MB of report photos. Your records are still on this phone, but changes are not being backed up. Export a copy from Me.';
 }
 
 class VaultLockedOut extends VaultError {

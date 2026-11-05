@@ -46,6 +46,13 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   final _results = <_ResultRow>[];
   String? _error;
 
+  /// Set from the first tap until the save has finished, so a second tap
+  /// cannot add the same record again.
+  bool _saving = false;
+
+  /// One form, one record, however many times Save is reached.
+  final _newId = 'r-${List.generate(8, (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0')).join()}';
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +82,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   }
 
   Future<void> _save() async {
+    if (_saving) return;
     final s = AppScope.of(context);
     if (_title.text.trim().isEmpty) {
       setState(() => _error = 'Say what the document is.');
@@ -93,10 +101,9 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
       }
       results.add(LabResult(analyte: row.analyte!, value: v.$2, comparator: v.$1, unit: row.unit.text.trim(), printedLow: row.printedLow, printedHigh: row.printedHigh));
     }
-    final rng = Random.secure();
     final old = widget.editing;
     final record = HealthRecord(
-      id: old?.id ?? 'r-${List.generate(8, (_) => rng.nextInt(256).toRadixString(16).padLeft(2, '0')).join()}',
+      id: old?.id ?? _newId,
       patientId: old?.patientId ?? s.currentPatientId!,
       kind: _kind,
       title: _title.text.trim(),
@@ -116,20 +123,27 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
       ingredient: _kind == RecordKind.prescription && _ingredient.text.trim().isNotEmpty ? _ingredient.text.trim().toLowerCase() : null,
       results: _kind == RecordKind.report ? results : [],
     );
-    if (old == null) {
-      await s.addRecord(record);
-    } else {
-      await s.updateRecord(record);
-    }
-    if (!mounted) return;
-    final check = s.criticalCheck(record);
-    if (check.needsPrompt) {
-      await showCriticalPrompt(context, check);
+    setState(() => _saving = true);
+    try {
+      if (old == null) {
+        await s.addRecord(record);
+      } else {
+        await s.updateRecord(record);
+      }
       if (!mounted) return;
-    } else {
-      celebrate(context, old == null ? 'Record saved' : 'Changes saved');
+      final check = s.criticalCheck(record);
+      if (check.needsPrompt) {
+        await showCriticalPrompt(context, check);
+        if (!mounted) return;
+      } else {
+        celebrate(context, old == null ? 'Record saved' : 'Changes saved');
+      }
+      Navigator.of(context).pop();
+    } on Object catch (e) {
+      if (mounted) setState(() => _error = 'Not saved. ${plainError(e)}');
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
-    Navigator.of(context).pop();
   }
 
   /// A new record starts with the choice; the form opens on "Type it in".
@@ -271,7 +285,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
           ],
           if (_kind == RecordKind.note) Note('Personal notes stay on this phone. They are never included in a backup unless you turn that on.', icon: LucideIcons.smartphone),
           if (_error != null) Padding(padding: EdgeInsets.fromLTRB(20, 8, 20, 0), child: Text(_error!, style: LT.small.copyWith(color: LT.signal))),
-          Padding(padding: EdgeInsets.fromLTRB(16, 20, 16, 28), child: SlabButton('Save record', icon: LucideIcons.check, onPressed: _save)),
+          Padding(padding: EdgeInsets.fromLTRB(16, 20, 16, 28), child: SlabButton(_saving ? 'Saving…' : 'Save record', icon: LucideIcons.check, onPressed: _saving ? null : _save)),
         ]);
 }
 

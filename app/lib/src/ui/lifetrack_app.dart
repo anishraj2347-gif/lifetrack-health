@@ -63,6 +63,8 @@ class _LifeTrackAppState extends State<LifeTrackApp> with WidgetsBindingObserver
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) unawaited(_services.then((s) => s.retryNow(), onError: (_) {}));
+    // Leaving the screen: send what a save left waiting while there is time.
+    if (state == AppLifecycleState.paused) unawaited(_services.then((s) => s.settle(), onError: (_) {}));
   }
 
   bool _resolve() => switch (appearance.value) {
@@ -141,13 +143,38 @@ class _HomeShellState extends State<HomeShell> {
     super.initState();
     IncomingFiles.listen();
     IncomingFiles.arrivals.addListener(_incoming);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _incoming());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _incoming();
+      _services = context.getInheritedWidgetOfExactType<AppScope>()!.services..backupProblem.addListener(_backupChanged);
+      _backupChanged();
+    });
   }
 
   @override
   void dispose() {
     IncomingFiles.arrivals.removeListener(_incoming);
+    _services?.backupProblem.removeListener(_backupChanged);
     super.dispose();
+  }
+
+  AppServices? _services;
+  String? _toldBackup;
+
+  /// A backup runs where nobody is looking, so its failure comes to the
+  /// patient, on whatever screen they are on. The Backup page and Me keep
+  /// showing it until a backup goes.
+  void _backupChanged() {
+    final problem = _services?.backupProblem.value;
+    if (!mounted) return;
+    AppScope.changed(context);
+    if (problem != null && problem != _toldBackup) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Backup failed. $problem'),
+        duration: const Duration(seconds: 8),
+        action: SnackBarAction(label: 'Details', onPressed: () => setState(() => _tab = 4)),
+      ));
+    }
+    _toldBackup = problem;
   }
 
   Future<void> _incoming() async {

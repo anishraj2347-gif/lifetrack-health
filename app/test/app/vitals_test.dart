@@ -51,6 +51,7 @@ void main() {
     expect(a.vitalsOf(a.selfPatientId!), isEmpty, reason: 'local-only by default');
 
     await s.setBackupIncludesNotes(true);
+    await s.settle();
     final b = await open();
     await b.restoreFromBackup(account: kit.account, password: kit.password);
     expect(b.vitalsOf(b.selfPatientId!), hasLength(1));

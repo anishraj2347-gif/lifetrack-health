@@ -65,6 +65,7 @@ void main() {
     expect(fresh.familyOnPhone(), hasLength(2));
     // …and that phone can keep backing up without ever knowing the password.
     await fresh.addRecord(HealthRecord(id: 'r2', patientId: fresh.selfPatientId!, kind: RecordKind.report, title: 'HbA1c', date: now, source: RecordSource.smartCapture));
+    await fresh.settle();
     expect(fresh.lastBackupError, isNull);
     final third = await phone(3);
     await third.restoreFromBackup(account: kit.account, password: kit.password);
@@ -81,6 +82,7 @@ void main() {
   test('changes are backed up as they happen; personal notes only when chosen', () async {
     final (old, kit) = await oldPhone(notes: true);
     await old.addRecord(HealthRecord(id: 'r9', patientId: old.selfPatientId!, kind: RecordKind.prescription, title: 'Metformin', date: now, source: RecordSource.smartCapture));
+    await old.settle();
     final fresh = await phone(2);
     await fresh.restoreFromBackup(account: kit.account, password: kit.password);
     final ids = fresh.repository.recordsOf(fresh.selfPatientId!).map((r) => r.id);

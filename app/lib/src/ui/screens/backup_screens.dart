@@ -34,7 +34,8 @@ class _BackupScreenState extends State<BackupScreen> {
     } on CustodyRefused catch (e) {
       _error = e.message;
     } on Object {
-      _error = 'Could not reach the backup service. Your records are unchanged on this phone.';
+      final said = mounted ? AppScope.of(context).lastBackupError : null;
+      _error = '${said ?? 'Could not reach the backup service.'} Your records are unchanged on this phone.';
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -129,12 +130,12 @@ class _BackupScreenState extends State<BackupScreen> {
                   ? 'Last attempt failed: ${s.lastBackupError}'
                   : s.lastBackupAt == null
                       ? 'Not backed up yet'
-                      : 'Last backed up ${dateTime(s.lastBackupAt!)}',
+                      : '${s.backupBehind ? 'Newest changes waiting. ' : ''}Last backed up ${dateTime(s.lastBackupAt!)}',
               style: LT.small.copyWith(color: s.lastBackupError != null ? LT.signal : LT.ink3),
             ),
           ]),
         ),
-        Note('Changes are backed up as you make them. If the service cannot be reached, the next change or "Back up now" tries again.', icon: LucideIcons.refreshCw),
+        Note('Changes are backed up a few seconds after you make them, in the background. If that fails LifeTrack says so here, and keeps trying.', icon: LucideIcons.refreshCw),
         ShadCard(
           padding: EdgeInsets.fromLTRB(16, 8, 8, 8),
           child: Row(children: [

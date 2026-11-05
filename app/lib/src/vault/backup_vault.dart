@@ -154,8 +154,7 @@ class BackupVault {
     final derived = await VaultKeyDerivation.derive(password, salt, params);
     final wrapped = await _aead.encrypt(dataKey, secretKey: derived.vaultKey);
     final keys = VaultKeys(dataKey: dataKey, salt: salt, verifier: derived.loginVerifier, wrappedDataKey: Uint8List.fromList(wrapped.concatenation()));
-    await remote.put(account, await _entry(keys, body));
-    await _log(auditPatientId, AuditAction.vaultBackup, 'backup made: $detail', at);
+    await _send(account, await _entry(keys, body), auditPatientId, 'backup sent: $detail', at);
     return VaultSetup(keys: keys, shares: Shamir.split(dataKey, threshold: 2, count: 3));
   }
 
@@ -168,8 +167,18 @@ class BackupVault {
     required String detail,
     required DateTime at,
   }) async {
-    await remote.put(account, await _entry(keys, body), currentVerifier: keys.verifier);
-    await _log(auditPatientId, AuditAction.vaultBackup, 'backed up: $detail', at);
+    await _send(account, await _entry(keys, body), auditPatientId, 'backup sent: $detail', at, currentVerifier: keys.verifier);
+  }
+
+  /// Logged before it leaves, so a failed send is still on record (#13).
+  Future<void> _send(String account, RemoteVaultEntry entry, String auditPatientId, String detail, DateTime at, {List<int>? currentVerifier}) async {
+    await _log(auditPatientId, AuditAction.vaultBackup, detail, at);
+    try {
+      await remote.put(account, entry, currentVerifier: currentVerifier);
+    } on Object {
+      await _log(auditPatientId, AuditAction.vaultBackup, 'backup did not reach the service', at);
+      rethrow;
+    }
   }
 
   Future<VaultRestore> restoreWithPassword({required String account, required String password, required String auditPatientId, required DateTime at}) async {
@@ -198,11 +207,11 @@ class BackupVault {
         salt: keys.salt,
         verifier: keys.verifier,
         wrappedDataKey: keys.wrappedDataKey,
-        blob: await VaultCodec.seal({...body, '_keys': keys.toJson()}, SecretKey(keys.dataKey)),
+        blob: await VaultCodec.sealOffScreen({...body, '_keys': keys.toJson()}, SecretKey(keys.dataKey)),
       );
 
   Future<VaultRestore> _open(Uint8List blob, List<int> dataKey, String auditPatientId, DateTime at, String how) async {
-    final body = ((await VaultCodec.open(blob, SecretKey(dataKey))) as Map).cast<String, Object?>();
+    final body = ((await VaultCodec.openOffScreen(blob, SecretKey(dataKey))) as Map).cast<String, Object?>();
     final keys = VaultKeys.fromJson((body.remove('_keys')! as Map).cast());
     // A restore reads the entire record set; it belongs in "who opened what".
     await _log(auditPatientId, AuditAction.vaultRestore, 'restored with $how', at);

@@ -1,5 +1,6 @@
 import '../model/health_record.dart';
 import '../storage/sealed_store.dart';
+import '../storage/serial.dart';
 
 enum AuditAction {
   view,
@@ -118,10 +119,15 @@ class PersistentAuditLog implements AuditLog {
     ]);
   }
 
+  /// Background work appends too. Each write starts after the last has
+  /// finished and saves the log as it is by then, so a slow older write can
+  /// never land on top of a newer one and lose an entry.
+  final _writes = Serial();
+
   @override
-  Future<void> append(AuditEntry entry) async {
+  Future<void> append(AuditEntry entry) {
     _entries.add(entry);
-    await _store.write(blobName, [for (final e in _entries) e.toJson()]);
+    return _writes.run(() => _store.write(blobName, [for (final e in _entries) e.toJson()]));
   }
 
   @override
