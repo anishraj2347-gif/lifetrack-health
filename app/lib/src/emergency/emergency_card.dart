@@ -20,6 +20,7 @@ class EmergencyCard {
     this.contactName = '',
     this.contactRelation = '',
     this.contactPhone = '',
+    this.updatedAt,
   });
 
   static const maxFieldLength = 120;
@@ -33,15 +34,33 @@ class EmergencyCard {
   final String contactRelation;
   final String contactPhone;
 
-  EmergencyCard withAllergies(String line) => EmergencyCard(
+  /// When the card's content last changed, so a stale card looks stale. Null
+  /// on a card last saved before this was kept: unknown, never "today".
+  final DateTime? updatedAt;
+
+  EmergencyCard _with({String? allergies, DateTime? updatedAt}) => EmergencyCard(
         bloodType: bloodType,
-        allergies: line,
+        allergies: allergies ?? this.allergies,
         conditions: conditions,
         medications: medications,
         contactName: contactName,
         contactRelation: contactRelation,
         contactPhone: contactPhone,
+        updatedAt: updatedAt ?? this.updatedAt,
       );
+
+  EmergencyCard withAllergies(String line, DateTime at) => _with(allergies: line, updatedAt: at);
+  EmergencyCard editedAt(DateTime at) => _with(updatedAt: at);
+
+  /// Same content as [o]; the date is not content.
+  bool sameContentAs(EmergencyCard o) =>
+      bloodType == o.bloodType &&
+      allergies == o.allergies &&
+      conditions == o.conditions &&
+      medications == o.medications &&
+      contactName == o.contactName &&
+      contactRelation == o.contactRelation &&
+      contactPhone == o.contactPhone;
 
   bool get isEmpty => [bloodType, allergies, conditions, medications, contactName].every((f) => f.trim().isEmpty);
 
@@ -70,6 +89,7 @@ class EmergencyCard {
         'contactName': contactName,
         'contactRelation': contactRelation,
         'contactPhone': contactPhone,
+        if (updatedAt != null) 'updated': updatedAt!.toIso8601String(),
       };
 
   static EmergencyCard fromJson(Map<String, Object?> j) => EmergencyCard(
@@ -80,6 +100,7 @@ class EmergencyCard {
         contactName: (j['contactName'] as String?) ?? '',
         contactRelation: (j['contactRelation'] as String?) ?? '',
         contactPhone: (j['contactPhone'] as String?) ?? '',
+        updatedAt: j['updated'] == null ? null : DateTime.tryParse(j['updated']! as String),
       );
 }
 

@@ -72,7 +72,7 @@ void main() {
       expect(card.validate(), isEmpty);
       await s.saveEmergencyCard(me, card);
       expect(s.clinicalProfile().allergies, hasLength(20), reason: 'an unchanged line changes nothing');
-      await s.saveEmergencyCard(me, card.withAllergies(card.allergies.replaceFirst('Substance number 0, ', '')));
+      await s.saveEmergencyCard(me, card.withAllergies(card.allergies.replaceFirst('Substance number 0, ', ''), now));
       expect(s.clinicalProfile().allergies, hasLength(19));
       expect(s.clinicalProfile().allergies.last.substance, 'Substance number 19');
     });

@@ -57,7 +57,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     final ltId = who == null ? null : s.lifeTrackIdOf(who.id);
     final qrText = c == null || who == null
         ? ''
-        : emergencyQrText(name: who.name, card: c, lifeTrackId: ltId, abhaMasked: abha?.masked, updated: s.clock());
+        : emergencyQrText(name: who.name, card: c, lifeTrackId: ltId, abhaMasked: abha?.masked);
     return Scaffold(
       appBar: GlassAppBar(),
       body: c == null
@@ -308,6 +308,8 @@ class _IdCardState extends State<_IdCard> {
                 Text(a, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 1.2, color: LT.onDark)),
               ]),
           ]),
+          SizedBox(height: 10),
+          Text(c.updatedAt == null ? 'Last edited: date not recorded' : 'Last edited ${fullDate(c.updatedAt!)}', style: muted),
         ]),
       ),
     );

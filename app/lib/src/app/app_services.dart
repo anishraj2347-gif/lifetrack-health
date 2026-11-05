@@ -683,7 +683,7 @@ class AppServices {
       for (final v in m.vitals(person.id)) {
         await repository.addVital(v);
       }
-      if (m.emergency != null) await emergency.save(person.id, m.emergency!);
+      if (m.emergency != null) await emergency.save(person.id, m.emergency!.editedAt(at));
       if (m.vaccinesUpTo != null) {
         final upTo = uipSchedule.indexWhere((d) => d.code == m.vaccinesUpTo);
         _vaccines[person.id] = {
@@ -788,7 +788,7 @@ class AppServices {
     final card = await emergency.load(id);
     final line = next.cardLine(EmergencyCard.maxFieldLength);
     if (card.allergies.trim() != line) {
-      await emergency.save(id, card.withAllergies(line));
+      await emergency.save(id, card.withAllergies(line, at));
       await _tellLinkedFamily(id);
     }
     await _backUpQuietly();
@@ -1096,7 +1096,10 @@ class AppServices {
   /// Saves the Emergency ID, and sends the new card to linked family who
   /// were chosen to see it.
   Future<void> saveEmergencyCard(String patientId, EmergencyCard card) async {
-    await emergency.save(patientId, card);
+    // The date is the last real edit: saving an unchanged card keeps it.
+    final before = await emergency.load(patientId);
+    final changed = !card.sameContentAs(before);
+    await emergency.save(patientId, changed ? card.editedAt(clock()) : card.editedAt(before.updatedAt ?? clock()));
     // The card can edit the one allergy list too. Unchanged, it leaves the
     // list alone: the line may be a shortened form of it.
     final prof = repository.profileOf(patientId);

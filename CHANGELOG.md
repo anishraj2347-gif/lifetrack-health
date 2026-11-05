@@ -47,6 +47,12 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.45.1 (6 Nov 2026)
+- **Fixed: the Emergency ID printed today's date as "Card as of"**, so a years-old card looked current. The
+  card now keeps the date its content last changed and shows it on the card and in the QR text. A save that
+  changes nothing keeps the old date, a change to the allergy list moves it, and a card last saved before
+  this version says the date is not recorded.
+
 ### 1.45.0 (6 Nov 2026)
 - **Allergies, conditions and family illnesses can now be entered**: Me › Allergies and conditions.
   Nothing could enter them before. `saveClinicalProfile` now logs the change and backs it up.

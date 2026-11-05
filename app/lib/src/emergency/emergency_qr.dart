@@ -10,7 +10,6 @@ String emergencyQrText({
   required EmergencyCard card,
   String? lifeTrackId,
   String? abhaMasked,
-  required DateTime updated,
 }) {
   final contact = [card.contactName, card.contactRelation, card.contactPhone].where((x) => x.trim().isNotEmpty).join(', ');
   final lines = [
@@ -23,7 +22,7 @@ String emergencyQrText({
     if (card.medications.trim().isNotEmpty) 'Medicines: ${card.medications.trim()}',
     if (contact.isNotEmpty) 'Emergency contact: $contact',
     if (abhaMasked != null) 'ABHA: $abhaMasked',
-    'Card as of ${updated.toIso8601String().substring(0, 10)}',
+    card.updatedAt == null ? 'Card last edited: date not recorded' : 'Card last edited ${card.updatedAt!.toIso8601String().substring(0, 10)}',
   ];
   return lines.join('\n');
 }
