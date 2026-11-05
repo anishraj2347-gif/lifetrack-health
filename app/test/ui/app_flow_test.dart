@@ -125,6 +125,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.bySemanticsLabel('Me'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Access log'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Access log'));
     await tester.pumpAndSettle();
     expect(find.textContaining('On-device insights read'), findsWidgets);

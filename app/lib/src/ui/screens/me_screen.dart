@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../model/clinical_profile.dart';
 import '../../audit/audit_log.dart';
 import '../../audit/log_view.dart';
 import '../app_lock.dart';
@@ -20,6 +21,7 @@ import 'family_overview_screen.dart';
 import '../../app/app_version.dart';
 import 'backup_screens.dart';
 import 'reminders_screen.dart';
+import 'clinical_profile_screen.dart';
 import 'emergency_screen.dart';
 import 'family_link_screens.dart';
 import 'share_screen.dart' show describeActor, dataClassNames, iconForActor;
@@ -130,6 +132,7 @@ class MeScreen extends StatelessWidget {
       ShadCard(
         padding: EdgeInsets.zero,
         child: Column(children: [
+          _link(context, LucideIcons.stethoscope, 'Allergies and conditions', _clinicalLine(s.clinicalProfile()), ClinicalProfileScreen()),
           _link(context, LucideIcons.ambulance, 'Emergency ID', 'For whoever treats you · keep a copy outside the phone too', EmergencyScreen()),
           _link(context, LucideIcons.idCard, 'ABHA health ID', p.abha == null ? 'Optional · not added' : '${p.abha!.display} · not verified', AbhaScreen()),
           _link(context, LucideIcons.bell, 'Reminders', s.reminderSettings.on ? 'On · ${s.reminderPlan().length} in the next 2 weeks' : 'Off', RemindersScreen()),
@@ -295,6 +298,12 @@ class MeScreen extends StatelessWidget {
           Switch(value: value, onChanged: onChanged),
         ]),
       );
+
+  /// Empty says "not recorded", never "none".
+  static String _clinicalLine(ClinicalProfile p) => [
+        p.allergies.isNotEmpty ? '${p.allergies.length} ${p.allergies.length == 1 ? 'allergy' : 'allergies'}' : p.noneKnown ? noKnownAllergies : 'Allergies not recorded',
+        if (p.conditions.isNotEmpty) '${p.conditions.length} ${p.conditions.length == 1 ? 'condition' : 'conditions'}',
+      ].join(' · ');
 
   Widget _link(BuildContext context, IconData icon, String title, String sub, Widget page, {bool last = false}) => InkWell(
         onTap: () async {

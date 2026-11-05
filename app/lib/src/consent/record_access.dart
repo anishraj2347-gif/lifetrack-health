@@ -32,6 +32,7 @@ class RecordAccess {
     final p = repository.profileOf(patientId);
     return ClinicalProfile(
       allergies: dataClass == DataClass.allergies ? p.allergies : const [],
+      noneKnown: dataClass == DataClass.allergies && p.noneKnown,
       conditions: dataClass == DataClass.conditions ? p.conditions : const [],
       familyIllnesses: dataClass == DataClass.familyHistory ? p.familyIllnesses : const [],
       updatedAt: p.updatedAt,

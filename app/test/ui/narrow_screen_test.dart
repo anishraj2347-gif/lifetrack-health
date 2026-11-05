@@ -8,6 +8,7 @@ import 'package:lifetrack/src/model/patient.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
 import 'package:lifetrack/src/ui/lifetrack_app.dart';
 import 'package:lifetrack/src/ui/screens/abha_screen.dart';
+import 'package:lifetrack/src/ui/screens/clinical_profile_screen.dart';
 import 'package:lifetrack/src/ui/screens/add_family_screen.dart';
 import 'package:lifetrack/src/ui/screens/add_record_screen.dart';
 import 'package:lifetrack/src/ui/screens/backup_screens.dart';
@@ -109,6 +110,7 @@ void main() {
             'Vaccinations': const VaccinationsScreen(),
             'Tests you have': const TestsYouHaveScreen(),
             'ABHA': const AbhaScreen(),
+            'Allergies and conditions': const ClinicalProfileScreen(),
             'Share with a doctor': const DoctorShareScreen(),
             'Record': RecordScreen(recordId: report.id),
             for (final r in records.where((r) => r.kind == RecordKind.prescription).take(1)) 'Prescription': RecordScreen(recordId: r.id),

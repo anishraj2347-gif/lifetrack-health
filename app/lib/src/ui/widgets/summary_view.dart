@@ -56,6 +56,11 @@ class SummaryView extends StatelessWidget {
           decoration: BoxDecoration(color: LT.caution, borderRadius: BorderRadius.circular(LT.radius), border: Border.all(color: LT.cautionBorder)),
           child: Text('Patient shared selected items. Not shared: ${withheld.join(', ')}.', style: LT.small.copyWith(color: LT.cautionInk)),
         ),
+      if (allergies.isEmpty)
+        Padding(
+          padding: EdgeInsets.fromLTRB(20, 0, 20, 10),
+          child: Text(b['noKnownAllergies'] == true ? 'No known allergies, as stated by the patient' : withheld.contains('allergies') ? 'Allergies: not shared' : 'Allergies: not recorded', style: LT.label),
+        ),
       for (final a in allergies)
         Container(
           margin: EdgeInsets.fromLTRB(16, 0, 16, 8),

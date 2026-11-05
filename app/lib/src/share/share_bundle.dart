@@ -28,6 +28,7 @@ abstract final class ShareBundle {
     required Set<DataClass> requested,
     required Set<DataClass> granted,
     required List<Allergy> allergies,
+    bool noKnownAllergies = false,
     required List<Condition> conditions,
     required List<FamilyIllness> familyIllnesses,
     required List<HealthRecord> prescriptions,
@@ -66,6 +67,7 @@ abstract final class ShareBundle {
       },
       'profileUpdatedAt': profileUpdatedAt?.toUtc().toIso8601String(),
       'allergies': [for (final a in allergies) a.toJson()],
+      if (noKnownAllergies) 'noKnownAllergies': true,
       'conditions': [for (final c in conditions) c.toJson()],
       'medicines': {
         'active': [for (final r in activeMeds) _medicine(r, at)],

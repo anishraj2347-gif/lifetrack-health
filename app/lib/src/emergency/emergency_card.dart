@@ -33,6 +33,16 @@ class EmergencyCard {
   final String contactRelation;
   final String contactPhone;
 
+  EmergencyCard withAllergies(String line) => EmergencyCard(
+        bloodType: bloodType,
+        allergies: line,
+        conditions: conditions,
+        medications: medications,
+        contactName: contactName,
+        contactRelation: contactRelation,
+        contactPhone: contactPhone,
+      );
+
   bool get isEmpty => [bloodType, allergies, conditions, medications, contactName].every((f) => f.trim().isEmpty);
 
   /// Problems that stop the card being saved.

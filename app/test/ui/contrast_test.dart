@@ -7,6 +7,7 @@ import 'package:lifetrack/src/model/patient.dart';
 import 'package:lifetrack/src/storage/byte_store.dart';
 import 'package:lifetrack/src/ui/lifetrack_app.dart';
 import 'package:lifetrack/src/ui/screens/abha_screen.dart';
+import 'package:lifetrack/src/ui/screens/clinical_profile_screen.dart';
 import 'package:lifetrack/src/ui/screens/add_family_screen.dart';
 import 'package:lifetrack/src/ui/screens/add_record_screen.dart';
 import 'package:lifetrack/src/ui/screens/backup_screens.dart';
@@ -152,6 +153,7 @@ void main() {
           ('Your data and your rights', const DataRightsScreen()),
           ('Access log', const AuditScreen()),
           ('ABHA', const AbhaScreen()),
+          ('Allergies and conditions', const ClinicalProfileScreen()),
           ('Add record', const AddRecordScreen()),
           ('Add family', const AddFamilyScreen()),
         ]) {

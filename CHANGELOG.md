@@ -47,6 +47,15 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.45.0 (6 Nov 2026)
+- **Allergies, conditions and family illnesses can now be entered**: Me › Allergies and conditions.
+  Nothing could enter them before. `saveClinicalProfile` now logs the change and backs it up.
+- **One allergy list.** The list feeds the clinical share and the Emergency ID, whose bounded line follows
+  it ("+3 more" when it does not fit); editing the line on the card edits the list, and allergies typed on
+  a card before this version become the list on next open, so doctors now receive them.
+- An empty list is not "none": "No known allergies" is a stated choice that travels to the card and the
+  doctor, and the patient's own summary shows "Allergies: not recorded".
+
 ### 1.44.1 (6 Nov 2026)
 - **Fixed: a missing dose no longer becomes 1-0-1.** A scanned medicine with no printed dose has no dose
   until a person says how it is taken: every day (with counts), only when needed, or something else in
@@ -581,6 +590,10 @@ always goes up (Android refuses to install a lower one).
 - Rebuilt phase-2 app: records, insights, consent, clinical sharing with verified doctors.
 
 ## Doctor web app
+
+### 1.9.0 (6 Nov 2026)
+- **The summary now always has an allergy line**: "Allergies: not recorded", "No known allergies, as
+  stated by the patient", or "Allergies: not shared" when withheld, where an empty list used to show nothing.
 
 ### 1.8.2 (6 Nov 2026)
 - **Fixed: a new prescription no longer starts at 0-0-1 for 30 days after food.** Dose, days and timing

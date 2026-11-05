@@ -10,15 +10,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../emergency/emergency_card.dart';
 import '../../emergency/emergency_qr.dart';
+import '../../model/clinical_profile.dart';
 import '../../security/plain_leftovers.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
 import 'onboarding_screen.dart' show StepIndicator;
 
-/// What the "No known allergies" chip stores: said on purpose, unlike a
-/// blank field, which means nobody filled it in.
-const noKnownAllergies = 'No known allergies';
 
 /// Read view of the Emergency ID. The allergy block is the one place a
 /// signal flood is earned.
@@ -382,8 +380,9 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
     widget.onSaved();
   }
 
-  Widget _text(String label, TextEditingController c, {TextInputType? type}) => LabeledField(
+  Widget _text(String label, TextEditingController c, {TextInputType? type, String? hint}) => LabeledField(
         label: label,
+        hint: hint,
         child: TextField(controller: c, keyboardType: type, maxLength: EmergencyCard.maxFieldLength, buildCounter: _noCounter),
       );
 
@@ -428,7 +427,7 @@ class _EmergencyEditorState extends State<EmergencyEditor> {
               Chip2(b.isEmpty ? 'Unknown' : b, selected: _blood == b, onTap: () => setState(() => _blood = b)),
           ]),
         ),
-        _text('Allergies', _allergies),
+        _text('Allergies', _allergies, hint: 'The same list as Me › Allergies and conditions. It goes to a doctor when you share.'),
         Padding(
           padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
           child: Align(

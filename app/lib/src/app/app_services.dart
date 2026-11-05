@@ -232,6 +232,7 @@ class AppServices {
     services._backup = ((await sealed.read(_backupBlob) as Map?) ?? {}).cast<String, Object?>();
     consent.evictFinished(now());
     await services._settleOwner();
+    await services._adoptCardAllergies();
     await services._loadPhotos();
     unawaited(services.refreshReminders());
     if (share != null && share.isComplete) {
@@ -762,6 +763,7 @@ class AppServices {
       requested: all,
       granted: all,
       allergies: prof.allergies,
+      noKnownAllergies: prof.noneKnown,
       conditions: prof.conditions,
       familyIllnesses: prof.familyIllnesses,
       prescriptions: [for (final r in rs) if (r.kind == RecordKind.prescription) r],
@@ -774,10 +776,34 @@ class AppServices {
   ClinicalProfile clinicalProfile() =>
       currentPatientId == null ? const ClinicalProfile() : repository.profileOf(currentPatientId!);
 
-  Future<void> saveClinicalProfile(ClinicalProfile p) => repository.saveProfile(
-        currentPatientId!,
-        ClinicalProfile(allergies: p.allergies, conditions: p.conditions, familyIllnesses: p.familyIllnesses, updatedAt: clock()),
-      );
+  /// Saves what the patient entered for the profile on screen. Its allergies
+  /// are the one list, so the Emergency ID's line follows them.
+  Future<void> saveClinicalProfile(ClinicalProfile p) async {
+    final id = currentPatientId!;
+    final actor = actingGrantor();
+    final at = clock();
+    final next = ClinicalProfile(allergies: p.allergies, noneKnown: p.noneKnown, conditions: p.conditions, familyIllnesses: p.familyIllnesses, updatedAt: at);
+    await repository.saveProfile(id, next);
+    await audit.append(AuditEntry(at: at, actorId: actor, patientId: id, action: AuditAction.edit, dataClass: DataClass.allergies, detail: 'allergies, conditions and family illnesses updated'));
+    final card = await emergency.load(id);
+    final line = next.cardLine(EmergencyCard.maxFieldLength);
+    if (card.allergies.trim() != line) {
+      await emergency.save(id, card.withAllergies(line));
+      await _tellLinkedFamily(id);
+    }
+    await _backUpQuietly();
+  }
+
+  /// Cards filled in before the list existed: the card's allergies become the
+  /// list, so a doctor sees them too. Only ever fills an empty list.
+  Future<void> _adoptCardAllergies() async {
+    for (final p in repository.patients) {
+      final prof = repository.profileOf(p.id);
+      if (prof.allergies.isNotEmpty || prof.noneKnown) continue;
+      final line = (await emergency.load(p.id)).allergies;
+      if (line.trim().isNotEmpty) await repository.saveProfile(p.id, prof.withCardLine(line, clock()));
+    }
+  }
 
   // ---- profile -----------------------------------------------------------
 
@@ -1071,6 +1097,12 @@ class AppServices {
   /// were chosen to see it.
   Future<void> saveEmergencyCard(String patientId, EmergencyCard card) async {
     await emergency.save(patientId, card);
+    // The card can edit the one allergy list too. Unchanged, it leaves the
+    // list alone: the line may be a shortened form of it.
+    final prof = repository.profileOf(patientId);
+    if (card.allergies.trim() != prof.cardLine(EmergencyCard.maxFieldLength)) {
+      await repository.saveProfile(patientId, prof.withCardLine(card.allergies, clock()));
+    }
     await _tellLinkedFamily(patientId);
     await _backUpQuietly();
   }

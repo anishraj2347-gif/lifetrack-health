@@ -171,6 +171,7 @@ class ClinicalShareService {
       requested: requestedScopes,
       granted: scopes,
       allergies: allergies.allergies,
+      noKnownAllergies: allergies.noneKnown,
       conditions: conditions.conditions,
       familyIllnesses: family.familyIllnesses,
       prescriptions: [for (final r in released.values) if (r.kind == RecordKind.prescription) r],

@@ -106,6 +106,19 @@ class SummaryPanel extends StatelessWidget {
           _note(
             '$omitted original report${omitted == 1 ? ' was' : 's were'} too large to send. Ask the patient to show it on their phone.',
           ),
+        // Never left blank: no line at all would read as "no allergies".
+        if (((b['allergies'] as List?) ?? []).isEmpty)
+          Padding(
+            padding: EdgeInsets.only(bottom: 10),
+            child: Text(
+              b['noKnownAllergies'] == true
+                  ? 'No known allergies, as stated by the patient'
+                  : withheld.contains('allergies')
+                  ? 'Allergies: not shared'
+                  : 'Allergies: not recorded',
+              style: DT.body.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
         for (final a in (b['allergies'] as List?) ?? [])
           Container(
             margin: EdgeInsets.only(bottom: 8),
