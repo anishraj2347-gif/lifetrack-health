@@ -293,11 +293,11 @@ class AppServices {
   Future<void> retryNow() async {
     _retryTimer?.cancel();
     _retryTimer = null;
-    var waiting = 0;
+    var waiting = await flush() ? 0 : 1;
     try {
-      waiting = await sharing?.retryPendingCloses(clock()) ?? 0;
+      waiting += await sharing?.retryPendingCloses(clock()) ?? 0;
     } on Object {
-      waiting = 1;
+      waiting++;
     }
     if (waiting == 0) {
       _retryGap = _retryAfter;
@@ -319,15 +319,47 @@ class AppServices {
   Future<EndAccessResult> endAccess(ConsentToken grant) async {
     final result = await sharing!.endAccess(grant, clock());
     if (result == EndAccessResult.waitingForServer) _retryLater();
+    await _revocationSaved();
     return result;
   }
 
-  /// Waits for background grant persistence. Tests call this before reopening.
-  Future<void> flush() => _pendingWrite;
+  /// A revocation that is only in memory would come back after a restart, so
+  /// the screen must hear about it. The write is retried in the background.
+  Future<void> _revocationSaved() async {
+    if (!await flush()) {
+      _retryLater();
+      throw StateError('Access has ended for now, but this phone could not save that. LifeTrack keeps trying; keep the app open.');
+    }
+  }
 
+  /// Waits for background grant persistence, trying once more if the last
+  /// write failed. True when what is on disk is up to date.
+  Future<bool> flush() async {
+    await _pendingWrite;
+    if (_grantsUnsaved) await (_pendingWrite = _writeGrants());
+    return !_grantsUnsaved;
+  }
+
+  bool _grantsUnsaved = false;
+
+  /// Writes are chained, and each saves the store as it is by then. A failed
+  /// write must not break the chain: the next change, or the next retry, saves
+  /// everything including whatever failed.
   void _persistGrants() {
-    final snapshot = consent.toJson();
-    _pendingWrite = _pendingWrite.then((_) => sealed.write(_grantsBlob, snapshot));
+    _grantsUnsaved = true;
+    _pendingWrite = _pendingWrite.then((_) => _writeGrants());
+  }
+
+  /// Never throws.
+  Future<void> _writeGrants() async {
+    if (!_grantsUnsaved) return;
+    _grantsUnsaved = false;
+    try {
+      await sealed.write(_grantsBlob, consent.toJson());
+    } on Object {
+      _grantsUnsaved = true;
+      _retryLater();
+    }
   }
 
   Future<void> _saveSettings() => sealed.write(_settingsBlob, settings);
@@ -1248,6 +1280,7 @@ class AppServices {
       tokenId: grant.id,
       detail: grant.grantedToActorId,
     ));
+    await _revocationSaved();
   }
 
   /// Doctors this phone has shared with: registration number → name, as
@@ -1626,8 +1659,10 @@ class AppServices {
   // ---- erasure (DPDP §12) -------------------------------------------------
 
   /// Deletes this profile's records, grants, Emergency ID and backup. The
-  /// erasure itself stays as the only entry in the log.
-  Future<void> eraseProfile() async {
+  /// erasure itself stays as the only entry in the log. Live shares end first,
+  /// so a doctor does not keep access until expiry. Works offline; returns how
+  /// many doctors' devices are still to be told.
+  Future<int> eraseProfile() async {
     final id = currentPatientId!;
     if (id == selfPatientId && familyOnPhone().length > 1) {
       // Erasing the owner would strand a child's or parent's records on a
@@ -1635,6 +1670,18 @@ class AppServices {
       throw const CustodyRefused('Remove the other family profiles on this phone first.');
     }
     final at = clock();
+    var ended = 0, notTold = 0;
+    for (final g in consent.activeGrantsFor(id, at)) {
+      if (sharing == null || g.granteeKeyId == null) continue;
+      ended++;
+      try {
+        if (await sharing!.endAccess(g, at) == EndAccessResult.waitingForServer) notTold++;
+      } on Object {
+        // Never a reason to keep someone's records: the grant goes below.
+        notTold++;
+      }
+    }
+    if (notTold > 0) _retryLater();
     for (final r in repository.recordsOf(id)) {
       if (r.attachmentId != null) await attachments.delete(r.attachmentId!);
     }
@@ -1667,9 +1714,11 @@ class AppServices {
         await _saveBackup();
       }
     }
+    // The entries that named those shares go with the rest, so this one says it.
+    final doctors = ended == 0 ? '' : '; access ended for $ended doctor${ended == 1 ? '' : 's'}${notTold == 0 ? '' : ', $notTold not told yet'}';
     await audit.eraseFor(
       id,
-      AuditEntry(at: at, actorId: 'patient:$id', patientId: id, action: AuditAction.erasure, detail: 'records, grants, Emergency ID and backup deleted'),
+      AuditEntry(at: at, actorId: 'patient:$id', patientId: id, action: AuditAction.erasure, detail: 'records, grants, Emergency ID and backup deleted$doctors'),
     );
     if (id != selfPatientId && selfPatientId != null) {
       settings['currentPatientId'] = selfPatientId;
@@ -1677,7 +1726,7 @@ class AppServices {
       await flush();
       await _backUpQuietly();
       await refreshReminders();
-      return;
+      return notTold;
     }
     settings.remove('currentPatientId');
     settings.remove('selfPatientId');
@@ -1686,6 +1735,7 @@ class AppServices {
     await _saveSettings();
     await flush();
     await refreshReminders();
+    return notTold;
   }
 
   static String _randomId() {

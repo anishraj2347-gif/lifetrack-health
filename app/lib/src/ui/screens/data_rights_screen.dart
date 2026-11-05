@@ -167,7 +167,12 @@ class _DataRightsScreenState extends State<DataRightsScreen> {
     setState(() => _erasing = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await s.eraseProfile();
+      final notTold = await s.eraseProfile();
+      if (notTold > 0) {
+        messenger.showSnackBar(SnackBar(
+          content: Text("Erased. LifeTrack's server could not be reached, so $notTold doctor${notTold == 1 ? ' has' : 's have'} not been told yet. What they received stays open until they are told, or until their access runs out."),
+        ));
+      }
     } on CustodyRefused catch (e) {
       setState(() => _erasing = false);
       messenger.showSnackBar(SnackBar(content: Text(e.message)));

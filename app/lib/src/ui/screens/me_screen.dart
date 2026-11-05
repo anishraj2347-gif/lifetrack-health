@@ -350,6 +350,7 @@ class _AuditScreenState extends State<AuditScreen> {
         AuditAction.grantRevoked => 'revoked access',
         AuditAction.cloudEgress => 'sent a de-identified summary off this phone',
         AuditAction.clinicalShare => 'shared records, encrypted to one doctor',
+        AuditAction.familyShare => 'sent what you share to a linked adult',
         AuditAction.prescriptionReceived => 'added a signed prescription',
         AuditAction.emergencyRead => 'opened the Emergency ID',
         AuditAction.vaultBackup => 'backed up',

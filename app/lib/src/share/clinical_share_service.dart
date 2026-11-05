@@ -400,7 +400,7 @@ class ClinicalShareService {
     for (final c in [...await _queue]) {
       if (!at.isBefore(c.expiresAt)) {
         await _settled(c);
-        await _log(c, at, "the share reached its end time before the doctor's device could be told");
+        if (repository.patient(c.patientId) != null) await _log(c, at, "the share reached its end time before the doctor's device could be told");
         continue;
       }
       try {
@@ -409,7 +409,8 @@ class ClinicalShareService {
         continue;
       }
       await _settled(c);
-      await _log(c, at, "doctor's device told that access ended");
+      // After an erasure, the erasure stays the only entry for that person.
+      if (repository.patient(c.patientId) != null) await _log(c, at, "doctor's device told that access ended");
     }
     return (await _queue).length;
   }

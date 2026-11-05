@@ -221,21 +221,37 @@ class FamilyLinkService {
       iShareMedicines: shareMedicines,
       secret: RelayApi.newToken(),
     );
-    await _send(link, {
-      'type': 'family_link_accept',
-      'inviteId': invite.id,
-      'name': ownerName,
-      'replyTo': me.replyTo,
-      ..._mine(link, emergency, activeMedicines),
-    }, at);
+    // Before anything leaves: the accept already carries what was chosen (#13).
+    await _log(ownerId, link, AuditAction.grantIssued, at, 'Linking with ${invite.fromName}; shares ${_whatLine(link)}');
+    try {
+      await _send(link, {
+        'type': 'family_link_accept',
+        'inviteId': invite.id,
+        'name': ownerName,
+        'replyTo': me.replyTo,
+        ..._mine(link, emergency, activeMedicines),
+      }, at);
+    } on Object {
+      await _log(ownerId, link, AuditAction.grantRevoked, at, 'Not linked with ${invite.fromName}: the message could not be sent');
+      rethrow;
+    }
     await _save([...(await links()).where((l) => l.id != link.id), link]);
-    await audit.append(AuditEntry(at: at, actorId: 'patient:$ownerId', patientId: ownerId, action: AuditAction.grantIssued, tokenId: 'family-link-${link.id}', detail: 'Linked with ${invite.fromName}; shares ${_whatLine(link)}'));
     return link;
   }
 
+  Future<void> _log(String ownerId, FamilyLink link, AuditAction action, DateTime at, String detail) =>
+      audit.append(AuditEntry(at: at, actorId: 'patient:$ownerId', patientId: ownerId, action: action, tokenId: 'family-link-${link.id}', detail: detail));
+
   /// Re-sends what this phone shares — after the card or medicines change.
-  Future<void> sendUpdate({required String ownerId, required FamilyLink link, required EmergencyCard? emergency, required List<HealthRecord> activeMedicines, required DateTime at}) =>
-      _send(link, {'type': 'family_link_update', 'linkId': link.id, ..._mine(link, emergency, activeMedicines)}, at);
+  Future<void> sendUpdate({required String ownerId, required FamilyLink link, required EmergencyCard? emergency, required List<HealthRecord> activeMedicines, required DateTime at}) async {
+    await _log(ownerId, link, AuditAction.familyShare, at, 'Sending ${_whatLine(link)} to ${link.name}');
+    try {
+      await _send(link, {'type': 'family_link_update', 'linkId': link.id, ..._mine(link, emergency, activeMedicines)}, at);
+    } on Object {
+      await _log(ownerId, link, AuditAction.familyShare, at, 'Not sent to ${link.name}: the message could not be sent');
+      rethrow;
+    }
+  }
 
   /// Either side changes what it shares; the other phone replaces its copy,
   /// and deletes it when nothing is shared any more.
@@ -257,14 +273,17 @@ class FamilyLinkService {
 
   /// Either side can unlink. The other phone deletes what it held.
   Future<void> unlink({required String ownerId, required FamilyLink link, required DateTime at}) async {
+    await _log(ownerId, link, AuditAction.grantRevoked, at, 'Unlinked from ${link.name}');
     try {
       // A link from an older version has no secret to prove the message
       // with; its unlink goes without one, and the other phone accepts that
       // for an unsecured link only (an unlink can only delete, never add).
       await _send(link, {'type': 'family_unlink', 'linkId': link.id}, at, legacyUnlink: !link.secured);
+    } on Object {
+      await _log(ownerId, link, AuditAction.grantRevoked, at, '${link.name} could not be told; their copy stays until they unlink');
+      rethrow;
     } finally {
       await _save([...(await links()).where((l) => l.id != link.id)]);
-      await audit.append(AuditEntry(at: at, actorId: 'patient:$ownerId', patientId: ownerId, action: AuditAction.grantRevoked, tokenId: 'family-link-${link.id}', detail: 'Unlinked from ${link.name}'));
     }
   }
 

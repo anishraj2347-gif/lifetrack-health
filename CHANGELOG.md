@@ -47,6 +47,16 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.46.3 (6 Nov 2026)
+- **Fixed: erasing a profile left doctors with access until it ran out.** Live shares end first, offline too: the
+  message waits in the queue and outlives the profile. The erasure entry says how many doctors, and how many are not
+  told yet, and the screen says so too.
+- **Family links are logged before anything leaves** (#1e, #13). Joining and unlinking used to be logged after the
+  send, and an update was not logged at all; it now has its own entry (`familyShare`), and a send that fails says so.
+- **Fixed: one failed write of the grants file silently stopped every later one**, so a revocation could come back
+  after a restart. A later write now saves everything, a failed one is retried, and a revocation that could not be
+  saved is reported on screen.
+
 ### 1.46.2 (6 Nov 2026)
 - **Fixed: "End access" with the server off crashed partway.** Access now ends on the phone at once and the log
   says so first (#13). Telling the relay and the doctor's device waits in a sealed queue and goes at the next start,

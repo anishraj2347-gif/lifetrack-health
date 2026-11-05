@@ -20,6 +20,10 @@ enum AuditAction {
   /// A signed prescription from a verified doctor was added to the record.
   prescriptionReceived,
 
+  /// What this phone shares (Emergency ID, medicines) went to a linked adult.
+  /// Written before the send, like the other egress entries (CLAUDE.md #1e).
+  familyShare,
+
   /// Someone read the Emergency ID card without unlocking the phone.
   emergencyRead,
   vaultBackup,
