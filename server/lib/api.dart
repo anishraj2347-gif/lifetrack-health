@@ -71,10 +71,16 @@ class LifeTrackApi {
   static const maxShare = 5 * 1024 * 1024;
   static const maxJson = 64 * 1024;
 
+  /// How old an identity check may be and still move an ID. Long enough to
+  /// read a screen; short enough that a check made for something else is no
+  /// use later. Counted on this server's clock, which signed it.
+  static const reclaimWindow = Duration(minutes: 15);
+
   /// Per client address. Generous for a person; ruinous for a script.
   static final rateRules = [
     RateRule('POST', RegExp(r'^/v1/doctors$'), 10, const Duration(hours: 1)),
     RateRule('POST', RegExp(r'^/v1/ids$'), 30, const Duration(hours: 1)),
+    RateRule('POST', RegExp(r'^/v1/ids/reclaim$'), 10, const Duration(hours: 1)),
     RateRule('GET', RegExp(r'^/v1/ids/'), 60, const Duration(minutes: 1)),
     RateRule('POST', RegExp(r'^/v1/verify/start$'), 30, const Duration(hours: 1)),
     RateRule('GET', RegExp(r'^/v1/verify/'), 120, const Duration(minutes: 1)),
@@ -113,6 +119,7 @@ class LifeTrackApi {
       ..get('/v1/vault/<account>/blob', _vaultBlob)
       ..delete('/v1/vault/<account>', _vaultDelete)
       ..post('/v1/ids', _idRegister)
+      ..post('/v1/ids/reclaim', _idReclaim)
       ..get('/v1/ids/<id>', _idLookup)
       ..put('/v1/ids/<id>', _idMove)
       ..delete('/v1/ids/<id>', _idDelete)
@@ -459,6 +466,47 @@ class LifeTrackApi {
     }
     await ids.put(id, {'mailbox': b['mailbox'], 'key': b['key'], 'tokenHash': tokenHash, 'subject': ?subject, if (sample) 'sample': true, 'createdAt': clock().toIso8601String()});
     return _json({'id': id}, status: 201);
+  }
+
+  /// The way back when the token is gone: a phone reinstalled without a
+  /// backup, or a profile erased offline and the app then removed. A verified
+  /// person gets their own ID pointed at this phone under a new token.
+  ///
+  /// The ID comes only from the identity in the attestation, never from the
+  /// request, so nobody can name someone else's. The attestation must be signed
+  /// by this registry, recent, and newer than the last time this ID was issued
+  /// or moved: the check that made the ID, or a replay of the last move, fails.
+  Future<Response> _idReclaim(Request req) async {
+    final b = await _readJson(req);
+    final tokenHash = b?['tokenHash'];
+    if (b == null ||
+        b['attestation'] is! Map ||
+        !_validMailbox('${b['mailbox']}') ||
+        !'${b['mailbox']}'.startsWith('p-') ||
+        !_validKey(b['key']) ||
+        tokenHash is! String ||
+        !RegExp(r'^[0-9a-f]{64}$').hasMatch(tokenHash)) {
+      return _error(400, 'Invalid request.');
+    }
+    final IdentityAttestation a;
+    try {
+      a = IdentityAttestation.fromJson((b['attestation']! as Map).cast());
+    } on Object {
+      return _error(400, 'Invalid identity check.');
+    }
+    if (!await a.verifies(await registry.trust())) return _error(400, 'The identity check is not LifeTrack\'s.');
+    final now = clock();
+    final age = now.difference(a.verifiedAt);
+    Response stale() => _json({'error': 'That identity check is too old to move an ID. Verify again and try once more.', 'reason': 'stale_check'}, status: 403);
+    if (age > reclaimWindow || age.isNegative && -age > const Duration(minutes: 5)) return stale();
+    // Nothing awaits from here to `put` storing the entry.
+    final id = ids.bySubject(a.subjectHash);
+    if (id == null) return _error(404, 'This person has no LifeTrack ID.');
+    final e = ids[id]!;
+    final since = DateTime.tryParse('${e['reclaimedAt'] ?? e['createdAt']}');
+    if (since != null && !a.verifiedAt.isAfter(since)) return stale();
+    await ids.put(id, {...e, 'mailbox': b['mailbox'], 'key': b['key'], 'tokenHash': tokenHash, 'reclaimedAt': now.toIso8601String()});
+    return _json({'id': id});
   }
 
   static String? _parseId(String raw) {

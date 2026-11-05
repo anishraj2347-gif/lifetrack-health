@@ -13,7 +13,14 @@ abstract interface class IdDirectory {
   /// practice mode accepts without an identity check and records as such.
   Future<bool> register({required String id, required String mailbox, required List<int> key, required String tokenHash, IdentityAttestation? attestation, bool sample = false});
   Future<void> move({required String id, required String token, required String mailbox, required List<int> key});
+
+  /// Throws [IdNotYours] when the token no longer matches.
   Future<void> delete({required String id, required String token});
+
+  /// Points the ID of the person in [attestation] at this phone under a new
+  /// token, and returns it. The service picks the ID from the attestation.
+  /// Throws [ReclaimRefused] for a check that is too old, or no such ID.
+  Future<String> reclaim({required String mailbox, required List<int> key, required String tokenHash, required IdentityAttestation attestation});
 }
 
 class InMemoryIdDirectory implements IdDirectory {
@@ -24,8 +31,17 @@ class InMemoryIdDirectory implements IdDirectory {
     if (entries.containsKey(id)) return false;
     final subject = attestation?.subjectHash;
     if (subject != null && entries.values.any((e) => e['subject'] == subject)) throw const PersonExists();
-    entries[id] = {'mailbox': mailbox, 'key': key, 'tokenHash': tokenHash, 'subject': ?subject, if (sample) 'sample': true};
+    entries[id] = {'mailbox': mailbox, 'key': key, 'tokenHash': tokenHash, 'subject': ?subject, if (sample) 'sample': true, 'since': ?attestation?.verifiedAt};
     return true;
+  }
+
+  @override
+  Future<String> reclaim({required String mailbox, required List<int> key, required String tokenHash, required IdentityAttestation attestation}) async {
+    final found = entries.entries.where((e) => e.value['subject'] == attestation.subjectHash).firstOrNull;
+    if (found == null) throw const ReclaimRefused('This person has no LifeTrack ID.');
+    if (!attestation.verifiedAt.isAfter(found.value['since']! as DateTime)) throw const ReclaimRefused('That identity check is too old to move an ID.');
+    entries[found.key] = {...found.value, 'mailbox': mailbox, 'key': key, 'tokenHash': tokenHash, 'since': attestation.verifiedAt};
+    return found.key;
   }
 
   @override
@@ -39,7 +55,7 @@ class InMemoryIdDirectory implements IdDirectory {
   Future<void> delete({required String id, required String token}) async {
     final e = entries[id];
     if (e == null) return;
-    if (e['tokenHash'] != await RelayApi.sha256Hex(token)) throw StateError('Not your ID.');
+    if (e['tokenHash'] != await RelayApi.sha256Hex(token)) throw const IdNotYours();
     entries.remove(id);
   }
 }
@@ -79,13 +95,13 @@ class LifeTrackIds {
   String? idOf(String patientId) {
     assert(_loaded, 'call load() first');
     final e = _of(patientId);
-    return e != null && e['registered'] == true ? e['id'] as String : null;
+    return e != null && e['registered'] == true && e['erasing'] != true ? e['id'] as String : null;
   }
 
   /// The profile whose ID this is, if it is on this phone.
   String? profileFor(String lifeTrackId) {
     for (final e in _ids.entries) {
-      if ((e.value as Map)['id'] == lifeTrackId) return e.key;
+      if ((e.value as Map)['id'] == lifeTrackId && (e.value as Map)['erasing'] != true) return e.key;
     }
     return null;
   }
@@ -96,13 +112,18 @@ class LifeTrackIds {
 
   /// Registers an ID for [patientId] if it has none. Draws again when the
   /// server says a number is taken; that is what makes it unique.
-  Future<String> ensure(String patientId) => _inFlight[patientId] ??= _ensure(patientId).whenComplete(() {
+  ///
+  /// With [moveExisting], a person who already has an ID takes it over with
+  /// the identity check on this profile; a human chose that, because it stops
+  /// the ID reaching any other phone that holds it.
+  Future<String> ensure(String patientId, {bool moveExisting = false}) => _inFlight[patientId] ??= _ensure(patientId, moveExisting).whenComplete(() {
         // A block, not `=>`: whenComplete waits on a returned future, and
         // remove() returns this very one.
         _inFlight.remove(patientId);
       });
 
-  Future<String> _ensure(String patientId) async {
+  Future<String> _ensure(String patientId, bool moveExisting) async {
+    await retryRemovals(); // an ID erased offline may be this very person's
     final have = _of(patientId);
     if (have != null && have['registered'] == true) return have['id']! as String;
     final me = await replyIdentity(patientId);
@@ -114,13 +135,22 @@ class LifeTrackIds {
       return have['id']! as String;
     }
     final token = RelayApi.newToken();
+    final tokenHash = await RelayApi.sha256Hex(token);
+    final attestation = attestationOf?.call(patientId);
     for (var attempt = 0; attempt < 8; attempt++) {
       final id = LifeTrackId.generate();
-      if (await directory.register(
-          id: id, mailbox: me.mailbox, key: me.publicKey, tokenHash: await RelayApi.sha256Hex(token), attestation: attestationOf?.call(patientId), sample: isSample?.call(patientId) ?? false)) {
-        _ids[patientId] = {'id': id, 'token': token, 'registered': true};
+      try {
+        if (await directory.register(id: id, mailbox: me.mailbox, key: me.publicKey, tokenHash: tokenHash, attestation: attestation, sample: isSample?.call(patientId) ?? false)) {
+          _ids[patientId] = {'id': id, 'token': token, 'registered': true};
+          await _save();
+          return id;
+        }
+      } on PersonExists {
+        if (!moveExisting || attestation == null) rethrow;
+        final mine = await directory.reclaim(mailbox: me.mailbox, key: me.publicKey, tokenHash: tokenHash, attestation: attestation);
+        _ids[patientId] = {'id': mine, 'token': token, 'registered': true};
         await _save();
-        return id;
+        return mine;
       }
     }
     throw StateError('Could not find a free LifeTrack ID.');
@@ -137,20 +167,46 @@ class LifeTrackIds {
     }
   }
 
+  /// Deletes the ID from the service. The token stays until the service has
+  /// said so: it is the only way to delete it. Offline this throws, and
+  /// [retryRemovals] finishes the job.
   Future<void> remove(String patientId) async {
+    final e = _of(patientId);
+    if (e == null) return;
+    _ids[patientId] = {...e, 'erasing': true};
+    await _save();
+    await _removeNow(patientId);
+  }
+
+  Future<void> _removeNow(String patientId) async {
     final e = _of(patientId);
     if (e == null) return;
     try {
       await directory.delete(id: e['id']! as String, token: e['token']! as String);
-    } finally {
-      _ids.remove(patientId);
-      await _save();
+    } on IdNotYours {
+      // Moved to another phone since: it is no longer this phone's to delete.
     }
+    _ids.remove(patientId);
+    await _save();
+  }
+
+  /// Tries every deletion still waiting; returns how many still wait.
+  Future<int> retryRemovals() async {
+    var left = 0;
+    for (final p in [for (final e in _ids.entries) if ((e.value as Map)['erasing'] == true) e.key]) {
+      try {
+        await _removeNow(p);
+      } on Object {
+        left++;
+      }
+    }
+    return left;
   }
 
   /// For the encrypted backup: IDs and their tokens.
   Map<String, Object?> export() => {
-        for (final e in _ids.entries) e.key: {'id': (e.value as Map)['id'], 'token': (e.value as Map)['token']},
+        for (final e in _ids.entries)
+          if ((e.value as Map)['erasing'] != true) e.key: {'id': (e.value as Map)['id'], 'token': (e.value as Map)['token']},
       };
 
   /// From a backup: kept unregistered until [ensure] points them at this

@@ -117,12 +117,11 @@ class AppServices {
   }
 
   /// Registers the new profile's LifeTrack ID with its verification; if the
-  /// person already has one, the new profile is removed again.
-  Future<void> _registerVerified(String patientId, {required bool isOwner}) async {
+  /// person already has one, the new profile is removed again. With
+  /// [moveExistingId] the person chose to bring their ID to this phone.
+  Future<void> _registerVerified(String patientId, {required bool isOwner, bool moveExistingId = false}) async {
     if (ids == null) return;
-    try {
-      await ids!.ensure(patientId);
-    } on PersonExists {
+    Future<void> undo() async {
       await repository.eraseFor(patientId);
       if (isOwner) {
         settings
@@ -133,9 +132,23 @@ class AppServices {
         settings['currentPatientId'] = selfPatientId;
         await _saveSettings();
       }
+    }
+
+    if (moveExistingId) {
+      // Logged before the identity check leaves the phone (#13).
+      await audit.append(AuditEntry(at: clock(), actorId: Actors.patient(selfPatientId ?? patientId), patientId: patientId, action: AuditAction.edit, detail: 'Moving the LifeTrack ID to this phone with a new identity check'));
+    }
+    try {
+      await ids!.ensure(patientId, moveExisting: moveExistingId);
+    } on PersonExists {
+      await undo();
       rethrow;
     } on Object {
-      // Offline: registered on the next start or "Check for prescriptions and updates".
+      // Offline: registered on the next start or "Check for prescriptions and
+      // updates". A move is a choice made now, so it is not left half-done.
+      if (!moveExistingId) return;
+      await undo();
+      rethrow;
     }
   }
 
@@ -308,6 +321,11 @@ class AppServices {
     // asks for another retry itself if it fails.
     if (settings['familyBehind'] == true) unawaited(_sendFamily());
     if (backupBehind && _backups.isIdle) unawaited(_tryBackup());
+    try {
+      waiting += await ids?.retryRemovals() ?? 0;
+    } on Object {
+      waiting++;
+    }
     if (waiting == 0) {
       _retryGap = _retryAfter;
     } else {
@@ -906,7 +924,7 @@ class AppServices {
   String? get currentPatientId => settings['currentPatientId'] as String?;
   Patient? get currentPatient => currentPatientId == null ? null : repository.patient(currentPatientId!);
 
-  Future<Patient> createProfile({required String name, required DateTime dob, required Sex sex, bool demo = false, IdentityAttestation? verification}) async {
+  Future<Patient> createProfile({required String name, required DateTime dob, required Sex sex, bool demo = false, IdentityAttestation? verification, bool moveExistingId = false}) async {
     if (identityRequired && !demo && verification == null) throw const CustodyRefused('Verify with DigiLocker (Aadhaar) to create a profile.');
     if (verification != null && verification.method != IdentityMethod.aadhaarDigiLocker) throw const CustodyRefused('Your own profile is verified with your Aadhaar.');
     final id = 'p-${_randomId()}';
@@ -925,7 +943,7 @@ class AppServices {
     await repository.saveCustody(Custody(patientId: id, kind: CustodyKind.self, custodianId: id, relation: 'self'));
     if (verification != null) {
       await audit.append(AuditEntry(at: clock(), actorId: 'patient:$id', patientId: id, action: AuditAction.edit, detail: 'Identity verified: ${verification.method.label}'));
-      await _registerVerified(id, isOwner: true);
+      await _registerVerified(id, isOwner: true, moveExistingId: moveExistingId);
     } else {
       await assignLifeTrackIds();
     }
@@ -1028,7 +1046,7 @@ class AppServices {
   /// A child's profile, kept on this phone. The phone owner declares they
   /// are the parent; verification (DigiLocker) is not connected yet, and the
   /// app says so wherever the custody is shown.
-  Future<Patient> addChild({required String name, required DateTime dob, required Sex sex, required String relation, IdentityAttestation? verification}) async {
+  Future<Patient> addChild({required String name, required DateTime dob, required Sex sex, required String relation, IdentityAttestation? verification, bool moveExistingId = false}) async {
     await _settleOwner();
     final self = selfPatient ?? (throw const CustodyRefused('Set up your own profile first.'));
     if (!FamilyRole.forChild.contains(FamilyRole.parse(relation))) {
@@ -1059,7 +1077,7 @@ class AppServices {
     ));
     await audit.append(AuditEntry(at: at, actorId: Actors.patient(self.id), patientId: child.id, action: AuditAction.edit, tokenId: 'family-custody-${child.id}', detail: 'Profile created by ${self.name} (parent)${verification == null ? '' : ' · ${verification.method.label}'}'));
     if (verification != null) {
-      await _registerVerified(child.id, isOwner: false);
+      await _registerVerified(child.id, isOwner: false, moveExistingId: moveExistingId);
     } else {
       await assignLifeTrackIds();
     }
@@ -1075,6 +1093,7 @@ class AppServices {
     required String relation,
     required String typedName,
     IdentityAttestation? verification,
+    bool moveExistingId = false,
   }) async {
     await _settleOwner();
     final self = selfPatient ?? (throw const CustodyRefused('Set up your own profile first.'));
@@ -1107,7 +1126,7 @@ class AppServices {
     ));
     await audit.append(AuditEntry(at: at, actorId: Actors.patient(adult.id), patientId: adult.id, action: AuditAction.grantIssued, tokenId: 'family-custody-${adult.id}', detail: 'Asked ${self.name} to manage their records (confirmed in person)'));
     if (verification != null) {
-      await _registerVerified(adult.id, isOwner: false);
+      await _registerVerified(adult.id, isOwner: false, moveExistingId: moveExistingId);
     } else {
       await assignLifeTrackIds();
     }
@@ -1810,7 +1829,8 @@ class AppServices {
     try {
       await ids?.remove(id);
     } on Object {
-      // Offline: the ID's entry stays on the server until erased again.
+      // Offline: the token is kept and the deletion goes with the next retry.
+      _retryLater();
     }
     await attachments.delete(_photoBlob(id));
     _photos.remove(id);

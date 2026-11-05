@@ -44,14 +44,14 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
   /// Optional; saved once the person exists.
   Uint8List? _photo;
 
-  Future<void> _save() async {
+  Future<void> _save({bool moveExistingId = false}) async {
     final s = AppScope.of(context);
     final v = _verified;
     try {
       final p = _who == _Who.child
-          ? await s.addChild(name: v?.name ?? _name.text.trim(), dob: v?.dateOfBirth ?? _dob!, sex: _sex, relation: _relation.text.trim(), verification: v)
+          ? await s.addChild(name: v?.name ?? _name.text.trim(), dob: v?.dateOfBirth ?? _dob!, sex: _sex, relation: _relation.text.trim(), verification: v, moveExistingId: moveExistingId)
           : await s.addDelegatingAdult(
-              name: v?.name ?? _name.text.trim(), dob: v?.dateOfBirth ?? _dob!, sex: _sex, relation: _relation.text.trim(), typedName: _typed.text, verification: v);
+              name: v?.name ?? _name.text.trim(), dob: v?.dateOfBirth ?? _dob!, sex: _sex, relation: _relation.text.trim(), typedName: _typed.text, verification: v, moveExistingId: moveExistingId);
       if (_photo != null) await s.setPhoto(p.id, _photo);
       await s.switchTo(p.id);
       if (!mounted) return;
@@ -62,6 +62,12 @@ class _AddFamilyScreenState extends State<AddFamilyScreen> {
       setState(() => _error = e.message);
     } on PersonExists catch (e) {
       setState(() => _error = e.message);
+      if (mounted && await confirmMoveId(context) && mounted) await _save(moveExistingId: true);
+    } on ReclaimRefused catch (e) {
+      setState(() => _error = e.message);
+    } on Object catch (e) {
+      if (!moveExistingId) rethrow;
+      setState(() => _error = 'The ID was not moved. ${plainError(e)}');
     }
   }
 

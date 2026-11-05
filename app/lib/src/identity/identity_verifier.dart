@@ -73,8 +73,24 @@ Future<IdentityAttestation> runVerification({
   throw const VerificationFailed('The check took too long. Start again.');
 }
 
-/// Duplicate person: this identity already has a LifeTrack ID.
+/// Duplicate person: this identity already has a LifeTrack ID. Restoring a
+/// backup brings it back; with no backup, a fresh identity check can move it
+/// (`moveExistingId`).
 class PersonExists implements Exception {
   const PersonExists();
   String get message => 'This person already has a LifeTrack profile. Restore it from backup on this phone instead of making a new one.';
+}
+
+/// The service would not move an ID to this phone. [message] is for the patient.
+class ReclaimRefused implements Exception {
+  const ReclaimRefused(this.message);
+  final String message;
+  @override
+  String toString() => 'ReclaimRefused: $message';
+}
+
+/// The token no longer matches: the ID was moved to another phone, so it is
+/// not this phone's to delete.
+class IdNotYours implements Exception {
+  const IdNotYours();
 }

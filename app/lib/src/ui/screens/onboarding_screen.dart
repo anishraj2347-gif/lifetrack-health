@@ -41,7 +41,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   /// Optional, chosen before the profile exists; saved right after it.
   Uint8List? _photo;
 
-  Future<void> _createProfile({required bool demo}) async {
+  Future<void> _createProfile({required bool demo, bool moveExistingId = false}) async {
     setState(() {
       _busy = true;
       _error = null;
@@ -54,11 +54,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         sex: _sex,
         demo: demo,
         verification: demo ? null : _verified,
+        moveExistingId: moveExistingId,
       );
     } on PersonExists catch (e) {
       setState(() {
         _busy = false;
         _error = e.message;
+      });
+      if (mounted && await confirmMoveId(context) && mounted) await _createProfile(demo: demo, moveExistingId: true);
+      return;
+    } on ReclaimRefused catch (e) {
+      setState(() {
+        _busy = false;
+        _error = e.message;
+      });
+      return;
+    } on Object catch (e) {
+      if (!moveExistingId) rethrow;
+      setState(() {
+        _busy = false;
+        _error = 'Your ID was not moved. ${plainError(e)}';
       });
       return;
     }

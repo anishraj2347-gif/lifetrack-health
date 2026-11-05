@@ -240,7 +240,18 @@ class HttpIdDirectory implements IdDirectory {
   @override
   Future<void> delete({required String id, required String token}) async {
     final r = await _http.delete(baseUrl.resolve('/v1/ids/$id'), headers: {RelayApi.hIdToken: token}).timeout(timeouts.quick);
+    if (r.statusCode == 403) throw const IdNotYours();
     if (r.statusCode != 200) throw RelayUnavailable('LifeTrack ID not deleted (${r.statusCode}).');
+  }
+
+  @override
+  Future<String> reclaim({required String mailbox, required List<int> key, required String tokenHash, required IdentityAttestation attestation}) async {
+    final r = await _http.post(baseUrl.resolve('/v1/ids/reclaim'),
+        headers: {'content-type': 'application/json'},
+        body: jsonEncode({'mailbox': mailbox, 'key': base64Encode(key), 'tokenHash': tokenHash, 'attestation': attestation.toJson()})).timeout(timeouts.quick);
+    if (r.statusCode == 200) return (jsonDecode(r.body) as Map)['id']! as String;
+    if (r.statusCode == 403 || r.statusCode == 404) throw ReclaimRefused('${(jsonDecode(r.body) as Map)['error']}');
+    throw RelayUnavailable('LifeTrack ID not moved (${r.statusCode}).');
   }
 }
 

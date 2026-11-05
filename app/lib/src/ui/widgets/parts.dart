@@ -1227,6 +1227,19 @@ class BootSplash extends StatelessWidget {
 /// "Are you sure?" as a glass sheet from the bottom: the question, what will
 /// happen, then a big confirm button above "Keep". Destructive actions are
 /// in the signal colour, like the rest of the app. True only on confirm.
+/// Asked when a verified person already has a LifeTrack ID. Moving it is
+/// their choice: a backup is the better way back, and any other phone holding
+/// the ID stops hearing from doctors. Returns true to move it here.
+Future<bool> confirmMoveId(BuildContext context) => confirmAction(
+      context,
+      title: 'You already have a LifeTrack ID',
+      body: 'If you have a backup, restore it instead: that brings your records back.\n\n'
+          'With no backup you can move your ID to this phone with the check you just did. You start with no records, and any other phone using this ID stops receiving doctors\' requests.',
+      confirm: 'Move my ID to this phone',
+      keep: 'Not now',
+      destructive: false,
+    );
+
 Future<bool> confirmAction(BuildContext context, {required String title, required String body, required String confirm, String keep = 'Keep', bool destructive = true}) async {
   final yes = await showModalBottomSheet<bool>(
     context: context,

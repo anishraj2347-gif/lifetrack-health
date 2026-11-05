@@ -87,6 +87,13 @@ void main() {
     final again = await other.verifyWithDigiLocker(purpose: 'self', openUrl: browserPicks('anjali'), askCode: typesShownCode);
     await expectLater(other.createProfile(name: '', dob: DateTime(2000), sex: Sex.unspecified, verification: again), throwsA(isA<PersonExists>()));
     expect(other.currentPatient, isNull);
+
+    // No backup on that phone: the same check, on the person's choice, brings
+    // the same ID over the real route. The old token stops working.
+    final id = s.lifeTrackIdOf(p.id);
+    final moved = await other.createProfile(name: '', dob: DateTime(2000), sex: Sex.unspecified, verification: again, moveExistingId: true);
+    expect(other.lifeTrackIdOf(moved.id), id);
+    await expectLater(HttpIdDirectory(baseUrl: base, client: client).delete(id: id!, token: 'not-the-token'), throwsA(isA<IdNotYours>()));
   });
 }
 

@@ -6,6 +6,12 @@ always goes up (Android refuses to install a lower one).
 
 ## Server and laptop
 
+### 6 Nov 2026 (LifeTrack ID recovery)
+- **`POST /v1/ids/reclaim`**: a registry-signed identity check moves that person's own ID to a new mailbox, key and
+  token. The ID is found from the check, never from the request. The check must be at most 15 minutes old and newer
+  than the last time the ID was issued or moved, so the check that made it, or a copy of the last one, cannot move it.
+  10 an hour per client.
+
 ### 2 Nov 2026 (server moved to the Windows PC)
 - **The Windows PC is the server now**, started by hand with `scripts/run_server_lan.sh` (Git
   Bash). The Mac's server data could not be copied, so this server started fresh: a **new registry
@@ -46,6 +52,13 @@ always goes up (Android refuses to install a lower one).
   service; the birth-certificate XML fields must be checked with the first real certificate.
 
 ## Patient app
+
+### 1.47.0 (6 Nov 2026)
+- **No more dead end with a LifeTrack ID.** Someone who reinstalled without a backup, or erased offline, used to get
+  "already has a profile" for ever. After a fresh DigiLocker check the app now offers to move their ID to this phone.
+  A backup is still offered first, and it never happens without that choice.
+- **Fixed: erasing offline threw away the only token that could delete the ID.** The token now stays until the server
+  has confirmed, and the deletion goes with the next retry.
 
 ### 1.46.4 (6 Nov 2026)
 - **A save no longer waits for the network.** The backup and any update to linked family now follow in the background,
