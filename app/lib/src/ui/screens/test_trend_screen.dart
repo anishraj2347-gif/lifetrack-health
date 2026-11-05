@@ -70,7 +70,7 @@ class TestTrendScreen extends StatelessWidget {
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(
                   child: Text.rich(TextSpan(children: [
-                    TextSpan(text: fmt(x.value), style: LT.title.copyWith(fontSize: 22)),
+                    TextSpan(text: '${x.comparator ?? ''}${fmt(x.value)}', style: LT.title.copyWith(fontSize: 22)),
                     TextSpan(text: '  ${x.unit}', style: LT.small),
                   ])),
                 ),
@@ -153,7 +153,7 @@ class MoreTrends extends StatelessWidget {
                   SizedBox(height: 6),
                   Text.rich(
                     TextSpan(children: [
-                      TextSpan(text: TestTrendScreen.fmt(t.points.last.$2.value), style: LT.data.copyWith(fontSize: 20, letterSpacing: -0.4)),
+                      TextSpan(text: '${t.points.last.$2.comparator ?? ''}${TestTrendScreen.fmt(t.points.last.$2.value)}', style: LT.data.copyWith(fontSize: 20, letterSpacing: -0.4)),
                       TextSpan(text: ' ${t.unit}', style: LT.meta),
                     ]),
                     maxLines: 1,

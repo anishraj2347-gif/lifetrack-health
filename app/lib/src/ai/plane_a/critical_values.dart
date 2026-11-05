@@ -68,21 +68,28 @@ class CriticalLimit {
   /// Below this age in whole years the high side is not applied.
   final int highSideFromAge;
 
-  /// [v] is in [unit].
-  Severity? classify(double v, {bool highSide = true}) {
-    if ((urgentBelow != null && v < urgentBelow!) || (highSide && urgentAbove != null && v > urgentAbove!)) {
-      return Severity.urgentCare;
-    }
-    if ((todayBelow != null && v < todayBelow!) || (highSide && todayAbove != null && v > todayAbove!)) {
-      return Severity.contactDoctorToday;
-    }
+  /// [v] is in [unit]. With a [comparator] the true value is past [v], so a
+  /// limit counts only when the direction proves it was crossed.
+  Severity? classify(double v, {bool highSide = true, String? comparator}) {
+    bool under(double? l) => l != null && comparator != '>' && (comparator == '<' ? v <= l : v < l);
+    bool over(double? l) => highSide && l != null && comparator != '<' && (comparator == '>' ? v >= l : v > l);
+    if (under(urgentBelow) || over(urgentAbove)) return Severity.urgentCare;
+    if (under(todayBelow) || over(todayAbove)) return Severity.contactDoctorToday;
     return null;
   }
+
+  /// A limit like ">100" with a danger limit further along its open side:
+  /// the true value could be past it, so nothing can be said.
+  bool openEnded(String? comparator) => switch (comparator) {
+        '>' => (urgentAbove ?? todayAbove) != null,
+        '<' => (urgentBelow ?? todayBelow) != null,
+        _ => false,
+      };
 
   /// The bound [v] crossed at [s], for the sentence that states it.
   (String, double) crossed(double v, Severity s) {
     final (low, high) = s == Severity.urgentCare ? (urgentBelow, urgentAbove) : (todayBelow, todayAbove);
-    return low != null && v < low ? ('below', low) : ('above', high!);
+    return low != null && v <= low ? ('below', low) : ('above', high!);
   }
 }
 

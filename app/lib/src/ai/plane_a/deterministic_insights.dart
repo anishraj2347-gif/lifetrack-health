@@ -54,6 +54,12 @@ abstract final class DeterministicInsights {
       // The lab's own printed range, in the result's own unit, comes first:
       // it is what the report says, and labs differ by method.
       if (res.hasPrintedRange) {
+        // A report prints adult ranges, whoever the sample came from (#10).
+        // A danger finding needs no range, so it still stands.
+        if (patient.ageAt(at) < 18 || (patient.pregnant && referenceRanges.any((r) => r.analyte == analyte && r.excludesPregnancy))) {
+          finding == null ? unresolved.add(_nc(rec, res, NotCheckedReason.notApplicableToPatient)) : out.add(finding);
+          continue;
+        }
         final printed = ReferenceRange(
           analyte: analyte,
           unit: res.unit,
@@ -61,11 +67,14 @@ abstract final class DeterministicInsights {
           high: res.printedHigh,
           population: 'this lab',
         );
-        if (printed.contains(res.value)) {
+        final inside = printed.containsResult(res);
+        if (inside == null) {
+          finding == null ? unresolved.add(_nc(rec, res, NotCheckedReason.reportedAsLimit)) : out.add(finding);
+        } else if (inside) {
           if (finding != null) out.add(finding);
-          continue;
+        } else {
+          out.add(_rangeInsight(analyte, rec, res, printed, "the lab's printed range", critical.severity));
         }
-        out.add(_rangeInsight(analyte, rec, res, printed, "the lab's printed range", critical.severity));
         continue;
       }
       final (lookup, range) = referenceRangeFor(analyte, patient, at);
@@ -80,7 +89,12 @@ abstract final class DeterministicInsights {
         finding == null ? unresolved.add(_nc(rec, res, why)) : out.add(finding);
         continue;
       }
-      if (range!.contains(res.value)) {
+      final inside = range!.containsResult(res);
+      if (inside == null) {
+        finding == null ? unresolved.add(_nc(rec, res, NotCheckedReason.reportedAsLimit)) : out.add(finding);
+        continue;
+      }
+      if (inside) {
         if (finding != null) out.add(finding);
         continue;
       }
@@ -93,6 +107,7 @@ abstract final class DeterministicInsights {
       final (prevRec, prev) = points[points.length - 2];
       final (lastRec, last) = points.last;
       if (prev.unit != rule.unit || last.unit != rule.unit) continue;
+      if (prev.comparator != null || last.comparator != null) continue; // a limit is not a point on a trend
       final delta = last.value - prev.value;
       if (delta.abs() < rule.threshold) continue;
       final worsening = rule.worseIsUp ? delta > 0 : delta < 0;
@@ -130,12 +145,12 @@ abstract final class DeterministicInsights {
 
   static Insight _rangeInsight(String analyte, HealthRecord rec, LabResult res, ReferenceRange range, String which, Severity? critical, {String? forWhom}) {
     final severity = critical ?? Severity.discussSoon;
-    final side = range.isAbove(res.value) ? 'above' : 'below';
+    final side = res.comparator == '>' || (res.comparator == null && range.isAbove(res.value)) ? 'above' : 'below';
     return Insight(
       kind: critical == null ? InsightKind.outOfRange : InsightKind.critical,
       severity: severity,
       analyte: analyte,
-      finding: '${analyteName(analyte)} was ${_fmt(res.value)} ${res.unit} on ${_date(rec.effectiveDate)}. '
+      finding: '${analyteName(analyte)} was ${res.comparator ?? ''}${_fmt(res.value)} ${res.unit} on ${_date(rec.effectiveDate)}. '
           'That is $side $which of ${range.describe()}${forWhom == null ? '' : ' for $forWhom'}.',
       action: actionFor(severity),
       evidence: [rec.id],

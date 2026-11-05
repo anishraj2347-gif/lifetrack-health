@@ -47,6 +47,18 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.46.0 (6 Nov 2026)
+- **Report reading no longer loses rows silently.** "Glucose" and "Blood Sugar" with no type are read
+  (as glucose, type not stated), "Hemoglobin A1c" is HbA1c and not haemoglobin, and ">600" and "<0.01" are
+  kept with their sign everywhere a value shows, and sent to doctors with it. A row with no usable result
+  goes on a "could not read" list on the review screen, including urine, ionised and tolerance rows that
+  used to pass as the blood test, and a range is never taken for a missing result.
+- **Printed ranges fit the patient.** A range printed by sex gives the patient's own band, or none; a range
+  in bands gives the normal one, or none (HbA1c 6.1 no longer passes on "Prediabetes 5.7-6.4"; a woman's
+  creatinine 1.2 no longer passes on "Male 0.7-1.3"). Printed ranges are not applied to a child, or in
+  pregnancy where it shifts them (#10); the result is "not checked", and a danger value still shows.
+- A value past a danger limit, and any "<" or ">" value, always waits for a manual tick.
+
 ### 1.45.1 (6 Nov 2026)
 - **Fixed: the Emergency ID printed today's date as "Card as of"**, so a years-old card looked current. The
   card now keeps the date its content last changed and shows it on the card and in the QR text. A save that
@@ -596,6 +608,9 @@ always goes up (Android refuses to install a lower one).
 - Rebuilt phase-2 app: records, insights, consent, clinical sharing with verified doctors.
 
 ## Doctor web app
+
+### 1.9.1 (6 Nov 2026)
+- A lab value reported as a limit keeps its sign (">600"), and more test names show in plain words.
 
 ### 1.9.0 (6 Nov 2026)
 - **The summary now always has an allergy line**: "Allergies: not recorded", "No known allergies, as

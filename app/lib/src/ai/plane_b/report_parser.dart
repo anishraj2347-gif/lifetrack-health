@@ -1,6 +1,8 @@
 import 'dart:math';
 
 import '../../model/health_record.dart';
+import '../../model/patient.dart';
+import '../plane_a/critical_check.dart';
 import 'capture.dart';
 
 /// Turns the words read off a document into a [CaptureDraft].
@@ -9,7 +11,8 @@ import 'capture.dart';
 /// judges a value — a draft states what is printed, and the patient checks
 /// it. When unsure it says so through a low confidence, never by guessing
 /// harder. [today] bounds dates (no clock here: CLAUDE.md, plane rules).
-CaptureDraft parseCapture(List<OcrPage> pages, {required DateTime today}) {
+/// [sex] only picks the patient's band from a range printed per sex.
+CaptureDraft parseCapture(List<OcrPage> pages, {required DateTime today, Sex? sex}) {
   final lines = [for (final p in pages) ...linesOf(p)];
   if (lines.isEmpty) return CaptureDraft.empty;
   final words = [for (final p in pages) ...p.words];
@@ -18,7 +21,7 @@ CaptureDraft parseCapture(List<OcrPage> pages, {required DateTime today}) {
   // every field waits for the patient's tick.
   final handwriting = meanConf < 60 || (words.length < 25 && meanConf < 70);
 
-  final results = _results(lines);
+  final (results, unread) = _results(lines, sex);
   final medicines = _medicines(lines);
   final kind = _kind(lines, results.length, medicines.length);
   final date = _date(lines, kind.value!, today);
@@ -30,6 +33,7 @@ CaptureDraft parseCapture(List<OcrPage> pages, {required DateTime today}) {
     doctor: _doctor(lines, kind.value!),
     results: kind.value == RecordKind.report ? results : const [],
     medicines: kind.value == RecordKind.prescription ? medicines : const [],
+    unread: kind.value == RecordKind.report ? unread : const [],
     handwriting: handwriting,
   );
   if (handwriting) {
@@ -41,6 +45,7 @@ CaptureDraft parseCapture(List<OcrPage> pages, {required DateTime today}) {
       doctor: draft.doctor.capped(0.5),
       results: [for (final r in draft.results) r.capped(0.5)],
       medicines: [for (final m in draft.medicines) m.capped(0.5)],
+      unread: draft.unread,
       handwriting: true,
     );
   }
@@ -137,10 +142,13 @@ DraftField<RecordKind> _kind(List<OcrLine> lines, int results, int medicines) {
 /// Names labs print, normalised, for each analyte key. Longest match wins,
 /// so "hdl cholesterol" is HDL and not total cholesterol.
 const analyteAliases = <String, List<String>>{
+  // No type printed. Only rows that say nothing more land here: a named type
+  // is a longer alias and wins.
+  'glucose': ['glucose', 'blood glucose', 'plasma glucose', 'serum glucose', 'glucose plasma', 'glucose serum', 'glucose blood', 'blood sugar', 'plasma sugar', 'serum sugar'],
   'glucose_fasting': ['fasting blood sugar', 'blood sugar fasting', 'fasting blood glucose', 'blood glucose fasting', 'glucose fasting', 'fasting glucose', 'fasting plasma glucose', 'plasma glucose fasting', 'sugar fasting', 'fbs', 'fpg', 'glucose f'],
   'glucose_pp': ['post prandial blood sugar', 'blood sugar post prandial', 'glucose post prandial', 'post prandial glucose', 'postprandial blood sugar', 'blood sugar pp', 'glucose pp', 'ppbs', 'pp blood sugar', 'plasma glucose pp'],
   'glucose_random': ['random blood sugar', 'blood sugar random', 'glucose random', 'random glucose', 'rbs'],
-  'hba1c': ['hba1c', 'hb a1c', 'hba 1c', 'glycosylated haemoglobin', 'glycosylated hemoglobin', 'glycated haemoglobin', 'glycated hemoglobin', 'a1c'],
+  'hba1c': ['hba1c', 'hb a1c', 'hba 1c', 'hemoglobin a1c', 'haemoglobin a1c', 'hemoglobina1c', 'haemoglobina1c', 'hgb a1c', 'glycated hb', 'glycosylated hb', 'glycohemoglobin', 'glycohaemoglobin', 'glycosylated haemoglobin', 'glycosylated hemoglobin', 'glycated haemoglobin', 'glycated hemoglobin', 'a1c'],
   'total_cholesterol': ['total cholesterol', 'cholesterol total', 'serum cholesterol', 'cholesterol serum', 'cholesterol'],
   'ldl': ['ldl cholesterol', 'cholesterol ldl', 'ldl c', 'ldl direct', 'low density lipoprotein', 'ldl'],
   'hdl': ['hdl cholesterol', 'cholesterol hdl', 'hdl c', 'hdl direct', 'high density lipoprotein', 'hdl'],
@@ -176,7 +184,7 @@ const analyteAliases = <String, List<String>>{
 /// Values outside these are a misread (a lost decimal point, a page number),
 /// not a result. Only for analytes whose unit is the same across Indian labs.
 const _plausible = <String, (double, double)>{
-  'glucose_fasting': (10, 1500), 'glucose_pp': (10, 1500), 'glucose_random': (10, 1500),
+  'glucose': (10, 1500), 'glucose_fasting': (10, 1500), 'glucose_pp': (10, 1500), 'glucose_random': (10, 1500),
   'hba1c': (2, 20), 'total_cholesterol': (30, 1200), 'ldl': (5, 900), 'hdl': (3, 250), 'vldl': (1, 500),
   'triglycerides': (10, 6000), 'haemoglobin': (2, 25), 'creatinine': (0.05, 25), 'tsh': (0.001, 500),
   'ferritin': (0.5, 10000), 'vitamin_d': (1, 250), 'vitamin_b12': (20, 5000), 'pcv': (5, 75), 'esr': (0, 160),
@@ -192,7 +200,7 @@ const _units = <String, String>{
   'mm/hr': 'mm/hr', 'mm/1sthr': 'mm/hr', 'mm/1hr': 'mm/hr', 'cells/cumm': '/cumm', '/cumm': '/cumm', 'cumm': '/cumm', '/mm3': '/mm³',
   'cells/µl': '/µL', '/µl': '/µL', '/ul': '/µL', '10^3/µl': '10³/µL', '10^3/ul': '10³/µL', 'x10^3/µl': '10³/µL', 'x10^3/ul': '10³/µL',
   'thou/mm3': '10³/µL', 'thou/µl': '10³/µL', 'thou/ul': '10³/µL', '10^6/µl': '10⁶/µL', '10^6/ul': '10⁶/µL', 'mill/cumm': 'million/cumm',
-  'million/cumm': 'million/cumm', 'lakhs/cumm': 'lakh/cumm', 'lakh/cumm': 'lakh/cumm', 'lakhs/µl': 'lakh/µL',
+  '10^9/l': '10⁹/L', 'x10^9/l': '10⁹/L', 'million/cumm': 'million/cumm', 'lakhs/cumm': 'lakh/cumm', 'lakh/cumm': 'lakh/cumm', 'lakhs/µl': 'lakh/µL',
 };
 
 final _number = RegExp(r'^[<>≤≥]?\d{1,3}(?:,\d{2,3})+(?:\.\d+)?$|^[<>≤≥]?\d+(?:[.,]\d+)?$');
@@ -206,14 +214,57 @@ double? parseNumber(String raw) {
   return double.tryParse(t);
 }
 
-List<DraftField<LabResult>> _results(List<OcrLine> lines) {
+/// A row that is a different test from the alias it starts with: urine
+/// sodium is not serum sodium, ionised calcium is not total calcium, and a
+/// tolerance curve is not one glucose.
+final _otherSample = RegExp(r'\burin(?:e|ary)\b|\bspot\b|\b24 ?h(?:r|rs|our|ours)?\b|\bcsf\b|\bfluid\b|\bioni[sz]ed\b|\bgtt\b|\bogtt\b|\btolerance\b|\bchallenge\b');
+
+/// One of the words a report writes a limit in, or the sign itself.
+const _limitWords = {'<': '<', '>': '>', '≤': '<', '≥': '>', '<=': '<', '>=': '>'};
+
+/// The result in [rest]: its word, how many words it took, its comparator.
+/// A limit counts only before the unit: "mg/dL | >40" is the range column of
+/// a row with no result, not a result of >40.
+({OcrWord word, int used, String? comparator, double value})? _valueIn(List<OcrWord> rest) {
+  String clean(OcrWord w) => w.text.trim().replaceAll(RegExp(r'[*:;HhLl]+$'), '');
+  var unitSeen = false;
+  for (var i = 0; i < rest.length; i++) {
+    final t = clean(rest[i]);
+    final next = i + 1 < rest.length ? parseNumber(rest[i + 1].text) : null;
+    if (_number.hasMatch(t)) {
+      final plain = parseNumber(rest[i].text);
+      if (plain != null) return (word: rest[i], used: 1, comparator: null, value: plain);
+      final bound = unitSeen ? null : parseNumber(t.substring(1));
+      return bound == null ? null : (word: rest[i], used: 1, comparator: _limitWords[t[0]], value: bound);
+    }
+    if (!unitSeen && _limitWords.containsKey(t) && next != null) return (word: rest[i + 1], used: 2, comparator: _limitWords[t], value: next);
+    final m = RegExp(r'^(?:<=|>=)(.+)$').firstMatch(t);
+    if (!unitSeen && m != null && parseNumber(m.group(1)!) != null) return (word: rest[i], used: 1, comparator: t[0], value: parseNumber(m.group(1)!)!);
+    final word = t.toLowerCase();
+    if (!unitSeen && i + 2 < rest.length && rest[i + 1].text.toLowerCase() == 'than' && (word == 'less' || word == 'more' || word == 'greater')) {
+      final v = parseNumber(rest[i + 2].text);
+      if (v != null) return (word: rest[i + 2], used: 3, comparator: word == 'less' ? '<' : '>', value: v);
+    }
+    if (_units.containsKey(rest[i].text.toLowerCase().replaceAll(RegExp(r'[.,;:)]+$'), ''))) unitSeen = true;
+  }
+  return null;
+}
+
+/// A line that reads like a result row, whatever test it names.
+bool _looksLikeRow(OcrLine l) => l.words.any((w) => _units.containsKey(w.text.toLowerCase().replaceAll(RegExp(r'[.,;:)]+$'), ''))) && l.words.any((w) => RegExp(r'^[<>≤≥]?\d').hasMatch(w.text));
+
+(List<DraftField<LabResult>>, List<String>) _results(List<OcrLine> lines, Sex? sex) {
   final aliases = [
     for (final e in analyteAliases.entries)
       for (final a in e.value) (key: e.key, alias: a),
   ]..sort((a, b) => b.alias.length.compareTo(a.alias.length));
   final found = <String, DraftField<LabResult>>{};
+  final unread = <String>[];
   for (final line in lines) {
-    if (RegExp(r'\bratio\b|/\s*hdl|\bnon hdl\b').hasMatch(line.norm) || line.text.contains('/HDL')) continue;
+    if (RegExp(r'\bratio\b|/\s*hdl|\bnon hdl\b').hasMatch(line.norm) || line.text.contains('/HDL') || _otherSample.hasMatch(line.norm)) {
+      if (_looksLikeRow(line)) unread.add(line.text);
+      continue;
+    }
     final body = line.norm.replaceFirst(RegExp(r'^\d{1,2}\s+'), '');
     ({String key, String alias})? hit;
     var fuzzy = false;
@@ -232,7 +283,10 @@ List<DraftField<LabResult>> _results(List<OcrLine> lines) {
         }
       }
     }
-    if (hit == null) continue;
+    if (hit == null) {
+      if (_looksLikeRow(line) && datesIn(line.text, DateTime(2100)).isEmpty) unread.add(line.text);
+      continue;
+    }
     // Skip the words that make up the name, then read value, unit, range.
     var nameTokens = hit.alias.split(' ').length + (line.norm.length == body.length ? 0 : 1);
     var i = 0;
@@ -242,20 +296,23 @@ List<DraftField<LabResult>> _results(List<OcrLine> lines) {
       i++;
     }
     final rest = line.words.sublist(i);
-    // The first number is the result. "<0.01" cannot be stored as a number:
-    // leave the row to the photo rather than take the range as the value.
-    final vi = rest.indexWhere((w) => _number.hasMatch(w.text.trim().replaceAll(RegExp(r'[*:;HhLl]+$'), '')));
-    if (vi < 0 || parseNumber(rest[vi].text) == null) continue;
-    final valueWord = rest[vi];
-    final value = parseNumber(valueWord.text)!;
-    final after = rest.sublist(vi + 1);
+    // The first number is the result; ">600" keeps its sign. Nothing usable
+    // goes on the list the patient sees, never taking the range for the value.
+    final read = _valueIn(rest);
+    if (read == null) {
+      if (rest.isNotEmpty) unread.add(line.text);
+      continue;
+    }
+    final valueWord = read.word;
+    final value = read.value;
+    final after = rest.sublist(rest.indexOf(valueWord) + 1);
     String? unit;
     for (var k = 0; k < after.length && unit == null; k++) {
       final one = after[k].text.toLowerCase().replaceAll(' ', '');
       final two = k + 1 < after.length ? one + after[k + 1].text.toLowerCase() : null;
       unit = _units[one] ?? _units[one.replaceAll(RegExp(r'[.,;:)]+$'), '')] ?? (two == null ? null : _units[two]);
     }
-    final range = _range(after.map((w) => w.text).join(' '));
+    final range = printedRangeFor(after.map((w) => w.text).join(' '), sex);
 
     var conf = min(line.words.take(i).map((w) => w.confidence).fold(100.0, min), valueWord.confidence) / 100;
     if (fuzzy) conf -= 0.1;
@@ -266,11 +323,10 @@ List<DraftField<LabResult>> _results(List<OcrLine> lines) {
     if (range.high != null && value > range.high! * 10) conf = min(conf, 0.6);
     if (range.low != null && range.low! > 0 && value < range.low! / 10) conf = min(conf, 0.6);
 
-    final field = DraftField(
-      LabResult(analyte: hit.key, value: value, unit: unit ?? '', printedLow: range.low, printedHigh: range.high),
-      confidence: conf.clamp(0, 1).toDouble(),
-      seen: line.text,
-    );
+    final lab = LabResult(analyte: hit.key, value: value, unit: unit ?? '', printedLow: range.low, printedHigh: range.high, comparator: read.comparator);
+    // A limit, or a value past a danger limit, always waits for a person's tick.
+    if (read.comparator != null || CriticalCheck.isDangerValue(lab)) conf = min(conf, 0.6);
+    final field = DraftField(lab, confidence: conf.clamp(0, 1).toDouble(), seen: line.text);
     final prior = found[hit.key];
     if (prior == null) {
       found[hit.key] = field;
@@ -279,8 +335,46 @@ List<DraftField<LabResult>> _results(List<OcrLine> lines) {
       found[hit.key] = prior.capped(0.5);
     }
   }
-  return found.values.toList();
+  return (found.values.toList(), unread);
 }
+
+final _bandLabel = RegExp(
+  r'\b(?:adults?|(?:fe)?males?|(?:wo)?men|boys?|girls?|m|f|children|child|paediatrics?|pediatrics?|infants?|new ?borns?|neonates?|pregnan\w*|(?:1st|2nd|3rd|first|second|third) trimester|trimester|non[ -]?diabetics?|normal|desirable|near[ -]?optimal|above[ -]?optimal|optimal|reference|acceptable|sufficien\w*|insufficien\w*|deficien\w*|toxic\w*|pre[ -]?diabet\w*|diabet\w*|borderline\w*(?: high)?|very high|good control|fair control|poor control|impaired\w*|at risk|elevated|hypothyroid\w*|hyperthyroid\w*)\b',
+  caseSensitive: false,
+);
+
+/// The range that applies, from what is printed after the unit. Reports print
+/// one range, or bands: "Male 0.7-1.3 Female 0.6-1.1", "Normal <5.7
+/// Prediabetes 5.7-6.4 Diabetes >=6.5". Taking the first number is how a woman
+/// passes on the men's range, so a band is used only when it is known to be
+/// the patient's or the normal one. Otherwise there is no printed range, and
+/// Plane A uses its own table or says "not checked".
+({double? low, double? high}) printedRangeFor(String s, Sex? sex) {
+  const none = (low: null, high: null);
+  final t = s.replaceAll(RegExp(r'[–—]'), '-');
+  final marks = _bandLabel.allMatches(t).toList();
+  if (marks.isEmpty) return _distinctRanges(t).length > 1 ? none : _range(t);
+  final bands = <(String, ({double? low, double? high}))>[];
+  for (final (i, m) in marks.indexed) {
+    final r = _range(t.substring(m.end, i + 1 < marks.length ? marks[i + 1].start : t.length));
+    if (r.low != null || r.high != null) bands.add((m.group(0)!.toLowerCase().replaceAll('-', ' '), r));
+  }
+  if (bands.isEmpty) return none;
+  bool isFemale(String l) => l == 'f' || l.startsWith('female') || l.startsWith('women') || l.startsWith('girl');
+  bool isMale(String l) => l == 'm' || l.startsWith('male') || l.startsWith('men') || l.startsWith('boy');
+  if (bands.any((b) => isFemale(b.$1) || isMale(b.$1))) {
+    final mine = bands.where((b) => sex == Sex.female ? isFemale(b.$1) : sex == Sex.male ? isMale(b.$1) : false);
+    return mine.length == 1 ? mine.single.$2 : none;
+  }
+  bool plain(String l) => const {'normal', 'non diabetic', 'nondiabetic', 'desirable', 'optimal', 'reference', 'acceptable', 'adult', 'adults'}.contains(l) || l.startsWith('sufficien');
+  final normal = bands.where((b) => plain(b.$1));
+  return normal.length == 1 ? normal.single.$2 : none;
+}
+
+/// Every plain "a-b" in [t], once each.
+Set<(double, double)> _distinctRanges(String t) => {
+      for (final m in RegExp(r'(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)').allMatches(t)) (double.parse(m.group(1)!), double.parse(m.group(2)!)),
+    };
 
 ({double? low, double? high}) _range(String s) {
   final t = s.replaceAll(RegExp(r'[–—]'), '-');
@@ -289,9 +383,9 @@ List<DraftField<LabResult>> _results(List<OcrLine> lines) {
     final a = double.parse(both.group(1)!), b = double.parse(both.group(2)!);
     if (a <= b) return (low: a, high: b);
   }
-  final upper = RegExp(r'(?:<|≤|up\s*to|upto|less\s+than|below)\s*(\d+(?:\.\d+)?)', caseSensitive: false).firstMatch(t);
+  final upper = RegExp(r'(?:<=?|≤|up\s*to|upto|less\s+than|below)\s*(\d+(?:\.\d+)?)', caseSensitive: false).firstMatch(t);
   if (upper != null) return (low: null, high: double.parse(upper.group(1)!));
-  final lower = RegExp(r'(?:>|≥|more\s+than|above|greater\s+than)\s*(\d+(?:\.\d+)?)', caseSensitive: false).firstMatch(t);
+  final lower = RegExp(r'(?:>=?|≥|more\s+than|above|greater\s+than)\s*(\d+(?:\.\d+)?)', caseSensitive: false).firstMatch(t);
   if (lower != null) return (low: double.parse(lower.group(1)!), high: null);
   return (low: null, high: null);
 }
@@ -517,6 +611,7 @@ DraftField<String> _title(List<OcrLine> lines, RecordKind kind, List<DraftField<
 
 String _panelName(String analyte) => switch (analyte) {
       'glucose_fasting' => 'Fasting glucose',
+      'glucose' || 'glucose_random' || 'glucose_pp' => 'Blood sugar',
       'hba1c' => 'HbA1c',
       'tsh' => 'Thyroid profile',
       'vitamin_d' => 'Vitamin D',

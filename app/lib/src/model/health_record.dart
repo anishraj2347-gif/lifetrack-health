@@ -45,13 +45,30 @@ DataClass dataClassOf(RecordKind kind) => switch (kind) {
 
 /// One measured analyte on a report.
 class LabResult {
-  const LabResult({required this.analyte, required this.value, required this.unit, this.printedLow, this.printedHigh});
+  const LabResult({required this.analyte, required this.value, required this.unit, this.printedLow, this.printedHigh, this.comparator});
 
   /// Canonical analyte key, e.g. `glucose_fasting`, `hba1c`. Matching is on
   /// this key only — free-text names are resolved to it at capture time.
   final String analyte;
   final double value;
   final String unit;
+
+  /// `<` or `>` when the lab reported a limit, not a number: ">600" is
+  /// [value] 600 with `>`. The true value is past [value], in that direction.
+  final String? comparator;
+
+  /// As the lab printed it: "600", ">600".
+  String get shownValue => '${comparator ?? ''}${value == value.roundToDouble() ? value.toStringAsFixed(0) : value}';
+
+  /// Reads what a person typed or a form holds: "6.5", "> 600". Null when it
+  /// is not a number.
+  static (String?, double)? parseValue(String text) {
+    final m = RegExp(r'^\s*([<>≤≥]?)\s*(.+?)\s*$').firstMatch(text);
+    final v = m == null ? null : double.tryParse(m.group(2)!);
+    if (v == null) return null;
+    final c = m!.group(1)!;
+    return (c.isEmpty ? null : (c == '<' || c == '≤' ? '<' : '>'), v);
+  }
 
   /// The reference range printed on this lab's report, in [unit]. Preferred
   /// over the generic table: labs differ by method and population.
@@ -66,6 +83,7 @@ class LabResult {
         'unit': unit,
         if (printedLow != null) 'lo': printedLow,
         if (printedHigh != null) 'hi': printedHigh,
+        if (comparator != null) 'cmp': comparator,
       };
 
   static LabResult fromJson(Map<String, Object?> j) => LabResult(
@@ -74,6 +92,7 @@ class LabResult {
         unit: j['unit']! as String,
         printedLow: (j['lo'] as num?)?.toDouble(),
         printedHigh: (j['hi'] as num?)?.toDouble(),
+        comparator: j['cmp'] as String?,
       );
 }
 

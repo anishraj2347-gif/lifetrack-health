@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../../model/health_record.dart';
+import '../../model/patient.dart';
 import 'report_parser.dart';
 
 /// Plane B: turns the pages of a paper or PDF document into a draft record.
@@ -40,14 +41,16 @@ class CaptureExtractor {
   const CaptureExtractor(this.reader);
   final PageReader reader;
 
-  Future<CaptureDraft> extract(List<Uint8List> pages, {required DateTime today, void Function(int done, int total)? progress}) async {
+  /// [sex] is the patient's, used only to pick their band from a range printed
+  /// for men and women separately.
+  Future<CaptureDraft> extract(List<Uint8List> pages, {required DateTime today, Sex? sex, void Function(int done, int total)? progress}) async {
     final read = <OcrPage>[];
     for (final (i, p) in pages.indexed) {
       progress?.call(i, pages.length);
       read.add(await reader.read(p));
     }
     progress?.call(pages.length, pages.length);
-    return parseCapture(read, today: today);
+    return parseCapture(read, today: today, sex: sex);
   }
 }
 
@@ -107,6 +110,7 @@ class CaptureDraft {
     this.doctor = const DraftField.none(),
     this.results = const [],
     this.medicines = const [],
+    this.unread = const [],
     this.handwriting = false,
   });
 
@@ -126,6 +130,10 @@ class CaptureDraft {
   final DraftField<String> doctor;
   final List<DraftField<LabResult>> results;
   final List<DraftMedicine> medicines;
+
+  /// Report rows that look like results but gave no value LifeTrack can
+  /// store, as printed. Shown to the patient; never dropped in silence.
+  final List<String> unread;
 
   /// The page looks handwritten: nothing on it is trusted without a tick.
   final bool handwriting;

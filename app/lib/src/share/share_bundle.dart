@@ -132,6 +132,7 @@ abstract final class ShareBundle {
           return {
             'analyte': analyte,
             'value': res.value,
+            if (res.comparator != null) 'comparator': res.comparator,
             'unit': res.unit,
             'printedRange': res.hasPrintedRange ? {'low': res.printedLow, 'high': res.printedHigh} : null,
             'sampledOn': rec.effectiveDate.toIso8601String(),

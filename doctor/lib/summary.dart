@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'theme.dart';
 
 const _names = {
+  'glucose': 'Glucose, type not stated',
+  'glucose_random': 'Glucose, random',
+  'glucose_pp': 'Glucose, after meals (PP)',
   'glucose_fasting': 'Fasting glucose',
   'hba1c': 'HbA1c',
   'total_cholesterol': 'Total cholesterol',
@@ -170,7 +173,7 @@ class SummaryPanel extends StatelessWidget {
                 _ => 'Patient-typed, no source',
               };
               return _row(
-                '$name  ${fmt(m['value'])} ${m['unit']}',
+                '$name  ${m['comparator'] ?? ''}${fmt(m['value'])} ${m['unit']}',
                 [
                   age(m['ageDays'] as int),
                   if (m['lab'] != null) m['lab'],

@@ -103,7 +103,7 @@ class SummaryView extends StatelessWidget {
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('${analyteName(m['analyte'] as String)} ${fmt(m['value'])} ${m['unit']}',
+                    Text('${analyteName(m['analyte'] as String)} ${m['comparator'] ?? ''}${fmt(m['value'])} ${m['unit']}',
                         style: LT.label.copyWith(fontWeight: FontWeight.w600, color: m['source'] == 'patientTyped' ? LT.ink3 : LT.ink)),
                     Text(sub, style: LT.small.copyWith(fontSize: 12)),
                     if (onOpenOriginal != null && m['hasOriginal'] == true)

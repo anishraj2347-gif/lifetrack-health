@@ -147,7 +147,7 @@ class RecordExport {
             (final double l, null) => 'lab range ${n(l)} or above',
             _ => '',
           };
-          b.write('<tr><td>${h(x.analyte)}</td><td><b>${n(x.value)} ${h(x.unit)}</b></td><td class="m">${h(range)}</td></tr>');
+          b.write('<tr><td>${h(x.analyte)}</td><td><b>${h(x.comparator ?? '')}${n(x.value)} ${h(x.unit)}</b></td><td class="m">${h(range)}</td></tr>');
         }
         b.write('</table>');
       }

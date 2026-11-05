@@ -1,3 +1,4 @@
+import '../../model/health_record.dart';
 import '../../model/patient.dart';
 
 /// A reference interval. Either bound may be absent: HDL has only a floor,
@@ -34,6 +35,20 @@ class ReferenceRange {
 
   bool isAbove(double v) => high != null && v > high!;
 
+  /// Whether [r] sits inside, or null when a limit like ">600" cannot be
+  /// placed: past the top of 70–100 is outside, but ">60" could be anywhere.
+  bool? containsResult(LabResult r) {
+    final v = r.value;
+    return switch (r.comparator) {
+      '<' when low != null && v <= low! => false,
+      '<' when low == null && high != null && v <= high! => true,
+      '>' when high != null && v >= high! => false,
+      '>' when high == null && low != null && v >= low! => true,
+      null => contains(v),
+      _ => null,
+    };
+  }
+
   /// Patient-facing description, e.g. "70–99 mg/dL", "50 mg/dL or above".
   /// The one formatter every screen uses.
   String describe() {
@@ -69,7 +84,7 @@ const referenceRanges = <ReferenceRange>[
 /// units into). Anything else in a unit field is free text.
 const knownUnits = <String>{
   'mg/dL', 'g/dL', '%', 'mIU/L', 'mIU/mL', 'µIU/mL', 'ng/mL', 'ng/dL', 'pg/mL', 'µg/dL', 'mmol/L', 'mmol/mol', 'mEq/L', 'U/L',
-  'IU/L', 'fL', 'pg', 'mm/hr', '/cumm', '/mm³', '/µL', '10³/µL', '10⁶/µL', 'million/cumm', 'lakh/cumm', 'lakh/µL', 'mL/min/1.73m²',
+  'IU/L', 'fL', 'pg', 'mm/hr', '/cumm', '/mm³', '/µL', '10³/µL', '10⁶/µL', '10⁹/L', 'million/cumm', 'lakh/cumm', 'lakh/µL', 'mL/min/1.73m²',
 };
 
 const analyteNames = <String, String>{
@@ -86,6 +101,7 @@ const analyteNames = <String, String>{
   'vitamin_d': 'Vitamin D',
   // Read off scanned reports. No generic range in the table above, so Tier 1
   // uses the range printed on the report or says "not checked" (#9a).
+  'glucose': 'Glucose, type not stated',
   'glucose_pp': 'Glucose, after meals (PP)',
   'glucose_random': 'Glucose, random',
   'vldl': 'VLDL cholesterol',

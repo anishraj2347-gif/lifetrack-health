@@ -65,7 +65,7 @@ class TestsYouHaveScreen extends StatelessWidget {
                 Padding(padding: EdgeInsets.only(left: 4), child: Icon(LucideIcons.chevronRight, size: 18, color: LT.inactive)),
               ]),
               SizedBox(height: 6),
-              Text('${fmt(t.latest.$2.value)} ${t.latest.$2.unit}', style: LT.title.copyWith(fontSize: 22)),
+              Text('${t.latest.$2.comparator ?? ''}${fmt(t.latest.$2.value)} ${t.latest.$2.unit}', style: LT.title.copyWith(fontSize: 22)),
               SizedBox(height: 4),
               Text(
                 [
@@ -82,7 +82,7 @@ class TestsYouHaveScreen extends StatelessWidget {
                 for (final (r, x) in t.points.skip(1).take(4))
                   Padding(
                     padding: EdgeInsets.only(top: 3),
-                    child: Text('${fmt(x.value)} ${x.unit} · ${fullDate(r.effectiveDate)}${r.labName == null ? '' : ' · ${r.labName}'}', style: LT.small),
+                    child: Text('${x.comparator ?? ''}${fmt(x.value)} ${x.unit} · ${fullDate(r.effectiveDate)}${r.labName == null ? '' : ' · ${r.labName}'}', style: LT.small),
                   ),
               ],
             ]),

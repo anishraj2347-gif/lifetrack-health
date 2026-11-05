@@ -35,6 +35,15 @@ void main() {
     expect(find.text('Allergies: not recorded'), findsNothing);
   });
 
+  testWidgets('a lab limit keeps its sign', (t) async {
+    await show(t, {
+      'latestTests': [
+        {'analyte': 'glucose', 'value': 600, 'comparator': '>', 'unit': 'mg/dL', 'ageDays': 1, 'source': 'photoOfReport', 'recordId': 'r1', 'sampledOn': '2026-11-05T09:00:00.000', 'lab': 'City Lab'},
+      ],
+    });
+    expect(find.text('Glucose, type not stated  >600 mg/dL'), findsOneWidget);
+  });
+
   testWidgets('a dose saved in words is shown in Medicines', (t) async {
     await show(t, {
       'medicines': {

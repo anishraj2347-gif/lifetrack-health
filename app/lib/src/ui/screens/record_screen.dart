@@ -154,7 +154,7 @@ class _RecordScreenState extends State<RecordScreen> {
                         children: [
                           Flexible(child: Text(analyteName(res.analyte), style: LT.label.copyWith(fontSize: 15))),
                           SizedBox(width: 8),
-                          Flexible(child: Text('${_fmt(res.value)} ${res.unit}', style: LT.data, textAlign: TextAlign.right)),
+                          Flexible(child: Text('${res.comparator ?? ''}${_fmt(res.value)} ${res.unit}', style: LT.data, textAlign: TextAlign.right)),
                         ],
                       ),
                     ),

@@ -24,6 +24,9 @@ class AddRecordScreen extends StatefulWidget {
 
 class _ResultRow {
   String? analyte;
+
+  /// A corrected record keeps what the form does not show.
+  double? printedLow, printedHigh;
   final value = TextEditingController();
   final unit = TextEditingController();
 }
@@ -63,7 +66,9 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     }
     for (final x in r.results) {
       final row = _ResultRow()..analyte = x.analyte;
-      row.value.text = x.value == x.value.roundToDouble() ? x.value.toStringAsFixed(0) : '${x.value}';
+      row.value.text = x.shownValue;
+      row.printedLow = x.printedLow;
+      row.printedHigh = x.printedHigh;
       row.unit.text = x.unit;
       _results.add(row);
     }
@@ -81,12 +86,12 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     }
     final results = <LabResult>[];
     for (final row in _results) {
-      final v = double.tryParse(row.value.text.trim());
+      final v = LabResult.parseValue(row.value.text);
       if (row.analyte == null || v == null || row.unit.text.trim().isEmpty) {
         setState(() => _error = 'Each value needs a test, a number and a unit — exactly as printed.');
         return;
       }
-      results.add(LabResult(analyte: row.analyte!, value: v, unit: row.unit.text.trim()));
+      results.add(LabResult(analyte: row.analyte!, value: v.$2, comparator: v.$1, unit: row.unit.text.trim(), printedLow: row.printedLow, printedHigh: row.printedHigh));
     }
     final rng = Random.secure();
     final old = widget.editing;

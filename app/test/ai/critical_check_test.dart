@@ -228,6 +228,80 @@ void main() {
     });
   });
 
+  group('a limit, not a number', () {
+    LabResult bound(String analyte, double v, String unit, String c) => LabResult(analyte: analyte, value: v, unit: unit, comparator: c);
+    InsightRun check1(LabResult r) => CriticalCheck.record(patient: woman, record: report([r]), at: at);
+
+    test('>600 glucose and <20 platelets-in-thousands are urgent, and show the sign', () {
+      final i = check1(bound('glucose_random', 600, 'mg/dL', '>')).insights.single;
+      expect(i.severity, Severity.urgentCare);
+      expect(i.finding, contains('>600 mg/dL'));
+      expect(check1(bound('glucose_random', 40, 'mg/dL', '<')).insights.single.severity, Severity.urgentCare);
+      expect(check1(bound('potassium', 6, 'mmol/L', '>')).insights.single.severity, Severity.urgentCare, reason: 'past 6 is past the limit');
+    });
+
+    test('a limit that could be either side is not checked, never fine', () {
+      final open = check1(bound('glucose_random', 100, 'mg/dL', '>'));
+      expect(open.insights, isEmpty);
+      expect(open.unresolved.single.reason, NotCheckedReason.dangerLimitNotChecked);
+      expect(check1(bound('glucose_random', 40, 'mg/dL', '>')).insights, isEmpty);
+      expect(check1(bound('hba1c', 5, '%', '<')).needsPrompt, isFalse, reason: 'no limit lies on that side');
+    });
+
+    test('against a range: past it is outside, and otherwise not checked', () {
+      InsightRun run(LabResult r) => DeterministicInsights.run(patient: woman, records: [report([r])], at: at);
+      const past = LabResult(analyte: 'tsh', value: 0.01, unit: 'mIU/L', comparator: '<', printedLow: 0.4, printedHigh: 4);
+      expect(run(past).insights.single.finding, allOf(contains('<0.01'), contains('below')));
+      const within = LabResult(analyte: 'ldl', value: 50, unit: 'mg/dL', comparator: '<');
+      expect(run(within).insights, isEmpty);
+      expect(run(within).unresolved, isEmpty, reason: 'below 50 is inside "99 or below"');
+      const unknown = LabResult(analyte: 'tsh', value: 2, unit: 'mIU/L', comparator: '>', printedLow: 0.4, printedHigh: 4);
+      expect(run(unknown).unresolved.single.reason, NotCheckedReason.reportedAsLimit);
+    });
+
+    test('stored, read back, and never a point on a trend', () {
+      const r = LabResult(analyte: 'hba1c', value: 14, unit: '%', comparator: '>');
+      expect(LabResult.fromJson(r.toJson()).comparator, '>');
+      expect(LabResult.parseValue('> 600'), ('>', 600));
+      expect(LabResult.parseValue('6.5'), (null, 6.5));
+      expect(LabResult.parseValue('≤ 2'), ('<', 2));
+      expect(LabResult.parseValue('nil'), isNull);
+      final run = DeterministicInsights.run(patient: woman, at: at, records: [
+        HealthRecord(id: 'a', patientId: 'p1', kind: RecordKind.report, title: 'A', date: DateTime(2026, 1, 1), source: RecordSource.typedByPatient, results: const [LabResult(analyte: 'hba1c', value: 6, unit: '%')]),
+        report(const [r]),
+      ]);
+      expect(run.insights.where((i) => i.kind == InsightKind.trend), isEmpty);
+    });
+  });
+
+  group('printed ranges and who they are for (#10)', () {
+    InsightRun run(LabResult r, Patient who) => DeterministicInsights.run(patient: who, records: [report([r])], at: at);
+    const creatinine = LabResult(analyte: 'creatinine', value: 1.2, unit: 'mg/dL');
+    const hb = LabResult(analyte: 'haemoglobin', value: 10, unit: 'g/dL', printedLow: 13, printedHigh: 17);
+
+    test('a woman with no printed band is held to her own table range', () {
+      expect(run(creatinine, woman).insights.single.finding, contains('for adult women'));
+    });
+
+    test('a printed adult range never reaches a child', () {
+      final r = run(hb, child);
+      expect(r.insights, isEmpty);
+      expect(r.unresolved.single.reason, NotCheckedReason.notApplicableToPatient);
+    });
+
+    test('nor a pregnancy, where pregnancy shifts it', () {
+      final r = run(hb, pregnant);
+      expect(r.insights, isEmpty);
+      expect(r.unresolved.single.reason, NotCheckedReason.notApplicableToPatient);
+    });
+
+    test('a danger value still shows for them, with no range', () {
+      final r = run(const LabResult(analyte: 'haemoglobin', value: 5, unit: 'g/dL', printedLow: 13, printedHigh: 17), child);
+      expect(r.insights.single.severity, Severity.urgentCare);
+      expect(r.unresolved, isEmpty);
+    });
+  });
+
   test('normaliseUnit folds the spellings on real reports', () {
     expect(normaliseUnit(' Gm % '), 'gm%');
     expect(normaliseUnit('x10^3/µL'), '103/ul');

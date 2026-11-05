@@ -26,7 +26,8 @@ class PseudonymisedSlice {
           // Only analytes and units on the known tables: a free-text field
           // is a channel for identifying text (a unit read off a photo, or
           // typed, can be anything — a name included).
-          if (analyteNames.containsKey(res.analyte) && knownUnits.contains(res.unit))
+          // A limit like ">600" is not a value, and this form cannot say so.
+          if (res.comparator == null && analyteNames.containsKey(res.analyte) && knownUnits.contains(res.unit))
             SliceEntry(
               analyte: res.analyte,
               value: res.value,

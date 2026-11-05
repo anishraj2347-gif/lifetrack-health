@@ -86,6 +86,16 @@ void main() {
     SlabButton slab(String label) => find.widgetWithText(SlabButton, label).evaluate().single.widget as SlabButton;
     bool enabled(String label) => slab(label).onPressed != null;
 
+    Future<void> tickAll(WidgetTester tester) async {
+      final ticks = find.byType(Checkbox);
+      for (var i = 0; i < ticks.evaluate().length; i++) {
+        await tester.ensureVisible(ticks.at(i));
+        await tester.pumpAndSettle();
+        await tester.tap(ticks.at(i));
+        await tester.pumpAndSettle();
+      }
+    }
+
     testWidgets('a clean print: fields filled, one confirm saves', (tester) async {
       final reader = await pump(tester, [
         'Thyrocare',
@@ -136,15 +146,26 @@ void main() {
       expect(find.text('Check this'), findsWidgets);
     });
 
-    Future<void> tickAll(WidgetTester tester) async {
-      final ticks = find.byType(Checkbox);
-      for (var i = 0; i < ticks.evaluate().length; i++) {
-        await tester.ensureVisible(ticks.at(i));
-        await tester.pumpAndSettle();
-        await tester.tap(ticks.at(i));
-        await tester.pumpAndSettle();
-      }
-    }
+    testWidgets('a danger value needs a tick, a limit survives the save, and unread rows are listed', (tester) async {
+      await pump(tester, [
+        'City Diagnostics Laboratory',
+        'Report Date 25/09/2026',
+        'Test Name | Result | Units | Reference',
+        'Glucose Random | >600 | mg/dL | 70 - 140',
+        'Serum Phosphorus | 3.5 | mg/dL | 2.5 - 4.5',
+      ]);
+      expect(find.textContaining('could not read this row'), findsOneWidget);
+      expect(find.textContaining('Serum Phosphorus'), findsOneWidget);
+      expect(field('>600'), findsOneWidget);
+      await tickAll(tester);
+      await tester.tap(find.text('This matches my report'));
+      await tester.runAsync(() => Future<void>.delayed(const Duration(seconds: 2)));
+      await tester.pumpAndSettle();
+      expect(find.text('Saved. Please read this now'), findsOneWidget, reason: '>600 crosses the limit');
+      final s = AppScope.of(tester.element(find.byType(Navigator).first));
+      final r = s.records().single.results.single;
+      expect((r.value, r.comparator, r.analyte), (600, '>', 'glucose_random'));
+    });
 
     testWidgets('a missing dose is not filled in, and a tick alone cannot save it', (tester) async {
       await pump(tester, ['Dr. Sharma', 'Date 25/09/2026', 'Rx', 'Tab Methotrexate 15 mg once a week']);

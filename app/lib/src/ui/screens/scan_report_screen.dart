@@ -53,7 +53,7 @@ class _Value {
     final r = f?.value;
     if (r == null) return;
     analyte = r.analyte;
-    value.text = _num(r.value);
+    value.text = r.shownValue;
     unit.text = r.unit;
     if (r.printedLow != null) low.text = _num(r.printedLow!);
     if (r.printedHigh != null) high.text = _num(r.printedHigh!);
@@ -243,7 +243,7 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
     _readFailed = false;
     if (scanner != null) {
       try {
-        draft = await scanner.extract(_pages, today: s.clock(), progress: (done, total) {
+        draft = await scanner.extract(_pages, today: s.clock(), sex: s.currentPatient?.sex, progress: (done, total) {
           if (mounted && done < total) {
             setState(() {
               _readingPage = done.clamp(0, _pages.length - 1);
@@ -311,7 +311,7 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
     if (_date == null) return 'Pick the date printed on it.';
     for (final v in _values) {
       if (_kind != RecordKind.report) break;
-      final n = double.tryParse(v.value.text.trim());
+      final n = LabResult.parseValue(v.value.text);
       if (v.analyte == null && v.value.text.trim().isEmpty) continue; // an empty row
       if (v.analyte == null || n == null || v.unit.text.trim().isEmpty) return 'Each value needs a test, a number and a unit — exactly as printed. Remove a row you do not want.';
     }
@@ -353,10 +353,12 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
       final results = <LabResult>[
         if (_kind == RecordKind.report)
           for (final v in _values)
-            if (v.analyte != null && double.tryParse(v.value.text.trim()) != null)
+            if (v.analyte != null)
+              if (LabResult.parseValue(v.value.text) case (final comparator, final value))
               LabResult(
                 analyte: v.analyte!,
-                value: double.parse(v.value.text.trim()),
+                value: value,
+                comparator: comparator,
                 unit: v.unit.text.trim(),
                 printedLow: double.tryParse(v.low.text.trim()),
                 printedHigh: double.tryParse(v.high.text.trim()),
@@ -727,6 +729,15 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
                 ]),
               ]),
             ),
+          ),
+        if (_draft.unread.isNotEmpty)
+          CautionPanel(
+            title: 'LifeTrack could not read ${_draft.unread.length == 1 ? 'this row' : 'these ${_draft.unread.length} rows'}',
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              for (final row in _draft.unread) Padding(padding: EdgeInsets.only(top: 6), child: Text(row, style: LT.small.copyWith(color: LT.cautionInk))),
+              SizedBox(height: 8),
+              Text('They are in the photo but not saved as values. Add any you need with "Add a value".', style: LT.small.copyWith(color: LT.cautionInk, fontWeight: FontWeight.w600)),
+            ]),
           ),
         Padding(
           padding: EdgeInsets.fromLTRB(16, 6, 16, 6),

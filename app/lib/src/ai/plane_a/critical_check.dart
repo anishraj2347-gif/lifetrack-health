@@ -52,6 +52,8 @@ abstract final class CriticalCheck {
   static CriticalVerdict result({required Patient? patient, required LabResult result, required DateTime resultDate, required DateTime at}) {
     final limit = limitFor(result.analyte);
     if (limit == null) return CriticalVerdict.clear;
+    final cmp = result.comparator;
+    final cmpText = cmp ?? '';
     final highSide = patient == null || patient.ageAt(at) >= limit.highSideFromAge;
     final raw = result.unit.trim();
     final spelled = normaliseUnit(raw);
@@ -61,13 +63,15 @@ abstract final class CriticalCheck {
 
     if (known != null) {
       final v = known.toCanonical(result.value);
-      final s = limit.classify(v, highSide: highSide);
+      final s = limit.classify(v, highSide: highSide, comparator: cmp);
       if (s == null) {
-        // Above a limit that is not applied at this age: unjudged, not fine.
-        return limit.classify(v) != null ? const CriticalVerdict(unchecked: NotCheckedReason.dangerLimitNotChecked) : CriticalVerdict.clear;
+        // Past a limit that is not applied at this age, or a ">100" that could
+        // be anywhere: unjudged, not fine.
+        final unjudged = limit.classify(v, comparator: cmp) != null || limit.openEnded(cmp);
+        return unjudged ? const CriticalVerdict(unchecked: NotCheckedReason.dangerLimitNotChecked) : CriticalVerdict.clear;
       }
       final about = known.isCanonical ? '' : ' (about ${_fmt(v)} ${limit.unit})';
-      return CriticalVerdict(severity: s, finding: '$name was ${_fmt(result.value)} $raw$about on $when. ${_limitSentence(limit, v, s)}');
+      return CriticalVerdict(severity: s, finding: '$name was $cmpText${_fmt(result.value)} $raw$about on $when. ${_limitSentence(limit, v, s)}');
     }
 
     // No unit, or one that does not fit this test. Try every reading of the
@@ -77,7 +81,7 @@ abstract final class CriticalCheck {
     for (final f in limit.forms) {
       final v = f.toCanonical(result.value);
       if (v < limit.plausible.$1 || v > limit.plausible.$2) continue;
-      final s = limit.classify(v, highSide: highSide);
+      final s = limit.classify(v, highSide: highSide, comparator: cmp);
       if (s != null && (worst == null || s.index > worst.index)) {
         worst = s;
         worstV = v;
@@ -87,9 +91,13 @@ abstract final class CriticalCheck {
     final stated = raw.isEmpty ? 'no unit on the report' : 'unit "$raw" not recognised';
     return CriticalVerdict(
       severity: worst,
-      finding: '$name was ${_fmt(result.value)} ($stated) on $when. Read as ${_fmt(worstV!)} ${limit.unit}: ${_limitSentence(limit, worstV, worst)}',
+      finding: '$name was $cmpText${_fmt(result.value)} ($stated) on $when. Read as ${_fmt(worstV!)} ${limit.unit}: ${_limitSentence(limit, worstV, worst)}',
     );
   }
+
+  /// Whether [r] crosses a limit for someone, whoever they turn out to be.
+  /// A page being read has no patient yet, and such a value waits for a tick.
+  static bool isDangerValue(LabResult r) => result(patient: null, result: r, resultDate: DateTime(2000), at: DateTime(2000)).severity != null;
 
   /// Every lab value on [record], as it is saved.
   static InsightRun record({required Patient? patient, required HealthRecord record, required DateTime at}) {

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lifetrack/src/ai/plane_b/capture.dart';
 import 'package:lifetrack/src/ai/plane_b/report_parser.dart';
 import 'package:lifetrack/src/model/health_record.dart';
+import 'package:lifetrack/src/model/patient.dart';
 
 import 'ocr_fixture.dart';
 
@@ -80,9 +81,10 @@ void main() {
       expect(d.results.single.seen, contains('0.9'));
     });
 
-    test('a value with a < sign is left to the photo', () {
+    test('a value with a < sign keeps the sign and waits for a tick; the range is not taken for it', () {
       final d = parseCapture([page(['TSH | <0.01 | µIU/mL | 0.4 - 4.0'])], today: today);
-      expect(d.results, isEmpty);
+      final r = d.results.single;
+      expect((r.value!.value, r.value!.comparator, r.uncertain), (0.01, '<', true));
     });
   });
 
@@ -123,6 +125,89 @@ void main() {
     test('"once a day" does not say when, so the patient picks', () {
       final d = parseCapture([page(['Rx', 'Tab Amlodipine 5 mg OD', 'Tab Telmisartan 40 mg OD'])], today: today);
       expect(d.medicines.first.dose.uncertain, isTrue);
+    });
+  });
+
+  group('rows that used to vanish', () {
+    CaptureDraft read(List<String> rows, {Sex? sex}) => parseCapture([page(['City Pathology Laboratory', 'Test Name | Result | Units | Bio. Ref. Interval', ...rows])], today: today, sex: sex);
+    LabResult one(List<String> rows, {Sex? sex}) => read(rows, sex: sex).results.single.value!;
+
+    test('"Glucose" and "Blood Sugar" are read, as glucose of no stated type', () {
+      expect(one(['Glucose | 104 | mg/dL | 70 - 140']).analyte, 'glucose');
+      expect(one(['Blood Sugar | 240 | mg/dL']).analyte, 'glucose');
+      expect(one(['Plasma Glucose | 96 | mg/dL']).analyte, 'glucose');
+      expect(one(['Glucose Fasting | 96 | mg/dL']).analyte, 'glucose_fasting', reason: 'a named type still wins');
+      expect(one(['Glucose Random | 96 | mg/dL']).analyte, 'glucose_random');
+    });
+
+    test('"Hemoglobin A1c 6.5" is HbA1c, not haemoglobin', () {
+      for (final row in ['Hemoglobin A1c | 6.5 | %', 'Haemoglobin A1c | 6.5 | %', 'Glycated Hb | 6.5 | %']) {
+        final r = one([row]);
+        expect((r.analyte, r.value), ('hba1c', 6.5), reason: row);
+      }
+      expect(one(['Hemoglobin | 13.2 | g/dL']).analyte, 'haemoglobin');
+    });
+
+    test('">600" and "<0.01" are kept with their sign, and wait for a tick', () {
+      final high = read(['Glucose Random | >600 | mg/dL | 70 - 140']).results.single;
+      expect((high.value!.value, high.value!.comparator, high.value!.shownValue), (600, '>', '>600'));
+      expect(high.value!.printedHigh, 140);
+      expect(high.uncertain, isTrue);
+      final low = read(['TSH | <0.01 | µIU/mL | 0.4 - 4.0']).results.single;
+      expect((low.value!.value, low.value!.comparator), (0.01, '<'));
+      expect(low.uncertain, isTrue);
+      expect(one(['TSH | < 0.01 | µIU/mL']).comparator, '<');
+      expect(one(['TSH | Less than 0.01 | µIU/mL']).comparator, '<');
+    });
+
+    test('a range is never taken for a missing result', () {
+      final d = read(['HDL Cholesterol | | mg/dL | >40']);
+      expect(d.results, isEmpty);
+      expect(d.unread.single, contains('HDL'));
+    });
+
+    test('what cannot be read is listed, not dropped', () {
+      final d = read(['Serum Phosphorus | 3.5 | mg/dL | 2.5 - 4.5', 'Sodium, Urine | 90 | mmol/L', 'Calcium Ionised | 1.15 | mmol/L', 'Potassium | Haemolysed | mmol/L', 'Glucose Tolerance Test | 180 | mg/dL']);
+      expect(d.results, isEmpty, reason: 'none of these is the blood test its first word names');
+      expect(d.unread, hasLength(5));
+      expect(d.unread.first, contains('Phosphorus'));
+    });
+
+    test('a heading is not a row', () {
+      expect(read(['HbA1c', 'Haemoglobin | 13.2 | g/dL']).unread, isEmpty);
+    });
+
+    test('a danger value always waits for a tick, however clear the print', () {
+      expect(read(['Potassium | 6.5 | mmol/L | 3.5 - 5.1']).results.single.uncertain, isTrue);
+      expect(read(['Platelet Count | 8000 | /cumm']).results.single.uncertain, isTrue);
+      expect(read(['Potassium | 4.2 | mmol/L | 3.5 - 5.1']).results.single.uncertain, isFalse);
+    });
+
+    test('a range printed by sex gives the patient their own, or none', () {
+      const row = ['Creatinine | 1.2 | mg/dL | Male 0.7-1.3 Female 0.6-1.1'];
+      final woman = one(row, sex: Sex.female), man = one(row, sex: Sex.male);
+      expect((woman.printedLow, woman.printedHigh), (0.6, 1.1));
+      expect((man.printedLow, man.printedHigh), (0.7, 1.3));
+      expect(one(row).hasPrintedRange, isFalse, reason: 'sex not known: no band is picked');
+      expect(one(row, sex: Sex.unspecified).hasPrintedRange, isFalse);
+      expect(one(['Creatinine | 1.2 | mg/dL | Male 0.7-1.3'], sex: Sex.female).hasPrintedRange, isFalse, reason: 'the men\'s band alone is not hers');
+      expect(one(['Creatinine | 1.2 | mg/dL | M: 0.7-1.3 F: 0.6-1.1'], sex: Sex.female).printedHigh, 1.1);
+    });
+
+    test('a range in bands gives the normal band, or none', () {
+      final normal = one(['HbA1c | 6.1 | % | Normal <5.7 Prediabetes 5.7-6.4 Diabetes >=6.5']);
+      expect((normal.printedLow, normal.printedHigh), (null, 5.7));
+      expect(one(['HbA1c | 6.1 | % | Prediabetes 5.7-6.4']).hasPrintedRange, isFalse);
+      expect(one(['HbA1c | 6.1 | % | Prediabetes 5.7-6.4 Diabetes >6.5']).hasPrintedRange, isFalse);
+      expect(one(['Cholesterol Total | 212 | mg/dL | Desirable <200 Borderline 200-239 High >=240']).printedHigh, 200);
+      expect(one(['LDL Cholesterol | 90 | mg/dL | Optimal <100 Near optimal 100-129']).printedHigh, 100);
+      expect(one(['Creatinine | 0.4 | mg/dL | Child 0.3-0.7']).hasPrintedRange, isFalse);
+      expect(one(['Creatinine | 0.4 | mg/dL | 0.7-1.3 0.6-1.1']).hasPrintedRange, isFalse, reason: 'two unlabelled ranges: neither is known to apply');
+    });
+
+    test('a single plain range is still read, and a High flag does not hide it', () {
+      expect(one(['Glucose Fasting | 180 | H | mg/dL | 70 - 100']).printedHigh, 100);
+      expect(one(['Glucose Fasting | 180 | High | mg/dL | 70 - 100']).printedHigh, 100);
     });
   });
 
