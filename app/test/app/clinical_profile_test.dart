@@ -38,8 +38,9 @@ void main() {
       expect(card.allergies, 'Penicillin, Peanuts');
       expect((card.bloodType, card.contactName), ('B+', 'Vikram'));
       expect(s.clinicalProfile().updatedAt, now);
-      expect(s.auditEntries().last.dataClass, DataClass.allergies);
-      expect(s.auditEntries().last.action, AuditAction.edit);
+      final logged = s.auditEntries().singleWhere((e) => e.dataClass == DataClass.allergies);
+      expect(logged.action, AuditAction.edit);
+      expect(logged.detail, contains('allergies, conditions and family illnesses'));
     });
 
     test('the same list goes to the doctor', () async {
@@ -59,6 +60,16 @@ void main() {
       expect(list.map((a) => a.substance), ['Penicillin', 'Sulfa drugs']);
       expect(list.first.reaction, 'rash');
       expect(s.ownSummary()['allergies'], hasLength(2));
+    });
+
+    test('every change to the card or the list is in the log (#13)', () async {
+      final s = await open();
+      final me = s.selfPatientId!;
+      await s.saveEmergencyCard(me, const EmergencyCard(allergies: 'Latex'));
+      expect(s.auditEntries().map((e) => e.detail), containsAll(['Emergency ID edited', 'allergy list changed from the Emergency ID']));
+      final n = s.auditEntries().length;
+      await s.saveEmergencyCard(me, const EmergencyCard(allergies: 'Latex'));
+      expect(s.auditEntries(), hasLength(n), reason: 'nothing changed');
     });
 
     test('a long list is cut on the card, never in the record, and survives a card edit', () async {
@@ -95,6 +106,7 @@ void main() {
       await s.emergency.save(s.selfPatientId!, const EmergencyCard(allergies: 'Penicillin; Latex'));
       final again = await open(bytes);
       expect(again.clinicalProfile().allergies.map((a) => a.substance), ['Penicillin', 'Latex']);
+      expect(again.auditEntries().where((e) => (e.detail ?? '').contains('copied from the Emergency ID')), hasLength(1));
     });
 
     test('stored and read back', () {

@@ -47,6 +47,10 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.46.1 (6 Nov 2026)
+- **Fixed: changes to the Emergency ID were not in the access log** (#13). An edit to the card, an allergy
+  list change made from it, and allergies adopted from an older card are all logged now.
+
 ### 1.46.0 (6 Nov 2026)
 - **Report reading no longer loses rows silently.** "Glucose" and "Blood Sugar" with no type are read
   (as glucose, type not stated), "Hemoglobin A1c" is HbA1c and not haemoglobin, and ">600" and "<0.01" are

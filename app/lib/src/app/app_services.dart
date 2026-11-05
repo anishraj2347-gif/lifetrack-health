@@ -801,7 +801,9 @@ class AppServices {
       final prof = repository.profileOf(p.id);
       if (prof.allergies.isNotEmpty || prof.noneKnown) continue;
       final line = (await emergency.load(p.id)).allergies;
-      if (line.trim().isNotEmpty) await repository.saveProfile(p.id, prof.withCardLine(line, clock()));
+      if (line.trim().isEmpty) continue;
+      await repository.saveProfile(p.id, prof.withCardLine(line, clock()));
+      await audit.append(AuditEntry(at: clock(), actorId: Actors.patient(selfPatientId ?? p.id), patientId: p.id, action: AuditAction.edit, dataClass: DataClass.allergies, detail: 'allergies copied from the Emergency ID to the allergy list'));
     }
   }
 
@@ -1100,11 +1102,14 @@ class AppServices {
     final before = await emergency.load(patientId);
     final changed = !card.sameContentAs(before);
     await emergency.save(patientId, changed ? card.editedAt(clock()) : card.editedAt(before.updatedAt ?? clock()));
+    final actor = Actors.patient(selfPatientId ?? patientId);
+    if (changed) await audit.append(AuditEntry(at: clock(), actorId: actor, patientId: patientId, action: AuditAction.edit, dataClass: DataClass.emergencyCard, detail: 'Emergency ID edited'));
     // The card can edit the one allergy list too. Unchanged, it leaves the
     // list alone: the line may be a shortened form of it.
     final prof = repository.profileOf(patientId);
     if (card.allergies.trim() != prof.cardLine(EmergencyCard.maxFieldLength)) {
       await repository.saveProfile(patientId, prof.withCardLine(card.allergies, clock()));
+      await audit.append(AuditEntry(at: clock(), actorId: actor, patientId: patientId, action: AuditAction.edit, dataClass: DataClass.allergies, detail: 'allergy list changed from the Emergency ID'));
     }
     await _tellLinkedFamily(patientId);
     await _backUpQuietly();
