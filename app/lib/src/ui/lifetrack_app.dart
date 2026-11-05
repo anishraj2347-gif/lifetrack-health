@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -57,6 +58,12 @@ class _LifeTrackAppState extends State<LifeTrackApp> with WidgetsBindingObserver
 
   @override
   void didChangePlatformBrightness() => _apply();
+
+  /// Back on screen: whatever was waiting for the server tries again.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_services.then((s) => s.retryNow(), onError: (_) {}));
+  }
 
   bool _resolve() => switch (appearance.value) {
         ThemeMode.dark => true,

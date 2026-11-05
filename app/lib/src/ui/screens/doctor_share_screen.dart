@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../consent/consent_token.dart';
 import '../../share/access_requests.dart';
 import '../../share/clinical_share_service.dart';
+import '../../share/pending_closes.dart';
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/family_bar.dart';
@@ -265,7 +266,12 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
         Padding(
           padding: EdgeInsets.fromLTRB(16, 20, 16, 10),
           child: SlabButton('End access now', variant: ButtonVariant.outline, onPressed: () async {
-            await AppScope.of(context).sharing!.endAccess(r.grant, AppScope.of(context).clock());
+            final msg = ScaffoldMessenger.of(context);
+            try {
+              msg.showSnackBar(SnackBar(content: Text(endAccessMessage(await AppScope.of(context).endAccess(r.grant), r.doctor.name, r.grant.expiresAt))));
+            } on Object catch (e) {
+              msg.showSnackBar(SnackBar(content: Text('Access was ended on this phone, but something went wrong. ${plainError(e)}')));
+            }
             if (!mounted) return;
             AppScope.changed(context);
             Navigator.of(context).pop();
@@ -274,6 +280,14 @@ class _DoctorShareScreenState extends State<DoctorShareScreen> {
         Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 28), child: SlabButton('Done', onPressed: () => Navigator.of(context).pop())),
       ]);
 }
+
+/// Says what happened, including when the server could not be reached.
+String endAccessMessage(EndAccessResult r, String who, DateTime until) => switch (r) {
+      EndAccessResult.doctorToldNow => 'Access ended. $who has been told.',
+      EndAccessResult.waitingForServer =>
+        "Access ended on this phone, but LifeTrack's server could not be reached, so $who has not been told yet. "
+            'What they already received stays open on their device until they are told, or until ${dateTime(until)} at the latest. LifeTrack keeps trying.',
+    };
 
 /// Whether [r] is a clinical share grant (vs an on-device one).
 bool isClinicalShare(ConsentToken g) => g.granteeKeyId != null;

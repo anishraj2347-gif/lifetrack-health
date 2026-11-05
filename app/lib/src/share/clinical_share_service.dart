@@ -12,6 +12,7 @@ import '../model/clinical_profile.dart';
 import '../model/health_record.dart';
 import '../storage/record_repository.dart';
 import 'http_relay_client.dart' show WithdrawTokenStore, InMemoryWithdrawTokens;
+import 'pending_closes.dart';
 import 'relay.dart';
 import 'reply_identity.dart';
 import 'share_bundle.dart';
@@ -50,7 +51,9 @@ class ClinicalShareService {
     this.lifeTrackIdOf,
     this.doctors = const UnknownDoctorStatus(),
     WithdrawTokenStore? keyBook,
-  }) : keyBook = keyBook ?? InMemoryWithdrawTokens();
+    PendingCloseStore? closes,
+  })  : keyBook = keyBook ?? InMemoryWithdrawTokens(),
+        closes = closes ?? InMemoryPendingCloses();
 
   /// Asked before anything goes to a doctor or is taken from one: a doctor
   /// revoked since their certificate was issued is refused while online.
@@ -67,6 +70,12 @@ class ClinicalShareService {
   /// Each live share's doctor key, so ending access can tell that device to
   /// close a share it has already picked up.
   final WithdrawTokenStore keyBook;
+
+  /// Doctors' devices still to be told that access ended (see [endAccess]).
+  final PendingCloseStore closes;
+
+  /// The queue, loaded once: every change goes through this one list.
+  late final Future<List<PendingClose>> _queue = closes.load();
 
   /// Loads a record's original pages; null in tests that do not need them.
   final Future<List<Uint8List>> Function(HealthRecord record)? originals;
@@ -119,10 +128,10 @@ class ClinicalShareService {
     final mailbox = await RelayApi.doctorMailbox(doctor.encryptionKey);
     final actor = Actors.doctor(doctor.registryId);
 
-    // One live grant per doctor per patient: a new approval replaces the old.
-    for (final g in consent.activeGrantsFor(patientId, at)) {
-      if (g.grantedToActorId == actor) await _end(g, at, 'replaced by a new approval', replaced: true);
-    }
+    // One live grant per doctor per patient: a new approval replaces the old,
+    // but only once it has gone. If the server is off, what the doctor has
+    // now stays as it is, rather than ending with nothing in its place.
+    final replacing = [for (final g in consent.activeGrantsFor(patientId, at)) if (g.grantedToActorId == actor) g];
 
     final scopes = scopesFor(levels);
     final grant = Grants.clinician(
@@ -212,8 +221,18 @@ class ClinicalShareService {
       tokenId: grant.id,
       detail: 'Sent to ${doctor.name} (${doctor.registrationNo}), encrypted to their device',
     ));
-    await relay.deposit(mailbox: mailbox, grantId: grant.id, envelope: envelope, expiresAt: grant.expiresAt);
     await keyBook.put('dk-${grant.id}', base64Encode(doctor.encryptionKey));
+    try {
+      await relay.deposit(mailbox: mailbox, grantId: grant.id, envelope: envelope, expiresAt: grant.expiresAt);
+    } on Object {
+      // A timed-out send may still have landed, so this goes through the same
+      // withdrawal and close as any other ending.
+      await _end(grant, at, 'share not delivered');
+      rethrow;
+    }
+    for (final g in replacing) {
+      await _end(g, at, 'replaced by a new approval', replaced: true);
+    }
     // Kept so the patient can change how long this share lasts without
     // scanning again; re-checked against the registry when used.
     await keyBook.put('dq-${grant.id}', doctor.encode());
@@ -251,13 +270,13 @@ class ClinicalShareService {
     bundle['originalsOmitted'] = omitted;
   }
 
-  /// The patient ends access. Removes anything not yet picked up; a share
-  /// already delivered can only be discarded by the doctor app, which the
-  /// screen says plainly.
   Future<String> _closeSecret(String patientId, String grantId) async =>
       RelayApi.sha256Hex('${(await replyIdentity(patientId)).secret}|close|$grantId');
 
-  Future<void> endAccess(ConsentToken grant, DateTime at) => _end(grant, at, 'ended by patient');
+  /// Ending access works with no server: the grant ends on this phone at
+  /// once and the log says so. Telling the relay and the doctor's device waits
+  /// in a durable queue if it has to, and [retryPendingCloses] sends it.
+  Future<EndAccessResult> endAccess(ConsentToken grant, DateTime at) => _end(grant, at, 'ended by patient');
 
   /// The patient changes how long a live share lasts — longer or shorter,
   /// never past 48 hours. The same levels and filter are sent again for the
@@ -287,40 +306,12 @@ class ClinicalShareService {
 
   /// Whether this share can have its time changed without a new scan.
   Future<bool> canChangeTime(ConsentToken grant) async {
-    final qr = await keyBook.take('dq-${grant.id}');
-    if (qr == null) return false;
-    await keyBook.put('dq-${grant.id}', qr);
-    return true;
+    return await keyBook.peek('dq-${grant.id}') != null;
   }
 
-  Future<void> _end(ConsentToken grant, DateTime at, String why, {bool replaced = false}) async {
+  Future<EndAccessResult> _end(ConsentToken grant, DateTime at, String why, {bool replaced = false}) async {
     consent.revoke(grant.id);
-    if (grant.granteeKeyId != null) {
-      final mailbox = 'd-${grant.granteeKeyId!}';
-      await relay.withdraw(mailbox: mailbox, grantId: grant.id);
-      // Already picked up? Tell the doctor's device to close it now rather
-      // than at expiry. Only this phone knows the secret, so nobody else can
-      // close a patient's share.
-      final key = await keyBook.take('dk-${grant.id}');
-      if (key != null && at.isBefore(grant.expiresAt)) {
-        final k = base64Decode(key);
-        final id = 'close-${grant.id}';
-        await relay.deposit(
-          mailbox: mailbox,
-          grantId: id,
-          envelope: await ShareEnvelope.seal(
-            // `replaced`: a new share with a new time follows, so the doctor
-            // app does not announce that access ended.
-            bundle: {'type': 'close', 'grantId': grant.id, 'closeSecret': await _closeSecret(grant.patientId, grant.id), if (replaced) 'replaced': true},
-            recipientKey: k,
-            keyId: grant.granteeKeyId!,
-            grantId: id,
-            expiresAt: grant.expiresAt,
-          ),
-          expiresAt: grant.expiresAt,
-        );
-      }
-    }
+    // Before anything leaves, so a failed send is still on record (#13).
     await audit.append(AuditEntry(
       at: at,
       actorId: Actors.patient(grant.patientId),
@@ -329,7 +320,108 @@ class ClinicalShareService {
       tokenId: grant.id,
       detail: why,
     ));
+    final keyId = grant.granteeKeyId;
+    if (keyId == null) return EndAccessResult.doctorToldNow;
+    final key = await keyBook.peek('dk-${grant.id}');
+    final close = PendingClose(
+      grantId: grant.id,
+      patientId: grant.patientId,
+      doctorActorId: grant.grantedToActorId,
+      keyId: keyId,
+      expiresAt: grant.expiresAt,
+      doctorKey: key,
+      closeSecret: key == null ? null : await _closeSecret(grant.patientId, grant.id),
+      replaced: replaced,
+    );
+    // On disk before the first attempt: a restart mid-send still finishes it.
+    final queue = await _queue;
+    queue.add(close);
+    await closes.save(queue);
+    for (final k in ['dk-', 'dq-', 'ds-']) {
+      await keyBook.take('$k${grant.id}');
+    }
+    try {
+      await _deliver(close);
+    } on Object {
+      await _log(close, at, "ended on this phone; the server could not be reached, so the doctor's device has not been told yet");
+      return EndAccessResult.waitingForServer;
+    }
+    await _settled(close);
+    return EndAccessResult.doctorToldNow;
   }
+
+  /// Removes anything not yet picked up; a share already delivered can only
+  /// be discarded by the doctor app, which the screen says plainly. Safe to
+  /// repeat: a second close for the same share finds nothing to close.
+  Future<void> _deliver(PendingClose c) async {
+    await relay.withdraw(mailbox: c.mailbox, grantId: c.grantId);
+    final key = c.doctorKey;
+    if (key == null) return;
+    final id = 'close-${c.grantId}';
+    await relay.deposit(
+      mailbox: c.mailbox,
+      grantId: id,
+      envelope: await ShareEnvelope.seal(
+        // Already picked up? This tells the doctor's device to close it now
+        // rather than at expiry. Only this phone knows the secret, so nobody
+        // else can close a patient's share. `replaced`: a new share with a new
+        // time follows, so the doctor app does not announce that access ended.
+        bundle: {'type': 'close', 'grantId': c.grantId, 'closeSecret': c.closeSecret, if (c.replaced) 'replaced': true},
+        recipientKey: base64Decode(key),
+        keyId: c.keyId,
+        grantId: id,
+        expiresAt: c.expiresAt,
+      ),
+      expiresAt: c.expiresAt,
+    );
+    await keyBook.take(id); // a close message is never pulled back
+  }
+
+  Future<void> _settled(PendingClose c) async {
+    final queue = await _queue;
+    queue.removeWhere((x) => x.grantId == c.grantId);
+    await closes.save(queue);
+  }
+
+  /// Doctors' devices not yet told that [patientId]'s access ended.
+  Future<List<PendingClose>> waitingToClose(String patientId) async => [
+        for (final c in await _queue)
+          if (c.patientId == patientId) c,
+      ];
+
+  Future<int>? _retrying;
+
+  /// Sends what [endAccess] could not, and returns how many still wait. Runs
+  /// one at a time. A message past its share's end time is dropped: the relay
+  /// has deleted the share by then, and the doctor app closes it by itself.
+  Future<int> retryPendingCloses(DateTime at) => _retrying ??= _retryCloses(at).whenComplete(() => _retrying = null);
+
+  Future<int> _retryCloses(DateTime at) async {
+    for (final c in [...await _queue]) {
+      if (!at.isBefore(c.expiresAt)) {
+        await _settled(c);
+        await _log(c, at, "the share reached its end time before the doctor's device could be told");
+        continue;
+      }
+      try {
+        await _deliver(c);
+      } on Object {
+        continue;
+      }
+      await _settled(c);
+      await _log(c, at, "doctor's device told that access ended");
+    }
+    return (await _queue).length;
+  }
+
+  Future<void> _log(PendingClose c, DateTime at, String detail) => audit.append(AuditEntry(
+        at: at,
+        actorId: Actors.patient(c.patientId),
+        patientId: c.patientId,
+        action: AuditAction.grantRevoked,
+        tokenId: c.grantId,
+        detail: detail,
+      ));
 
 /// A non-prescription message arriving in a reply mailbox (e.g. a family
   /// link). Returns a short line for the log, or throws to refuse it.

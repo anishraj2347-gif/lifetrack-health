@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../consent/consent_token.dart';
 import '../../model/health_record.dart';
 import '../../share/access_requests.dart';
+import '../../share/pending_closes.dart' show PendingClose;
 import '../app_scope.dart';
 import '../theme.dart';
 import '../widgets/parts.dart';
@@ -139,6 +140,7 @@ class ShareScreen extends StatelessWidget {
             ),
         ]),
       ),
+      if (sharing != null) const _NotYetTold(),
       if (grants.isEmpty)
         ShadCard(
           child: Row(children: [
@@ -173,11 +175,17 @@ class ShareScreen extends StatelessWidget {
                 child: SlabButton('End access', variant: ButtonVariant.outline, icon: LucideIcons.circleX, onPressed: () async {
                   final who = describeActor(g.grantedToActorId, s.doctorNames());
                   final sure = await confirmAction(context, title: 'End access now?', body: '$who will need a new share to see these records again.', confirm: 'End access');
-                  if (!sure) return;
-                  if (isClinicalShare(g) && sharing != null) {
-                    await sharing.endAccess(g, s.clock());
-                  } else {
-                    await s.revoke(g);
+                  if (!sure || !context.mounted) return;
+                  final msg = ScaffoldMessenger.of(context);
+                  try {
+                    if (isClinicalShare(g) && sharing != null) {
+                      msg.showSnackBar(SnackBar(content: Text(endAccessMessage(await s.endAccess(g), who, g.expiresAt))));
+                    } else {
+                      await s.revoke(g);
+                      msg.showSnackBar(SnackBar(content: Text('Access ended.')));
+                    }
+                  } on Object catch (e) {
+                    msg.showSnackBar(SnackBar(content: Text('Access was ended on this phone, but something went wrong. ${plainError(e)}')));
                   }
                   if (context.mounted) AppScope.changed(context);
                 }),
@@ -245,9 +253,34 @@ class ShareScreen extends StatelessWidget {
       final r = await s.sharing!.changeTime(g, Duration(hours: hours), s.clock());
       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${r.doctor.name} can now see it until ${dateTime(r.grant.expiresAt)}.')));
     } on Object catch (e) {
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Time not changed. ${plainError(e)}')));
+      // The old share stays as it was until a new one has gone.
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Time not changed. Access stays as it was, until ${dateTime(g.expiresAt)}. ${plainError(e)}')));
     }
     if (context.mounted) AppScope.changed(context);
+  }
+}
+
+/// Shares ended here whose doctor's device has not heard yet. Stays on
+/// screen until it has, so the patient is never left thinking it went.
+class _NotYetTold extends StatelessWidget {
+  const _NotYetTold();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final id = s.currentPatientId;
+    if (id == null) return SizedBox.shrink();
+    return FutureBuilder<List<PendingClose>>(
+      future: s.sharing!.waitingToClose(id),
+      builder: (context, snap) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        for (final c in snap.data ?? const <PendingClose>[])
+          Note(
+            "Access ended, but ${describeActor(c.doctorActorId, s.doctorNames())} has not been told yet: LifeTrack's server could not be reached. "
+            'It keeps trying. At the latest, what they received closes on ${dateTime(c.expiresAt)}.',
+            icon: LucideIcons.cloudOff,
+          ),
+      ]),
+    );
   }
 }
 

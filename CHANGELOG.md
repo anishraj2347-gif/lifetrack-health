@@ -47,6 +47,16 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.46.2 (6 Nov 2026)
+- **Fixed: "End access" with the server off crashed partway.** Access now ends on the phone at once and the log
+  says so first (#13). Telling the relay and the doctor's device waits in a sealed queue and goes at the next start,
+  when the app comes back to the screen, on "Check inbox", and by timer while it waits. The Share screen says plainly
+  that the doctor has not been told yet, and until when they could still see what they received.
+- The relay's withdraw token is kept until the relay has answered, so a failed attempt no longer loses the only way
+  to pull an unread share back.
+- **A changed share replaces the old one only after it has gone.** With the server off, changing the time now leaves
+  the existing share as it was, and a share that could not be sent leaves no live grant behind.
+
 ### 1.46.1 (6 Nov 2026)
 - **Fixed: changes to the Emergency ID were not in the access log** (#13). An edit to the card, an allergy
   list change made from it, and allergies adopted from an older card are all logged now.

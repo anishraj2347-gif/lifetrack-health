@@ -47,9 +47,13 @@ class HttpRelayClient implements RelayClient {
 
   @override
   Future<void> withdraw({required String mailbox, required String grantId}) async {
-    final token = await tokens.take(grantId);
+    // Spent only once the relay has answered: offline, it must survive to be
+    // used by the retry.
+    final token = await tokens.peek(grantId);
     if (token == null) return;
-    await _http.delete(baseUrl.resolve(RelayApi.itemPath(mailbox, grantId)), headers: {RelayApi.hWithdrawToken: token});
+    final r = await _http.delete(baseUrl.resolve(RelayApi.itemPath(mailbox, grantId)), headers: {RelayApi.hWithdrawToken: token});
+    if (r.statusCode != 200) throw RelayUnavailable('Share not withdrawn (${r.statusCode}).');
+    await tokens.take(grantId);
   }
 
   @override
@@ -63,6 +67,9 @@ class HttpRelayClient implements RelayClient {
 
 abstract interface class WithdrawTokenStore {
   Future<void> put(String grantId, String token);
+
+  /// Reads without removing.
+  Future<String?> peek(String grantId);
   Future<String?> take(String grantId);
 }
 
@@ -70,6 +77,8 @@ class InMemoryWithdrawTokens implements WithdrawTokenStore {
   final Map<String, String> _t = {};
   @override
   Future<void> put(String grantId, String token) async => _t[grantId] = token;
+  @override
+  Future<String?> peek(String grantId) async => _t[grantId];
   @override
   Future<String?> take(String grantId) async => _t.remove(grantId);
 }

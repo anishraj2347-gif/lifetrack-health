@@ -44,6 +44,7 @@ import '../identity/lifetrack_ids.dart';
 import '../security/screen_privacy.dart';
 import '../share/access_requests.dart';
 import '../share/http_relay_client.dart';
+import '../share/pending_closes.dart';
 import '../share/relay.dart';
 import '../share/share_bundle.dart';
 import '../share/reply_identity.dart';
@@ -195,6 +196,7 @@ class AppServices {
     ReminderScheduler? reminderScheduler,
     ScreenPrivacy? screenPrivacy,
     PageReader? pageReader,
+    Duration? retryAfter = defaultRetryAfter,
   }) async {
     final now = clock ?? DateTime.now;
     final sealed = SealedStore(bytes, deviceKey);
@@ -249,6 +251,7 @@ class AppServices {
         shrink: ReportImage.forShare,
         lifeTrackIdOf: services.lifeTrackIdOf,
         keyBook: tokens,
+        closes: _SealedCloses(sealed),
         // Tests that bring their own relay bring their own registry answer.
         doctors: doctorStatusOverride?.call() ?? (relayOverride != null ? const UnknownDoctorStatus() : HttpDoctorStatus(baseUrl: Uri.parse(share.relayUrl!))),
       );
@@ -267,7 +270,56 @@ class AppServices {
       unawaited(services.assignLifeTrackIds());
       services.links = FamilyLinkService(sealed: sealed, relay: services.sharing!.relay, audit: audit, replyIdentity: services._replyIdentity);
     }
+    services._retryAfter = retryAfter;
+    services._retryGap = retryAfter;
+    unawaited(services.retryNow());
     return services;
+  }
+
+  // ---- work that waits for the server --------------------------------------
+
+  /// First wait before trying again; it doubles up to [_longestRetryGap] while
+  /// the server stays away. Null: no timer, only the other triggers.
+  static const defaultRetryAfter = Duration(minutes: 1);
+  static const _longestRetryGap = Duration(minutes: 30);
+
+  Duration? _retryAfter;
+  Duration? _retryGap;
+  Timer? _retryTimer;
+
+  /// Tries everything that is waiting for the server. Runs at start, when the
+  /// app comes back to the screen, on "Check for prescriptions and updates",
+  /// and by timer for as long as something waits. Never throws.
+  Future<void> retryNow() async {
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    var waiting = 0;
+    try {
+      waiting = await sharing?.retryPendingCloses(clock()) ?? 0;
+    } on Object {
+      waiting = 1;
+    }
+    if (waiting == 0) {
+      _retryGap = _retryAfter;
+    } else {
+      _retryLater();
+    }
+  }
+
+  void _retryLater() {
+    final gap = _retryGap;
+    if (gap == null || _retryTimer != null) return;
+    _retryTimer = Timer(gap, retryNow);
+    final next = gap * 2;
+    _retryGap = next > _longestRetryGap ? _longestRetryGap : next;
+  }
+
+  /// Ends a share. The grant ends here whether or not the server can be
+  /// reached; the result says whether the doctor's device has been told yet.
+  Future<EndAccessResult> endAccess(ConsentToken grant) async {
+    final result = await sharing!.endAccess(grant, clock());
+    if (result == EndAccessResult.waitingForServer) _retryLater();
+    return result;
   }
 
   /// Waits for background grant persistence. Tests call this before reopening.
@@ -1028,7 +1080,7 @@ class AppServices {
     final at = clock();
     for (final g in consent.activeGrantsFor(patientId, at)) {
       if (sharing != null && g.granteeKeyId != null) {
-        await sharing!.endAccess(g, at);
+        await endAccess(g);
       } else {
         consent.revoke(g.id);
       }
@@ -1277,6 +1329,7 @@ class AppServices {
   /// messages (the owner's), and doctors' requests by LifeTrack ID.
   Future<(int, int, int)> checkInbox() async {
     final at = clock();
+    await retryNow();
     await assignLifeTrackIds();
     var (added, handled, refused) = (0, 0, 0);
     for (final p in familyOnPhone()) {
@@ -1670,20 +1723,49 @@ class _SealedTokens implements WithdrawTokenStore {
   final SealedStore sealed;
   static const _blob = 'withdraw_tokens';
 
-  @override
-  Future<void> put(String grantId, String token) async {
-    final m = ((await sealed.read(_blob) as Map?) ?? {}).cast<String, Object?>();
-    m[grantId] = token;
-    await sealed.write(_blob, m);
+  /// One read-change-write at a time: a retry and a share can overlap, and
+  /// the slower one would otherwise put back what the other removed.
+  Future<void> _queue = Future.value();
+
+  Future<T> _serial<T>(Future<T> Function() op) {
+    final result = _queue.then((_) => op());
+    _queue = result.then((_) {}, onError: (_) {});
+    return result;
   }
 
+  Future<Map<String, Object?>> _all() async => ((await sealed.read(_blob) as Map?) ?? {}).cast<String, Object?>();
+
   @override
-  Future<String?> take(String grantId) async {
-    final m = ((await sealed.read(_blob) as Map?) ?? {}).cast<String, Object?>();
-    final t = m.remove(grantId) as String?;
-    await sealed.write(_blob, m);
-    return t;
-  }
+  Future<void> put(String grantId, String token) => _serial(() async {
+        final m = await _all();
+        m[grantId] = token;
+        await sealed.write(_blob, m);
+      });
+
+  @override
+  Future<String?> peek(String grantId) => _serial(() async => (await _all())[grantId] as String?);
+
+  @override
+  Future<String?> take(String grantId) => _serial(() async {
+        final m = await _all();
+        final t = m.remove(grantId) as String?;
+        if (t != null) await sealed.write(_blob, m);
+        return t;
+      });
+}
+
+class _SealedCloses implements PendingCloseStore {
+  _SealedCloses(this.sealed);
+  final SealedStore sealed;
+  static const _blob = 'pending_closes';
+
+  @override
+  Future<List<PendingClose>> load() async => [
+        for (final c in (await sealed.read(_blob) as List?) ?? const []) PendingClose.fromJson((c as Map).cast()),
+      ];
+
+  @override
+  Future<void> save(List<PendingClose> all) => sealed.write(_blob, [for (final c in all) c.toJson()]);
 }
 
 typedef CloudEscalationFactory = CloudEscalation Function({
