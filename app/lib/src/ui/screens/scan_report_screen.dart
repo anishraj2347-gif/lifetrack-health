@@ -66,17 +66,31 @@ class _Value {
   final high = TextEditingController();
 }
 
+/// How a medicine is taken. There is no default: until the page gives
+/// morning-afternoon-night counts or a person chooses, it is null and the
+/// medicine cannot be saved.
+enum _DoseMode { daily, asNeeded, asWritten }
+
 class _Medicine {
   _Medicine([DraftMedicine? m])
       : check = m == null ? _Check.manual() : _Check(_worst(m)),
+        flag = m?.doseFlag,
         timing = m?.timing.value {
     name.text = m?.name.value ?? '';
-    if (m?.dose.value case final d?) dose = [d.morning, d.afternoon, d.night];
+    if (m?.dose.value case final d?) {
+      dose = [d.morning, d.afternoon, d.night];
+      mode = _DoseMode.daily;
+    }
     if (m?.days.value case final n?) days.text = '$n';
   }
   final _Check check;
+  final DoseFlag? flag;
   final name = TextEditingController();
-  List<int> dose = [1, 0, 1];
+  _DoseMode? mode;
+  List<int> dose = [0, 0, 0];
+
+  /// The dose in the prescriber's words, when counts cannot hold it.
+  final written = TextEditingController();
   String? timing;
   final days = TextEditingController();
 
@@ -285,6 +299,12 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
   String? _problem() {
     if (_kind == RecordKind.prescription) {
       if (_medicines.every((m) => m.name.text.trim().isEmpty)) return 'Add at least one medicine, as written.';
+      for (final m in _medicines.where((m) => m.name.text.trim().isNotEmpty)) {
+        final name = m.name.text.trim();
+        if (m.mode == null) return 'Say how $name is taken. LifeTrack does not guess a dose.';
+        if (m.mode == _DoseMode.daily && m.dose.every((n) => n == 0)) return 'Set how many of $name to take in the morning, afternoon or night.';
+        if (m.mode == _DoseMode.asWritten && m.written.text.trim().isEmpty) return 'Write the dose of $name exactly as prescribed.';
+      }
     } else if (_title.text.trim().isEmpty) {
       return 'Say what this is, e.g. Lipid panel.';
     }
@@ -323,7 +343,8 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
           originalFormat: _fromPdf ? 'pdf' : null,
           doctor: text(_doctor),
           facility: text(_place),
-          dose: Dose(morning: m.dose[0], afternoon: m.dose[1], night: m.dose[2]),
+          dose: m.mode == _DoseMode.daily ? Dose(morning: m.dose[0], afternoon: m.dose[1], night: m.dose[2]) : null,
+          instructions: m.mode == _DoseMode.asWritten ? m.written.text.trim() : null,
           timing: m.timing,
           endDate: days == null || days <= 0 ? null : date.add(Duration(days: days)),
         ));
@@ -726,6 +747,27 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
                   IconButton(tooltip: 'Remove this medicine', icon: Icon(LucideIcons.trash2, size: 18), onPressed: () => setState(() => _medicines.removeAt(i))),
                 ]),
                 SizedBox(height: 10),
+                if (m.flag != null)
+                  Padding(padding: EdgeInsets.only(bottom: 8), child: Text(m.flag!.why, style: LT.small.copyWith(color: LT.signal, fontWeight: FontWeight.w600))),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  for (final (mode, label) in [(_DoseMode.daily, 'Every day'), (_DoseMode.asNeeded, 'Only when needed'), (_DoseMode.asWritten, 'Something else')])
+                    Chip2(label, selected: m.mode == mode, onTap: () => setState(() {
+                          m.mode = mode;
+                          _edited(m.check);
+                        })),
+                ]),
+                if (m.mode == _DoseMode.asWritten) ...[
+                  SizedBox(height: 10),
+                  TextField(
+                    controller: m.written,
+                    onChanged: (_) => _edited(m.check),
+                    decoration: InputDecoration(hintText: 'As prescribed, e.g. 15 mg once a week on Sunday'),
+                  ),
+                  SizedBox(height: 6),
+                  Text('Weekly doses, part tablets and insulin units get no automatic reminder. You can add your own in Reminders.', style: LT.small),
+                ],
+                if (m.mode == _DoseMode.daily) ...[
+                SizedBox(height: 10),
                 Row(children: [
                   for (final (j, slot) in ['Morning', 'Afternoon', 'Night'].indexed) ...[
                     if (j > 0) SizedBox(width: 8),
@@ -743,6 +785,7 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
                     ),
                   ],
                 ]),
+                ],
                 SizedBox(height: 10),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   for (final (key, label) in [('before_food', 'Before food'), ('after_food', 'After food'), ('with_food', 'With food')])

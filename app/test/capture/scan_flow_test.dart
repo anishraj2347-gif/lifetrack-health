@@ -136,6 +136,61 @@ void main() {
       expect(find.text('Check this'), findsWidgets);
     });
 
+    Future<void> tickAll(WidgetTester tester) async {
+      final ticks = find.byType(Checkbox);
+      for (var i = 0; i < ticks.evaluate().length; i++) {
+        await tester.ensureVisible(ticks.at(i));
+        await tester.pumpAndSettle();
+        await tester.tap(ticks.at(i));
+        await tester.pumpAndSettle();
+      }
+    }
+
+    testWidgets('a missing dose is not filled in, and a tick alone cannot save it', (tester) async {
+      await pump(tester, ['Dr. Sharma', 'Date 25/09/2026', 'Rx', 'Tab Methotrexate 15 mg once a week']);
+      expect(find.textContaining('does not look like a daily dose'), findsOneWidget);
+      expect(find.text('Morning'), findsNothing, reason: 'no counts are on offer until a person says this is daily');
+      await tickAll(tester);
+      await tester.tap(find.text('This matches my prescription'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('does not guess a dose'), findsOneWidget);
+    });
+
+    testWidgets('"something else" needs the dose in words, and saves it with no daily dose', (tester) async {
+      await pump(tester, ['Dr. Sharma', 'Date 25/09/2026', 'Rx', 'Tab Methotrexate 15 mg once a week']);
+      await tickAll(tester);
+      await tester.tap(find.text('Something else'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('This matches my prescription'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('exactly as prescribed.'), findsWidgets);
+      await tester.enterText(find.widgetWithText(TextField, 'As prescribed, e.g. 15 mg once a week on Sunday'), '15 mg once a week on Sunday');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('This matches my prescription'));
+      await tester.runAsync(() => Future<void>.delayed(const Duration(seconds: 2)));
+      await tester.pumpAndSettle();
+      final s = AppScope.of(tester.element(find.byType(Navigator).first));
+      final r = s.records().single;
+      expect(r.dose, isNull);
+      expect(r.instructions, '15 mg once a week on Sunday');
+      expect(s.reminderPlan(), isEmpty, reason: 'a weekly medicine never becomes a daily reminder');
+    });
+
+    testWidgets('choosing "every day" still needs a count', (tester) async {
+      await pump(tester, ['Dr. Sharma', 'Date 25/09/2026', 'Rx', 'Tab Telmisartan 40 mg']);
+      await tickAll(tester);
+      await tester.tap(find.text('Every day'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('This matches my prescription'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Set how many of Telmisartan 40 mg'), findsOneWidget);
+    });
+
+    testWidgets('a dose printed plainly is kept and opens as daily', (tester) async {
+      await pump(tester, ['Dr. Sharma', 'Date 25/09/2026', 'Rx', 'Tab Metformin 500 mg 1-0-1 x 30 days']);
+      expect(find.text('Morning'), findsOneWidget);
+    });
+
     testWidgets('nothing read: the plain form, and the patient types it in', (tester) async {
       await pump(tester, []);
       expect(find.text('What is it?'), findsOneWidget);

@@ -605,11 +605,12 @@ class PrescribeCard extends StatefulWidget {
 class _PrescribeCardState extends State<PrescribeCard> {
   late final _med = TextEditingController(text: widget.prefill?.medicine);
   late final _ing = TextEditingController(text: widget.prefill?.ingredient);
-  late final _days = TextEditingController(text: '${widget.prefill?.days ?? 30}');
+  // No default dose, course or timing: the doctor sets each one, every time.
+  late final _days = TextEditingController(text: widget.prefill == null ? '' : '${widget.prefill!.days}');
   late final _note = TextEditingController(text: widget.prefill?.note);
-  late final _dose = [widget.prefill?.morning ?? 0, widget.prefill?.afternoon ?? 0, widget.prefill?.night ?? 1];
+  late final _dose = [widget.prefill?.morning ?? 0, widget.prefill?.afternoon ?? 0, widget.prefill?.night ?? 0];
   late final _qual = TextEditingController(text: widget.prefill?.qualification ?? widget.session.profile['qualification'] ?? 'MBBS, MD');
-  late String? _timing = widget.prefill == null ? 'after_food' : widget.prefill!.timing;
+  late String? _timing = widget.prefill?.timing;
   SignedPrescription? _sent;
   String? _error;
   bool _busy = false;
@@ -719,7 +720,7 @@ class _PrescribeCardState extends State<PrescribeCard> {
             ),
         ]),
         SizedBox(height: 12),
-        Field('Days', _days),
+        Field('Days', _days, hint: '14'),
         Field('Note to patient', _note, hint: 'Repeat lipid panel in 3 months', maxLines: 3),
         Field('Your qualification', _qual),
         if (_error != null) Padding(padding: EdgeInsets.only(bottom: 8), child: Text(_error!, style: TextStyle(color: DT.signal))),

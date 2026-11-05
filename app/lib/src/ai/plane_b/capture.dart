@@ -68,9 +68,21 @@ class DraftField<T> {
   DraftField<T> capped(double max) => DraftField(value, confidence: confidence < max ? confidence : max, seen: seen);
 }
 
+/// A dose that morning-afternoon-night counts cannot hold. The parser never
+/// fills a dose for one of these: a person writes it in.
+enum DoseFlag {
+  insulin('This looks like insulin. Write the units exactly as prescribed.'),
+  notDaily('This does not look like a daily dose. Write it exactly as prescribed.'),
+  fraction('This looks like part of a tablet. Write the dose exactly as prescribed.'),
+  asNeeded('This looks like a medicine taken only when needed. Check how it is meant to be taken.');
+
+  const DoseFlag(this.why);
+  final String why;
+}
+
 /// One medicine read off a prescription. Becomes one prescription record.
 class DraftMedicine {
-  const DraftMedicine({required this.name, this.dose = const DraftField.none(), this.timing = const DraftField.none(), this.days = const DraftField.none()});
+  const DraftMedicine({required this.name, this.dose = const DraftField.none(), this.timing = const DraftField.none(), this.days = const DraftField.none(), this.doseFlag});
 
   /// As written, with its strength: "Metformin 500 mg".
   final DraftField<String> name;
@@ -80,7 +92,10 @@ class DraftMedicine {
   final DraftField<String> timing;
   final DraftField<int> days;
 
-  DraftMedicine capped(double max) => DraftMedicine(name: name.capped(max), dose: dose.capped(max), timing: timing.capped(max), days: days.capped(max));
+  /// Why [dose] was left empty for a person, when the page gave a reason.
+  final DoseFlag? doseFlag;
+
+  DraftMedicine capped(double max) => DraftMedicine(name: name.capped(max), dose: dose.capped(max), timing: timing.capped(max), days: days.capped(max), doseFlag: doseFlag);
 }
 
 class CaptureDraft {

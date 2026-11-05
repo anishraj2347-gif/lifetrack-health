@@ -329,7 +329,8 @@ List<DraftMedicine> _medicines(List<OcrLine> lines) {
     final next = i + 1 < lines.length && _medLine.firstMatch(lines[i + 1].text.trim()) == null ? lines[i + 1] : null;
     final instructions = next == null ? rest : '$rest ${next.text}';
     final conf = lines[i].confidence;
-    final dose = _dose(instructions, conf);
+    final flag = doseFlagFor(instructions);
+    final dose = flag == null ? _dose(instructions, conf) : const DraftField<Dose>.none();
     final timing = _timing(instructions);
     final days = _days(instructions);
     out.add(DraftMedicine(
@@ -337,10 +338,33 @@ List<DraftMedicine> _medicines(List<OcrLine> lines) {
       dose: dose,
       timing: timing == null ? const DraftField.none() : DraftField(timing, confidence: min(conf, 0.85)),
       days: days == null ? const DraftField.none() : DraftField(days, confidence: min(conf, 0.85)),
+      doseFlag: flag,
     ));
   }
   return out;
 }
+
+final _insulin = RegExp(r'\binsulin\b|\b(?:lantus|basalog|toujeo|tresiba|levemir|novorapid|novomix|actrapid|insulatard|mixtard|humalog|humulin|huminsulin|apidra|ryzodeg|wosulin|glaritus)\b|\b\d+\s*(?:units?|u)\b', caseSensitive: false);
+final _notDaily = RegExp(
+  r'\b(?:methotrexate|mtx)\b|\bweekly\b|\b(?:once|twice|thrice|\d\s*times?)\s+(?:a|per|in\s+a|every)\s+(?:week|month)\b|\bper\s+week\b|\bevery\s+(?:week|month|fortnight|other\s+day|\d+\s+(?:days|weeks))\b|/\s*(?:week|wk)\b|\bfortnightly\b|\bmonthly\b|\balternate\s+days?\b|\bon\s+(?:sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)\b|\b(?:sun|mon|tues|wednes|thurs|fri|satur)days?\b',
+  caseSensitive: false,
+);
+final _fraction = RegExp(r'[½¼¾⅓⅔]|(?<![\d/])[13]/[234](?![\d/])|\bhalf\b|\bquarter\b|\b(?:warfarin|acitrom|acenocoumarol)\b', caseSensitive: false);
+final _whenNeeded = RegExp(r'\b(?:sos|s\.o\.s|prn|p\.r\.n)\b|\b(?:as|when|if)\s+(?:needed|required)\b|\bif\s+(?:pain|fever|vomiting)\b', caseSensitive: false);
+
+/// Why a dose must be written by a person, or null. Morning-afternoon-night
+/// counts mean "every day": "1-0-0 weekly" is not that, and a guess here is
+/// a daily dose of a weekly medicine. Insulin first, then the rest by how
+/// badly a daily reading would go.
+DoseFlag? doseFlagFor(String instructions) => _insulin.hasMatch(instructions)
+    ? DoseFlag.insulin
+    : _notDaily.hasMatch(instructions)
+        ? DoseFlag.notDaily
+        : _fraction.hasMatch(instructions)
+            ? DoseFlag.fraction
+            : _whenNeeded.hasMatch(instructions)
+                ? DoseFlag.asNeeded
+                : null;
 
 final _frequency = RegExp(r'\b([0-3](?:/2)?)\s*[-–—]\s*([0-3](?:/2)?)\s*[-–—]\s*([0-3](?:/2)?)\b|\b(od|o\.d|bd|b\.d|bid|tds|t\.d\.s|tid|qid|hs|h\.s|sos|once\s+a\s+day|once\s+daily|twice\s+a\s+day|twice\s+daily|thrice\s+a\s+day|at\s+bed\s*time|at\s+night|morning)\b', caseSensitive: false);
 
@@ -348,9 +372,9 @@ DraftField<Dose> _dose(String s, double conf) {
   final m = _frequency.firstMatch(s);
   if (m == null) return const DraftField.none();
   if (m.group(1) != null) {
-    int n(String x) => x.contains('/') ? 1 : int.parse(x); // ½ tablet still means "take one then"
-    final half = [m.group(1), m.group(2), m.group(3)].any((x) => x!.contains('/'));
-    return DraftField(Dose(morning: n(m.group(1)!), afternoon: n(m.group(2)!), night: n(m.group(3)!)), confidence: half ? 0.5 : min(conf, 0.9), seen: m.group(0));
+    final parts = [m.group(1)!, m.group(2)!, m.group(3)!];
+    if (parts.any((x) => x.contains('/'))) return const DraftField.none(); // a Dose holds whole tablets
+    return DraftField(Dose(morning: int.parse(parts[0]), afternoon: int.parse(parts[1]), night: int.parse(parts[2])), confidence: min(conf, 0.9), seen: m.group(0));
   }
   final w = m.group(4)!.toLowerCase().replaceAll(RegExp(r'[.\s]+'), ' ').trim();
   final (Dose? d, double c) = switch (w) {

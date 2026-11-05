@@ -126,7 +126,7 @@ class SummaryPanel extends StatelessWidget {
         _card('Medicines', [
           for (final m in (meds['active'] as List?) ?? [])
             _row(
-              '${(m as Map)['title']}${m['dose'] == null ? '' : ' · ${m['dose']}'}',
+              '${(m as Map)['title']}${m['dose'] != null ? ' · ${m['dose']}' : m['instructions'] != null ? ' · ${m['instructions']}' : ''}',
               '${m['patientConfirmedAt'] != null ? 'Active · patient confirmed still taking' : 'Active · not confirmed by patient'}${m['prescriber'] == null ? '' : ' · ${m['prescriber']}'}',
             ),
           for (final m in (meds['endedRecently'] as List?) ?? [])

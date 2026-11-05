@@ -126,6 +126,51 @@ void main() {
     });
   });
 
+  group('doses a person must write', () {
+    DraftMedicine read(String line, [String? next]) => parseCapture([page(['Rx', line, ?next, 'Advice: review'])], today: today).medicines.single;
+
+    for (final (line, flag) in const [
+      ('Tab Methotrexate 15 mg once a week', DoseFlag.notDaily),
+      ('Tab Methotrexate 15 mg 1-0-0', DoseFlag.notDaily),
+      ('Tab Methotrexate 7.5 mg 1-0-0 weekly', DoseFlag.notDaily),
+      ('Tab Folvite 5 mg 1-0-0 on Sunday', DoseFlag.notDaily),
+      ('Cap Calcirol 60000 IU every week', DoseFlag.notDaily),
+      ('Tab Warfarin 5 mg ½ tablet at night', DoseFlag.fraction),
+      ('Tab Warfarin 2 mg 1/2-0-0', DoseFlag.fraction),
+      ('Tab Warfarin 2 mg 1-0-0', DoseFlag.fraction),
+      ('Tab Ecosprin half tablet after lunch', DoseFlag.fraction),
+      ('Tab Tramadol 50 mg SOS', DoseFlag.asNeeded),
+      ('Tab Morphine 10 mg 1-0-1 if pain', DoseFlag.asNeeded),
+      ('Inj Insulin Glargine 20 units at night', DoseFlag.insulin),
+      ('Inj Lantus 12 U 0-0-1', DoseFlag.insulin),
+      ('Inj Actrapid 8-0-6', DoseFlag.insulin),
+    ]) {
+      test('"$line" gets no dose and is flagged', () {
+        final m = read(line);
+        expect(m.dose.value, isNull);
+        expect(m.doseFlag, flag);
+      });
+    }
+
+    test('a flag on the line below counts', () {
+      final m = read('Tab Methotrexate 10 mg', '1-0-0 every week');
+      expect((m.dose.value, m.doseFlag), (null, DoseFlag.notDaily));
+    });
+
+    test('a course in weeks is a course, not a weekly dose', () {
+      final m = read('Tab Amoxicillin 500 mg 1-0-1 for 2 weeks');
+      expect(m.doseFlag, isNull);
+      expect(m.dose.value!.display, '1-0-1');
+      expect(m.days.value, 14);
+    });
+
+    test('a page that gives no dose gets none: nothing defaults to 1-0-1', () {
+      final m = read('Tab Tramadol 50 mg');
+      expect(m.dose.value, isNull);
+      expect(m.doseFlag, isNull);
+    });
+  });
+
   test('handwriting: whatever is read waits for a tick', () {
     final d = parseCapture([page(['Dr. Sharma', 'Rx', 'Tab Pantop 40 1-0-0 before food', 'Tab Dolo 650 SOS'], conf: 48)], today: today);
     expect(d.handwriting, isTrue);

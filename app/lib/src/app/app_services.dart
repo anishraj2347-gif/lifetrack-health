@@ -373,6 +373,7 @@ class AppServices {
         sampleDate: draft.sampleDate,
         attachmentId: attachmentId,
         endDate: draft.endDate,
+        instructions: draft.instructions,
         timing: draft.timing,
         originalFormat: draft.originalFormat,
       );

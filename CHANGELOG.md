@@ -47,6 +47,13 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.44.1 (6 Nov 2026)
+- **Fixed: a missing dose no longer becomes 1-0-1.** A scanned medicine with no printed dose has no dose
+  until a person says how it is taken: every day (with counts), only when needed, or something else in
+  their own words. Weekly, part-tablet, SOS and insulin doses are flagged and never filled in; "1-0-0
+  weekly" no longer reads as daily, and methotrexate and warfarin always wait for a person. A dose in
+  words is kept on the record and in what a doctor receives, and gets no automatic reminder.
+
 ### 1.44.0 (6 Nov 2026)
 - **A dangerous home reading now shows an urgent prompt instead of "Reading saved"**: sugar below 54 mg/dL
   or BP at or above 180/120 asks for care now, with 108 and a Call 108 button. Sugar below 70 or above 300
@@ -574,6 +581,11 @@ always goes up (Android refuses to install a lower one).
 - Rebuilt phase-2 app: records, insights, consent, clinical sharing with verified doctors.
 
 ## Doctor web app
+
+### 1.8.2 (6 Nov 2026)
+- **Fixed: a new prescription no longer starts at 0-0-1 for 30 days after food.** Dose, days and timing
+  start empty (timing as "Any time"), and the doctor sets them each time; it will not send without a
+  dose and a course. A medicine the patient saved with its dose in words now shows those words in Medicines.
 
 ### 1.8.1 (2 Nov 2026)
 - **Fixed: "Waiting for your licence check" forever** when the enrolment saved in the browser was
