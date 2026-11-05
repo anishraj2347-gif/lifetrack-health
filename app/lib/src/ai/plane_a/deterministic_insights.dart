@@ -1,7 +1,7 @@
 import '../../model/health_record.dart';
 import '../../model/patient.dart';
 import '../insight.dart';
-import 'banned_phrases.dart';
+import 'critical_check.dart';
 import 'critical_values.dart';
 import 'reference_ranges.dart';
 
@@ -45,6 +45,12 @@ abstract final class DeterministicInsights {
     }
 
     for (final MapEntry(key: analyte, value: (rec, res)) in latest.entries) {
+      // The danger limits come first and depend on no range: a value that
+      // crosses one is raised whether a range passes it, is missing, or must
+      // not be applied to this patient.
+      final critical = CriticalCheck.result(patient: patient, result: res, resultDate: rec.effectiveDate, at: at);
+      final finding = critical.severity == null ? null : _criticalInsight(analyte, rec, critical);
+
       // The lab's own printed range, in the result's own unit, comes first:
       // it is what the report says, and labs differ by method.
       if (res.hasPrintedRange) {
@@ -55,25 +61,30 @@ abstract final class DeterministicInsights {
           high: res.printedHigh,
           population: 'this lab',
         );
-        if (printed.contains(res.value)) continue;
-        out.add(_rangeInsight(analyte, rec, res, printed, "the lab's printed range"));
+        if (printed.contains(res.value)) {
+          if (finding != null) out.add(finding);
+          continue;
+        }
+        out.add(_rangeInsight(analyte, rec, res, printed, "the lab's printed range", critical.severity));
         continue;
       }
       final (lookup, range) = referenceRangeFor(analyte, patient, at);
-      if (lookup == RangeLookup.noRange) {
-        unresolved.add(_nc(rec, res, NotCheckedReason.noRangeForAnalyte));
+      final why = switch (lookup) {
+        RangeLookup.noRange => NotCheckedReason.noRangeForAnalyte,
+        RangeLookup.notApplicable => NotCheckedReason.notApplicableToPatient,
+        RangeLookup.found => range!.matchesUnit(res.unit) ? null : NotCheckedReason.unitMismatch,
+      };
+      if (why != null) {
+        // An urgent card and "not checked" for one value would contradict
+        // each other; the danger finding stands alone.
+        finding == null ? unresolved.add(_nc(rec, res, why)) : out.add(finding);
         continue;
       }
-      if (lookup == RangeLookup.notApplicable) {
-        unresolved.add(_nc(rec, res, NotCheckedReason.notApplicableToPatient));
+      if (range!.contains(res.value)) {
+        if (finding != null) out.add(finding);
         continue;
       }
-      if (!range!.matchesUnit(res.unit)) {
-        unresolved.add(_nc(rec, res, NotCheckedReason.unitMismatch));
-        continue;
-      }
-      if (range.contains(res.value)) continue;
-      out.add(_rangeInsight(analyte, rec, res, range, 'the reference range', forWhom: range.population));
+      out.add(_rangeInsight(analyte, rec, res, range, 'the reference range', critical.severity, forWhom: range.population));
     }
 
     for (final MapEntry(key: analyte, value: points) in series.entries) {
@@ -105,17 +116,19 @@ abstract final class DeterministicInsights {
 
     out.addAll(_duplicateIngredients(byDate, at));
 
-    final kept = [for (final i in out) if (firstBannedPhrase('${i.finding} ${i.action}') == null) i];
-    kept.sort((a, b) => b.severity.index.compareTo(a.severity.index));
-    return InsightRun(insights: kept, unresolved: unresolved, dropped: out.length - kept.length);
+    return CriticalCheck.finish(out, unresolved);
   }
 
-  static Insight _rangeInsight(String analyte, HealthRecord rec, LabResult res, ReferenceRange range, String which, {String? forWhom}) {
-    final critical = criticalLimits
-        .where((c) => c.analyte == analyte && c.unit == range.unit)
-        .map((c) => c.classify(res.value))
-        .whereType<Severity>()
-        .firstOrNull;
+  static Insight _criticalInsight(String analyte, HealthRecord rec, CriticalVerdict v) => Insight(
+        kind: InsightKind.critical,
+        severity: v.severity!,
+        analyte: analyte,
+        finding: v.finding!,
+        action: actionFor(v.severity!),
+        evidence: [rec.id],
+      );
+
+  static Insight _rangeInsight(String analyte, HealthRecord rec, LabResult res, ReferenceRange range, String which, Severity? critical, {String? forWhom}) {
     final severity = critical ?? Severity.discussSoon;
     final side = range.isAbove(res.value) ? 'above' : 'below';
     return Insight(
@@ -160,6 +173,5 @@ abstract final class DeterministicInsights {
 
   static String _fmt(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
 
-  static const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  static String _date(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
+  static String _date(DateTime d) => CriticalCheck.dateLabel(d);
 }

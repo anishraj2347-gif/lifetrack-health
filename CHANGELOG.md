@@ -47,6 +47,19 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.43.0 (6 Nov 2026)
+- **A danger-level check now runs on every lab value as it is saved**, with Insights on or off and
+  whatever the reference range says. It is deterministic and on the phone; units are normalised first
+  (mg/dL and mmol/L, g/dL, "gm%", every way labs print a platelet count), a missing or unknown unit is
+  read every way it could be real and the worst reading stands, and a covered value it cannot judge is
+  shown as not checked, never as fine. It covers potassium, sodium, calcium, platelets, white cells,
+  haemoglobin, creatinine, HbA1c and all glucose types (`critical_values.dart`, one table, each entry
+  marked VERIFY WITH CLINICIAN: no doctor has approved these numbers). Glucose below 54 mg/dL is now urgent.
+- A prompt with a Call 108 button replaces "saved" when a value crosses a limit, and the finding stays on
+  the record. A report more than a week old asks for the doctor today rather than urgent care.
+- The check is pure code in the patient's own save path: it reads no store, so it takes no grant and no
+  Plane A read; the save's log entry names the test that raised a prompt, not the value.
+
 ### 1.42.3 (2 Nov 2026)
 - **Fixed: an error when a finger lifted after its card had left the screen** — a drag that
   started on a card and outlived it (the list rebuilt, a tab closed) made the card set its pressed

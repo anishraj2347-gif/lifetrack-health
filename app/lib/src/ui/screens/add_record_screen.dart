@@ -8,6 +8,7 @@ import '../../ai/plane_a/reference_ranges.dart' show analyteNames;
 import '../../model/health_record.dart';
 import '../app_scope.dart';
 import '../theme.dart';
+import '../widgets/critical_prompt.dart';
 import '../widgets/parts.dart';
 import 'records_screen.dart' show kindLabel;
 import 'scan_report_screen.dart';
@@ -116,7 +117,13 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
       await s.updateRecord(record);
     }
     if (!mounted) return;
-    celebrate(context, old == null ? 'Record saved' : 'Changes saved');
+    final check = s.criticalCheck(record);
+    if (check.needsPrompt) {
+      await showCriticalPrompt(context, check);
+      if (!mounted) return;
+    } else {
+      celebrate(context, old == null ? 'Record saved' : 'Changes saved');
+    }
     Navigator.of(context).pop();
   }
 

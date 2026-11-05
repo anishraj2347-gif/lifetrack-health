@@ -79,7 +79,11 @@ void main() {
       expect(runOne('glucose_fasting', 60, 'mg/dL').insights.single.severity, Severity.discussSoon);
     });
     test('first critical tier is contact your doctor today', () {
-      expect(runOne('glucose_fasting', 50, 'mg/dL').insights.single.severity, Severity.contactDoctorToday);
+      expect(runOne('haemoglobin', 7.5, 'g/dL').insights.single.severity, Severity.contactDoctorToday);
+    });
+    test('fasting glucose below 54 mg/dL is urgent care, not "contact today"', () {
+      expect(runOne('glucose_fasting', 50, 'mg/dL').insights.single.severity, Severity.urgentCare);
+      expect(runOne('glucose_fasting', 40, 'mg/dL').insights.single.severity, Severity.urgentCare);
     });
     test('second critical tier is urgent care', () {
       final i = runOne('haemoglobin', 6.5, 'g/dL').insights.single;

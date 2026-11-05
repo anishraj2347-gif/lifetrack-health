@@ -9,7 +9,9 @@ import 'package:lifetrack_protocol/lifetrack_protocol.dart';
 
 import '../ai/cloud_escalation.dart';
 import '../ai/insight.dart';
+import '../ai/plane_a/critical_check.dart';
 import '../ai/plane_a/insight_engine.dart';
+import '../ai/plane_a/reference_ranges.dart' show analyteName;
 import '../ai/plane_b/capture.dart';
 import '../audit/audit_log.dart';
 import '../consent/consent_store.dart';
@@ -594,7 +596,7 @@ class AppServices {
       patientId: r.patientId,
       action: AuditAction.edit,
       dataClass: r.dataClass,
-      detail: 'corrected "${old.title}"${old.title == r.title ? '' : ' → "${r.title}"'}',
+      detail: 'corrected "${old.title}"${old.title == r.title ? '' : ' → "${r.title}"'}${_raised(criticalCheck(r))}',
     ));
     if (r.kind == RecordKind.prescription) {
       await _tellLinkedFamily(r.patientId);
@@ -1055,7 +1057,7 @@ class AppServices {
       patientId: r.patientId,
       action: AuditAction.edit,
       dataClass: r.dataClass,
-      detail: how == null ? 'added "${r.title}"' : 'added "${r.title}" $how',
+      detail: '${how == null ? 'added "${r.title}"' : 'added "${r.title}" $how'}${_raised(criticalCheck(r))}',
     ));
     if (r.kind == RecordKind.prescription) {
       await _tellLinkedFamily(r.patientId);
@@ -1082,6 +1084,25 @@ class AppServices {
       // Offline. The linked copy stays as it was until the next send.
     }
   }
+
+  // ---- the danger-level check ---------------------------------------------
+
+  /// Holds a record's lab values against the danger limits. The patient's own
+  /// path: it passes the value in hand to pure code, which reads no store, so
+  /// it needs no grant and is not a Plane A read (see [CriticalCheck]). Runs
+  /// with Insights off. Screens show the result after every save.
+  InsightRun criticalCheck(HealthRecord r) => CriticalCheck.record(patient: repository.patient(r.patientId), record: r, at: clock());
+
+  /// One run for everything saved from one scan.
+  InsightRun criticalCheckAll(Iterable<HealthRecord> records) {
+    final runs = records.map(criticalCheck).toList();
+    return CriticalCheck.finish([for (final r in runs) ...r.insights], [for (final r in runs) ...r.unresolved]);
+  }
+
+  /// For the save's audit entry: which tests raised a prompt, never the value.
+  static String _raised(InsightRun run) => run.insights.isEmpty
+      ? ''
+      : ' · danger-level prompt: ${{for (final i in run.insights) analyteName(i.analyte ?? '')}.join(', ')}';
 
   // ---- insights (Plane A) -----------------------------------------------
 

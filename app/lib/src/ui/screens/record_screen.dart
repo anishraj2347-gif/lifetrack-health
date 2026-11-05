@@ -132,7 +132,10 @@ class _RecordScreenState extends State<RecordScreen> {
                 ],
               ),
             ),
+          // The danger-level check stays with the record: a prompt dismissed
+          // once is still here, with Insights on or off.
           if (r.results.isNotEmpty) ...[
+            for (final i in AppScope.of(context).criticalCheck(r).insights) InsightCard(insight: i),
             Eyebrow('Values as reported'),
             ShadCard(
               padding: EdgeInsets.zero,

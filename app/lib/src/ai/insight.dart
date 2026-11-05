@@ -45,7 +45,7 @@ class Insight {
 
 /// Why a result could not be checked. Rendered, never swallowed: an unchecked
 /// result shown as "nothing stands out" is an all-clear nobody issued.
-enum NotCheckedReason { noRangeForAnalyte, unitMismatch, notApplicableToPatient }
+enum NotCheckedReason { noRangeForAnalyte, unitMismatch, notApplicableToPatient, dangerLimitNotChecked }
 
 class NotChecked {
   const NotChecked({required this.recordId, required this.analyte, required this.value, required this.unit, required this.reason});
@@ -60,6 +60,8 @@ class NotChecked {
         NotCheckedReason.unitMismatch => 'Reported in $unit, which LifeTrack cannot compare with its range.',
         NotCheckedReason.notApplicableToPatient =>
           'The standard adult range does not apply to you (age or pregnancy), so it was not compared.',
+        NotCheckedReason.dangerLimitNotChecked =>
+          'LifeTrack could not tell how to read this number, or its danger limit does not apply at this age, so it was not checked for danger levels.',
       };
 }
 
@@ -74,4 +76,7 @@ class InsightRun {
 
   /// True only when every result was checked and none produced a finding.
   bool get allChecked => unresolved.isEmpty;
+
+  /// Something a person must read before they move on.
+  bool get needsPrompt => insights.isNotEmpty || unresolved.isNotEmpty;
 }

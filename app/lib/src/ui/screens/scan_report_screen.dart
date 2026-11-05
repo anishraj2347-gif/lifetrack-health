@@ -16,6 +16,7 @@ import '../../model/health_record.dart';
 import '../../security/plain_leftovers.dart';
 import '../app_scope.dart';
 import '../theme.dart';
+import '../widgets/critical_prompt.dart';
 import '../widgets/parts.dart';
 import 'records_screen.dart' show kindLabel;
 
@@ -357,9 +358,15 @@ class _ScanReportScreenState extends State<ScanReportScreen> {
     }
     setState(() => _saving = true);
     try {
-      await s.addScannedAll(drafts: drafts, rawPages: _pages, checked: _how());
+      final saved = await s.addScannedAll(drafts: drafts, rawPages: _pages, checked: _how());
       if (!mounted) return;
-      celebrate(context, drafts.length == 1 ? 'Saved to Records' : '${drafts.length} records saved');
+      final check = s.criticalCheckAll(saved);
+      if (check.needsPrompt) {
+        await showCriticalPrompt(context, check);
+        if (!mounted) return;
+      } else {
+        celebrate(context, drafts.length == 1 ? 'Saved to Records' : '${drafts.length} records saved');
+      }
       Navigator.of(context).pop(true);
     } on FormatException catch (e) {
       setState(() => _error = e.message);
