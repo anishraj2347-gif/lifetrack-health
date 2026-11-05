@@ -574,7 +574,7 @@ class AppServices {
   /// the patient shares home readings or backs up personal data (#6).
   Future<void> addVital(VitalReading v) async {
     await repository.addVital(v);
-    await audit.append(AuditEntry(at: clock(), actorId: actingGrantor(), patientId: v.patientId, action: AuditAction.edit, dataClass: DataClass.vitals, detail: 'home reading added: ${v.display}'));
+    await audit.append(AuditEntry(at: clock(), actorId: actingGrantor(), patientId: v.patientId, action: AuditAction.edit, dataClass: DataClass.vitals, detail: 'home reading added: ${v.display}${criticalCheckVital(v).insights.isEmpty ? '' : ' · danger-level prompt'}'));
     await _backUpQuietly();
   }
 
@@ -1092,6 +1092,9 @@ class AppServices {
   /// it needs no grant and is not a Plane A read (see [CriticalCheck]). Runs
   /// with Insights off. Screens show the result after every save.
   InsightRun criticalCheck(HealthRecord r) => CriticalCheck.record(patient: repository.patient(r.patientId), record: r, at: clock());
+
+  /// The same check on a reading taken at home.
+  InsightRun criticalCheckVital(VitalReading v) => CriticalCheck.vital(patient: repository.patient(v.patientId), reading: v, at: clock());
 
   /// One run for everything saved from one scan.
   InsightRun criticalCheckAll(Iterable<HealthRecord> records) {

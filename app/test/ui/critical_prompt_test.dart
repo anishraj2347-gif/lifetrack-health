@@ -45,7 +45,7 @@ void main() {
   });
 
   test('every screen that saves a lab value or a reading shows the check', () {
-    final saves = RegExp(r'\.(addRecord|updateRecord|addScannedAll|addScanned)\(');
+    final saves = RegExp(r'\.(addRecord|updateRecord|addScannedAll|addScanned|addVital)\(');
     for (final f in dartFiles('lib').cast<File>()) {
       final rel = f.path.replaceAll(r'\', '/');
       if (!rel.startsWith('lib/src/ui/')) continue;

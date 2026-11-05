@@ -202,6 +202,28 @@ const criticalLimits = <CriticalLimit>[
   ),
 ];
 
+/// Readings taken at home. Not a lab's numbers: the person may be unwell right
+/// now, with nobody else looking at the value. mmHg, mg/dL and beats a minute.
+abstract final class HomeLimits {
+  // AHA: 180/120 mmHg or above calls for attention at once (severe
+  // hypertension, "hypertensive crisis"); it advises measuring again after
+  // 5 minutes. VERIFY WITH CLINICIAN.
+  static const topUrgent = 180;
+  static const bottomUrgent = 120;
+
+  // Adults only: a child's blood pressure and pulse run differently (#10).
+  // Common triage figures; varies. VERIFY WITH CLINICIAN.
+  static const adultTopTodayBelow = 90;
+  static const adultTopUrgentBelow = 70;
+  static const adultPulseTodayBelow = 40;
+  static const adultPulseTodayAbove = 130;
+
+  // ADA Standards of Care (Glycemic Goals and Hypoglycemia): level 1
+  // hypoglycaemia is below 70 mg/dL, level 2 below 54. The high side is the
+  // lab limit in [criticalLimits]. VERIFY WITH CLINICIAN.
+  static const sugarTodayBelow = 70;
+}
+
 /// Lowercase, no spaces, one spelling of each sign, so "Gm %", "gm%" and
 /// "x10^3 /µL" compare with the [UnitForm] sets.
 String normaliseUnit(String raw) => raw

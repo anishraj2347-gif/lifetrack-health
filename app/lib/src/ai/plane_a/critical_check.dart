@@ -1,5 +1,6 @@
 import '../../model/health_record.dart';
 import '../../model/patient.dart';
+import '../../model/vital_reading.dart';
 import '../insight.dart';
 import 'banned_phrases.dart';
 import 'critical_values.dart';
@@ -112,6 +113,53 @@ abstract final class CriticalCheck {
       ));
     }
     return finish(out, unresolved);
+  }
+
+  /// A reading taken at home, as it is saved. Same reading rule as above: the
+  /// value in hand, no store, no grant. The reading stays on the phone (#6).
+  static InsightRun vital({required Patient? patient, required VitalReading reading, required DateTime at}) {
+    final stale = at.difference(reading.at) > staleAfter;
+    final adult = patient != null && patient.ageAt(at) >= 18;
+    final when = dateLabel(reading.at);
+    final out = <Insight>[];
+    void raise(String analyte, Severity level, String finding, {String? also}) {
+      final severity = stale ? Severity.contactDoctorToday : level;
+      out.add(Insight(
+        kind: InsightKind.critical,
+        severity: severity,
+        analyte: analyte,
+        finding: stale ? '$finding This reading is more than a week old.' : finding,
+        action: also == null || stale ? actionFor(severity) : '${actionFor(severity)} $also',
+        evidence: [reading.id],
+      ));
+    }
+
+    String need(Severity s) => s == Severity.urgentCare ? 'urgent attention' : 'attention today';
+    if (reading.kind == VitalKind.glucose) {
+      final v = reading.glucose!;
+      final limit = limitFor('glucose')!;
+      final s = limit.classify(v) ?? (v < HomeLimits.sugarTodayBelow ? Severity.contactDoctorToday : null);
+      if (s != null) {
+        final side = v < HomeLimits.sugarTodayBelow ? 'below ${s == Severity.urgentCare ? _fmt(limit.urgentBelow!) : HomeLimits.sugarTodayBelow}' : 'above ${_fmt(s == Severity.urgentCare ? limit.urgentAbove! : limit.todayAbove!)}';
+        raise('glucose', s, 'Your home sugar reading was ${_fmt(v)} mg/dL on $when. LifeTrack treats anything $side mg/dL as needing ${need(s)}.');
+      }
+    } else {
+      final top = reading.systolic!, bottom = reading.diastolic!;
+      final shown = '$top/$bottom mmHg on $when';
+      if (top >= HomeLimits.topUrgent || bottom >= HomeLimits.bottomUrgent) {
+        raise('blood_pressure', Severity.urgentCare, 'Your blood pressure reading was $shown. LifeTrack treats ${HomeLimits.topUrgent}/${HomeLimits.bottomUrgent} mmHg or above as needing urgent attention.',
+            also: 'You can measure again after 5 minutes of rest, but do not wait if you feel unwell.');
+      } else if (adult && top < HomeLimits.adultTopTodayBelow) {
+        final s = top < HomeLimits.adultTopUrgentBelow ? Severity.urgentCare : Severity.contactDoctorToday;
+        raise('blood_pressure', s, 'Your blood pressure reading was $shown. LifeTrack treats a top number below ${s == Severity.urgentCare ? HomeLimits.adultTopUrgentBelow : HomeLimits.adultTopTodayBelow} as needing ${need(s)}.');
+      }
+      final pulse = reading.pulse;
+      if (adult && pulse != null && (pulse < HomeLimits.adultPulseTodayBelow || pulse > HomeLimits.adultPulseTodayAbove)) {
+        final side = pulse < HomeLimits.adultPulseTodayBelow ? 'below ${HomeLimits.adultPulseTodayBelow}' : 'above ${HomeLimits.adultPulseTodayAbove}';
+        raise('pulse', Severity.contactDoctorToday, 'Your pulse was $pulse a minute on $when. LifeTrack treats a pulse $side as needing attention today.');
+      }
+    }
+    return finish(out, const []);
   }
 
   /// Applies the banned-phrase rule (#9) and puts the worst first.

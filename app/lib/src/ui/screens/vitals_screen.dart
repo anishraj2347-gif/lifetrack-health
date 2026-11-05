@@ -7,11 +7,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../model/vital_reading.dart';
 import '../app_scope.dart';
 import '../theme.dart';
+import '../widgets/critical_prompt.dart';
 import '../widgets/parts.dart';
 
 /// The home BP & sugar diary for the profile on screen. Plots what was
 /// measured; draws no target bands and calls nothing high or low — that is
-/// for the doctor (CLAUDE.md #8).
+/// for the doctor (CLAUDE.md #8). The one exception is not made here: the
+/// danger-level check's Insights are shown as a prompt when a reading is saved.
 class VitalsScreen extends StatefulWidget {
   const VitalsScreen({super.key});
   @override
@@ -139,7 +141,7 @@ class _VitalsScreenState extends State<VitalsScreen> {
                 return;
               }
               final r = Random.secure();
-              await s.addVital(VitalReading(
+              final reading = VitalReading(
                 id: 'v-${List.generate(6, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join()}',
                 patientId: s.currentPatientId!,
                 at: at,
@@ -149,9 +151,16 @@ class _VitalsScreenState extends State<VitalsScreen> {
                 pulse: pulse,
                 glucose: glu,
                 context: bp ? null : ctx,
-              ));
+              );
+              await s.addVital(reading);
               if (!sheet.mounted) return;
-              celebrate(sheet, 'Reading saved');
+              final check = s.criticalCheckVital(reading);
+              if (check.needsPrompt) {
+                await showCriticalPrompt(sheet, check);
+                if (!sheet.mounted) return;
+              } else {
+                celebrate(sheet, 'Reading saved');
+              }
               Navigator.of(sheet).pop();
             }),
           ]),

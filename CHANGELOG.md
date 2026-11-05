@@ -47,6 +47,13 @@ always goes up (Android refuses to install a lower one).
 
 ## Patient app
 
+### 1.44.0 (6 Nov 2026)
+- **A dangerous home reading now shows an urgent prompt instead of "Reading saved"**: sugar below 54 mg/dL
+  or BP at or above 180/120 asks for care now, with 108 and a Call 108 button. Sugar below 70 or above 300
+  (urgent above 450), a low top number and an unusual pulse ask for the doctor today; the low BP and pulse
+  limits are for adults only. A reading dated more than a week back asks for the doctor today. Limits are in
+  `critical_values.dart`, marked VERIFY WITH CLINICIAN. Readings stay on the phone (#6).
+
 ### 1.43.0 (6 Nov 2026)
 - **A danger-level check now runs on every lab value as it is saved**, with Insights on or off and
   whatever the reference range says. It is deterministic and on the phone; units are normalised first
